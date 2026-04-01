@@ -5,7 +5,7 @@
  */
 
 import { jsPDF } from 'jspdf'
-import 'jspdf-autotable'
+import autoTable from 'jspdf-autotable'
 
 // ─── 工具函数 ───────────────────────────────────────────────────
 function downloadBlob(blob, filename) {
@@ -150,7 +150,7 @@ export function exportPDF(holdings, enriched, summary, fx) {
     `${h.pct.toFixed(2)}%`,
   ])
 
-  doc.autoTable({
+  autoTable(doc, {
     startY: 72,
     head: [['Market', 'Code', 'Name', 'Qty', 'AvgCost', 'Price', 'MV', 'PnL', 'PnL%']],
     body: tableData,
