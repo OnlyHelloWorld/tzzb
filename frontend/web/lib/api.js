@@ -37,12 +37,15 @@ async function request(url, options = {}) {
 
 // ─── 认证 ─────────────────────────────────────────────────────
 export async function login(username, password) {
+  console.log('开始登录，用户名:', username)
   const data = await request('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ username, password }),
   })
+  console.log('登录成功，获取到token:', data.access_token)
   localStorage.setItem('investment-token', data.access_token)
   localStorage.setItem('investment-auth', '1')
+  console.log('token已保存到localStorage')
   return data
 }
 
@@ -52,7 +55,9 @@ export function logout() {
 }
 
 export function isLoggedIn() {
-  return !!getToken()
+  const token = getToken()
+  console.log('检查登录状态，token:', token)
+  return !!token
 }
 
 // 发送验证码
@@ -84,28 +89,44 @@ export async function resetPassword(email, code, newPassword) {
 
 // ─── 持仓 ─────────────────────────────────────────────────────
 export async function loadHoldings() {
-  return request('/holdings')
+  console.log('开始加载持仓数据')
+  try {
+    const data = await request('/holdings')
+    console.log('加载持仓数据成功:', data)
+    return data
+  } catch (error) {
+    console.error('加载持仓数据失败:', error)
+    throw error
+  }
 }
 
 export async function saveHoldings(holdings) {
-  // 转换前端格式为后端格式
-  const data = holdings.map(h => ({
-    market: h.market,
-    code: h.code,
-    name: h.name,
-    sector: h.sector || '',
-    trades: (h.trades || []).map(t => ({
-      date: t.date,
-      qty: t.qty,
-      price: t.price,
-      note: t.note || '',
-    })),
-  }))
-  const result = await request('/holdings/bulk', {
-    method: 'PUT',
-    body: JSON.stringify({ holdings: data }),
-  })
-  return result.holdings || []
+  console.log('开始保存持仓数据，持仓数量:', holdings.length)
+  try {
+    // 转换前端格式为后端格式
+    const data = holdings.map(h => ({
+      market: h.market,
+      code: h.code,
+      name: h.name,
+      sector: h.sector || '',
+      trades: (h.trades || []).map(t => ({
+        date: t.date,
+        qty: t.qty,
+        price: t.price,
+        note: t.note || '',
+      })),
+    }))
+    console.log('转换后的持仓数据:', data)
+    const result = await request('/holdings/bulk', {
+      method: 'PUT',
+      body: JSON.stringify({ holdings: data }),
+    })
+    console.log('保存持仓数据成功:', result)
+    return result.holdings || []
+  } catch (error) {
+    console.error('保存持仓数据失败:', error)
+    throw error
+  }
 }
 
 export async function deleteHolding(market, code) {
