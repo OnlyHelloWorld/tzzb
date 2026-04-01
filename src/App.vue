@@ -1,5 +1,6 @@
 <template>
-  <div class="app-root">
+  <LoginPage v-if="!isLoggedIn" @login="handleLogin" />
+  <div v-else class="app-root">
     <!-- ── Header ── -->
     <div class="header">
       <div class="header-left">
@@ -24,6 +25,7 @@
           </svg>
           {{ quoteStatus === 'loading' ? '获取中…' : '刷新' }}
         </button>
+        <button class="btn btn-ghost" style="font-size:12px;padding:6px 10px;color:#999" @click="handleLogout">退出</button>
 
         <button class="btn btn-ink" style="font-size:13px;padding:7px 14px" @click="openAddHolding">+ 添加</button>
       </div>
@@ -327,6 +329,7 @@
 import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import PnLTag from './components/PnLTag.vue'
 import Tag from './components/Tag.vue'
+import LoginPage from './components/LoginPage.vue'
 import { fetchQuotes, fetchQuote, fetchFxRates } from './lib/quoteApi.js'
 import { loadHoldings, saveHoldings, loadSettings, saveSettings } from './lib/db.js'
 import { exportJSON, importJSON, exportCSV, exportPDF } from './lib/io.js'
@@ -404,6 +407,12 @@ export default {
     // IO state
     const importInput = ref(null)
     const ioMessage = ref('')
+    const isLoggedIn = ref(!!sessionStorage.getItem('investment-auth'))
+    const handleLogin = () => { isLoggedIn.value = true }
+    const handleLogout = () => {
+      sessionStorage.removeItem('investment-auth')
+      isLoggedIn.value = false
+    }
     const ioMessageClass = ref('')
 
     // Derived
@@ -804,6 +813,7 @@ export default {
       openAddTrade, saveAddTrade, saveNewHolding,
       // Form helpers
       addError, tradeError, nameLoading, onCodeChange,
+      isLoggedIn, handleLogin, handleLogout,
     }
   }
 }
