@@ -414,13 +414,21 @@ export default {
     const loadData = async () => {
       try {
         const savedHoldings = await api.loadHoldings()
+        // 无论是否有数据，都更新 holdings
+        holdings.value = savedHoldings || []
         if (savedHoldings && savedHoldings.length > 0) {
-          holdings.value = savedHoldings
           const maxId = Math.max(...savedHoldings.flatMap(h => (h.trades || []).map(t => t.id)), ...savedHoldings.map(h => h.id), 0)
           _id = maxId + 1
+        } else {
+          _id = 100 // 重置 ID 计数器
         }
+        console.log('加载到持仓数据:', savedHoldings)
       } catch (err) {
         console.warn('加载持仓失败:', err)
+        showIOMessage('加载持仓失败: ' + err.message, true)
+        // 加载失败时使用初始数据
+        holdings.value = INITIAL_HOLDINGS
+        _id = 100
       }
 
       try {
@@ -432,6 +440,7 @@ export default {
         }
       } catch (err) {
         console.warn('加载设置失败:', err)
+        showIOMessage('加载设置失败: ' + err.message, true)
       }
 
       for (const h of holdings.value) {
@@ -450,8 +459,10 @@ export default {
         isLoggedIn.value = true
         // 登录成功后加载数据
         await loadData()
+        showIOMessage('登录成功，数据加载完成')
       } catch (err) {
         loginError.value = err.message
+        showIOMessage('登录后数据加载失败: ' + err.message, true)
       }
     }
     const handleLogout = () => {
@@ -508,10 +519,17 @@ export default {
       clearTimeout(saveDebounce)
       saveDebounce = setTimeout(async () => {
         try {
-          await api.saveHoldings(holdings.value)
+          // 保存持仓并更新本地数据（包含新的 ID）
+          const savedHoldings = await api.saveHoldings(holdings.value)
+          if (savedHoldings && savedHoldings.length > 0) {
+            holdings.value = savedHoldings
+            const maxId = Math.max(...savedHoldings.flatMap(h => (h.trades || []).map(t => t.id)), ...savedHoldings.map(h => h.id), 0)
+            _id = maxId + 1
+          }
           await api.saveSettings({ fx_usd: fx.USD, fx_hkd: fx.HKD, auto_refresh: autoRefresh.value })
         } catch (err) {
           console.warn('保存失败:', err)
+          showIOMessage('保存失败: ' + err.message, true)
         }
       }, 500)
     }

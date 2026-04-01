@@ -96,8 +96,16 @@ async def bulk_save_holdings(
             db.add(trade)
 
     await db.commit()
-    logger.info(f"用户 {user.username} 批量保存 {len(req.holdings)} 个持仓")
-    return {"ok": True, "count": len(req.holdings)}
+    # 重新查询保存后的持仓，包含新的 ID
+    result = await db.execute(
+        select(Holding)
+        .options(selectinload(Holding.trades))
+        .where(Holding.user_id == user.id)
+        .order_by(Holding.id)
+    )
+    saved_holdings = result.scalars().all()
+    logger.info(f"用户 {user.username} 批量保存 {len(saved_holdings)} 个持仓")
+    return {"ok": True, "count": len(saved_holdings), "holdings": saved_holdings}
 
 
 @router.delete("/{holding_id}")

@@ -101,10 +101,11 @@ export async function saveHoldings(holdings) {
       note: t.note || '',
     })),
   }))
-  return request('/holdings/bulk', {
+  const result = await request('/holdings/bulk', {
     method: 'PUT',
     body: JSON.stringify({ holdings: data }),
   })
+  return result.holdings || []
 }
 
 export async function deleteHolding(holdingId) {
