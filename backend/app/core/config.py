@@ -10,6 +10,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 class Settings:
     # 数据库
+    DB_DRIVER: str = os.getenv("DB_DRIVER", "mysql")  # mysql | sqlite
     DB_HOST: str = os.getenv("DB_HOST", "localhost")
     DB_PORT: int = int(os.getenv("DB_PORT", "3306"))
     DB_USER: str = os.getenv("DB_USER", "root")
@@ -18,6 +19,9 @@ class Settings:
 
     @property
     def DATABASE_URL(self) -> str:
+        if self.DB_DRIVER == "sqlite":
+            db_path = Path(__file__).resolve().parent.parent / f"{self.DB_NAME}.db"
+            return f"sqlite+aiosqlite:///{db_path}"
         return (
             f"mysql+aiomysql://{self.DB_USER}:{self.DB_PASSWORD}"
             f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}?charset=utf8mb4"
@@ -44,6 +48,12 @@ class Settings:
     LOG_MAX_BYTES: int = int(os.getenv("LOG_MAX_BYTES", "10485760"))  # 10MB
     LOG_BACKUP_COUNT: int = int(os.getenv("LOG_BACKUP_COUNT", "10"))
     LOG_RETENTION_DAYS: int = int(os.getenv("LOG_RETENTION_DAYS", "10"))
+
+    # SMTP 邮件（QQ 邮箱）
+    SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.qq.com")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "465"))
+    SMTP_USER: str = os.getenv("SMTP_USER", "")
+    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")  # QQ 邮箱授权码
 
 
 settings = Settings()

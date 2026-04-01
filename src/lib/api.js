@@ -55,6 +55,33 @@ export function isLoggedIn() {
   return !!getToken()
 }
 
+// 发送验证码
+export async function sendCode(email, type = 'register') {
+  return request('/auth/send-code', {
+    method: 'POST',
+    body: JSON.stringify({ email, type }),
+  })
+}
+
+// 注册
+export async function register(email, code, username, password) {
+  const data = await request('/auth/register', {
+    method: 'POST',
+    body: JSON.stringify({ email, code, username, password }),
+  })
+  localStorage.setItem('investment-token', data.access_token)
+  localStorage.setItem('investment-auth', '1')
+  return data
+}
+
+// 重置密码
+export async function resetPassword(email, code, newPassword) {
+  return request('/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ email, code, new_password: newPassword }),
+  })
+}
+
 // ─── 持仓 ─────────────────────────────────────────────────────
 export async function loadHoldings() {
   return request('/holdings')

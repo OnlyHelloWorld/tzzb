@@ -22,6 +22,24 @@ class TokenPayload(BaseModel):
     username: str
 
 
+class SendCodeRequest(BaseModel):
+    email: str
+    type: str = "register"  # register | reset
+
+
+class RegisterRequest(BaseModel):
+    email: str
+    code: str
+    username: str
+    password: str
+
+
+class ResetPasswordRequest(BaseModel):
+    email: str
+    code: str
+    new_password: str
+
+
 # ─── Trade ────────────────────────────────────────────────────
 class TradeBase(BaseModel):
     date: str

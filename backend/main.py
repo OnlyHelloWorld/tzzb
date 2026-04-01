@@ -95,7 +95,7 @@ async def _ensure_default_user():
         result = await db.execute(select(User).where(User.username == "admin"))
         user = result.scalar_one_or_none()
         if not user:
-            user = User(username="admin", password_hash=hash_password("admin"))
+            user = User(username="admin", email="admin@local", password_hash=hash_password("admin"))
             db.add(user)
             await db.commit()
             logging.getLogger(__name__).info("已创建默认用户: admin/admin")
