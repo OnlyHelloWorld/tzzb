@@ -30,7 +30,7 @@ async def get_holdings(
         select(Holding)
         .options(selectinload(Holding.trades))
         .where(Holding.user_id == user.id)
-        .order_by(Holding.id)
+        .order_by(Holding.market, Holding.code)
     )
     return result.scalars().all()
 
@@ -53,7 +53,12 @@ async def create_holding(
     await db.flush()
 
     for t in req.trades:
-        trade = Trade(holding_id=holding.id, date=t.date, qty=t.qty, price=t.price, note=t.note)
+        trade = Trade(
+            user_id=user.id,
+            market=holding.market,
+            code=holding.code,
+            date=t.date, qty=t.qty, price=t.price, note=t.note
+        )
         db.add(trade)
 
     await db.commit()
@@ -74,58 +79,97 @@ async def bulk_save_holdings(
     old_holdings = result.scalars().all()
     for h in old_holdings:
         # 删除关联的 trades
-        t_result = await db.execute(select(Trade).where(Trade.holding_id == h.id))
+        t_result = await db.execute(
+            select(Trade)
+            .where(Trade.user_id == user.id, Trade.market == h.market, Trade.code == h.code)
+        )
         for t in t_result.scalars().all():
             await db.delete(t)
         await db.delete(h)
 
     # 写入新数据
     for h in req.holdings:
-        holding = Holding(
-            user_id=user.id,
-            market=h.market,
-            code=h.code,
-            name=h.name,
-            sector=h.sector,
+        # 检查持仓是否已存在
+        existing = await db.execute(
+            select(Holding)
+            .where(Holding.user_id == user.id, Holding.market == h.market, Holding.code == h.code)
         )
-        db.add(holding)
-        await db.flush()
+        holding = existing.scalar_one_or_none()
+        
+        if not holding:
+            # 创建新持仓
+            holding = Holding(
+                user_id=user.id,
+                market=h.market,
+                code=h.code,
+                name=h.name,
+                sector=h.sector,
+            )
+            db.add(holding)
+            await db.flush()
+        else:
+            # 更新现有持仓
+            holding.name = h.name
+            holding.sector = h.sector
+            # 删除旧的交易记录
+            old_trades = await db.execute(
+                select(Trade)
+                .where(Trade.user_id == user.id, Trade.market == h.market, Trade.code == h.code)
+            )
+            for t in old_trades.scalars().all():
+                await db.delete(t)
+            await db.flush()
 
         for t in h.trades:
-            trade = Trade(holding_id=holding.id, date=t.date, qty=t.qty, price=t.price, note=t.note)
+            trade = Trade(
+                user_id=user.id,
+                market=h.market,
+                code=h.code,
+                date=t.date,
+                qty=t.qty,
+                price=t.price,
+                note=t.note
+            )
             db.add(trade)
 
     await db.commit()
-    # 重新查询保存后的持仓，包含新的 ID
+    # 重新查询保存后的持仓
     result = await db.execute(
         select(Holding)
         .options(selectinload(Holding.trades))
         .where(Holding.user_id == user.id)
-        .order_by(Holding.id)
+        .order_by(Holding.market, Holding.code)
     )
     saved_holdings = result.scalars().all()
     logger.info(f"用户 {user.username} 批量保存 {len(saved_holdings)} 个持仓")
     return {"ok": True, "count": len(saved_holdings), "holdings": saved_holdings}
 
 
-@router.delete("/{holding_id}")
+@router.delete("/{market}/{code}")
 async def delete_holding(
-    holding_id: int,
+    market: str,
+    code: str,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """删除持仓"""
-    result = await db.execute(select(Holding).where(Holding.id == holding_id, Holding.user_id == user.id))
+    result = await db.execute(
+        select(Holding)
+        .where(Holding.user_id == user.id, Holding.market == market, Holding.code == code)
+    )
     holding = result.scalar_one_or_none()
     if not holding:
         raise HTTPException(status_code=404, detail="持仓不存在")
 
     # 删除关联 trades
-    t_result = await db.execute(select(Trade).where(Trade.holding_id == holding_id))
+    t_result = await db.execute(
+        select(Trade)
+        .where(Trade.user_id == user.id, Trade.market == market, Trade.code == code)
+    )
     for t in t_result.scalars().all():
         await db.delete(t)
     await db.delete(holding)
 
     await db.commit()
-    logger.info(f"用户 {user.username} 删除持仓 id={holding_id}")
+    logger.info(f"用户 {user.username} 删除持仓 {market}/{code}")
     return {"ok": True}

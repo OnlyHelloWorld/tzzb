@@ -102,8 +102,8 @@
       </div>
 
       <!-- ── Holdings ── -->
-      <div v-for="h in filtered" :key="h.id" class="row">
-        <div class="row-head" @click="expanded = expanded === h.id ? null : h.id">
+      <div v-for="h in filtered" :key="`${h.market}-${h.code}`" class="row">
+        <div class="row-head" @click="expanded = expanded === `${h.market}-${h.code}` ? null : `${h.market}-${h.code}`">
           <div>
             <div class="name-row">
               <span class="stock-name">{{ h.name }}</span>
@@ -134,29 +134,29 @@
               </div>
             </div>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"
-              :style="{ flexShrink: 0, transition: 'transform .2s', transform: expanded === h.id ? 'rotate(180deg)' : 'none' }">
+              :style="{ flexShrink: 0, transition: 'transform .2s', transform: expanded === `${h.market}-${h.code}` ? 'rotate(180deg)' : 'none' }">
               <path d="M4 6l4 4 4-4" stroke="#bbb" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </div>
         </div>
 
         <!-- Trade zone -->
-        <div v-if="expanded === h.id" class="trade-zone">
+        <div v-if="expanded === `${h.market}-${h.code}`" class="trade-zone">
           <div class="trade-header">
             <span class="trade-title">买入记录</span>
             <div class="trade-actions">
-              <button class="btn btn-ghost" style="font-size:11px" @click.stop="openAddTrade(h.id)">+ 新增一笔</button>
-              <button class="btn btn-warn" style="font-size:11px" @click.stop="toggleReset(h.id)">
-                {{ resetTarget === h.id ? '取消' : '一键重置成本' }}
+              <button class="btn btn-ghost" style="font-size:11px" @click.stop="openAddTrade({ market: h.market, code: h.code })">+ 新增一笔</button>
+              <button class="btn btn-warn" style="font-size:11px" @click.stop="toggleReset({ market: h.market, code: h.code })">
+                {{ resetTarget && resetTarget.market === h.market && resetTarget.code === h.code ? '取消' : '一键重置成本' }}
               </button>
-              <button class="btn btn-warn" style="font-size:11px;color:#c0392b;border-color:#c0392b" @click.stop="confirmDeleteHolding(h.id)">
+              <button class="btn btn-warn" style="font-size:11px;color:#c0392b;border-color:#c0392b" @click.stop="confirmDeleteHolding({ market: h.market, code: h.code })">
                 删除持仓
               </button>
             </div>
           </div>
 
           <!-- Reset confirm -->
-          <div v-if="resetTarget === h.id" class="confirm-box">
+          <div v-if="resetTarget && resetTarget.market === h.market && resetTarget.code === h.code" class="confirm-box">
             <div style="margin-bottom:10px">将合并全部 {{ h.trades.length }} 笔记录为单笔，持仓量不变。此操作不可撤销。</div>
             <div class="reset-price-row">
               <span class="reset-label">新成本价：</span>
@@ -166,7 +166,7 @@
               <span class="reset-hint">留空则使用均价 {{ SYM[h.ccy] }}{{ fmt(h.cost) }}</span>
             </div>
             <div class="reset-btns">
-              <button class="btn btn-warn" @click="resetCost(h.id)">确认重置</button>
+              <button class="btn btn-warn" @click="resetCost({ market: h.market, code: h.code })">确认重置</button>
               <button class="btn btn-ghost" @click="cancelReset">取消</button>
             </div>
           </div>
@@ -178,7 +178,7 @@
 
           <!-- Trade rows -->
           <div v-for="t in h.trades" :key="t.id" class="trade-row">
-            <template v-if="editingTrade && editingTrade.holdingId === h.id && editingTrade.tradeId === t.id">
+            <template v-if="editingTrade && editingTrade.holdingMarket === h.market && editingTrade.holdingCode === h.code && editingTrade.tradeId === t.id">
               <input class="field field-sm" type="date" v-model="editingTrade.date" />
               <span class="trade-type" :class="t.qty >= 0 ? 'type-buy' : 'type-sell'">
                 {{ t.qty >= 0 ? '买入' : '卖出' }}
@@ -200,11 +200,11 @@
               <div class="trade-btns">
                 <span v-if="t.note" class="trade-note" :title="t.note">{{ t.note }}</span>
                 <button class="btn btn-ghost" style="font-size:11px"
-                  @click="editingTrade = { holdingId: h.id, tradeId: t.id, date: t.date, qty: t.qty, price: t.price }">
+                  @click="editingTrade = { holdingMarket: h.market, holdingCode: h.code, tradeId: t.id, date: t.date, qty: t.qty, price: t.price }">
                   修改
                 </button>
                 <button v-if="h.trades.length > 1" class="btn btn-warn" style="font-size:11px"
-                  @click="deleteTrade(h.id, t.id)">删除</button>
+                  @click="deleteTrade({ market: h.market, code: h.code }, t.id)">删除</button>
               </div>
             </template>
           </div>
@@ -673,17 +673,20 @@ export default {
     // ─── Trade actions ───────────────────────────────────────────
     const updateTrade = () => {
       if (!editingTrade.value) return
-      const { holdingId, tradeId, qty, price } = editingTrade.value
-      holdings.value = holdings.value.map(h => h.id !== holdingId ? h : {
-        ...h, trades: h.trades.map(t => t.id !== tradeId ? t : { ...t, qty: +qty, price: +price })
-      })
+      const { holdingMarket, holdingCode, tradeId, qty, price } = editingTrade.value
+      holdings.value = holdings.value.map(h => 
+        !(h.market === holdingMarket && h.code === holdingCode) ? h : {
+          ...h, trades: h.trades.map(t => t.id !== tradeId ? t : { ...t, qty: +qty, price: +price })
+        }
+      )
       editingTrade.value = null
       api.saveHoldings(holdings.value)
     }
 
-    const deleteTrade = (holdingId, tradeId) => {
+    const deleteTrade = (holding, tradeId) => {
+      const { market, code } = holding
       holdings.value = holdings.value.map(h => {
-        if (h.id !== holdingId) return h
+        if (!(h.market === market && h.code === code)) return h
         const trades = h.trades.filter(t => t.id !== tradeId)
         return trades.length > 0 ? { ...h, trades } : h
       })
@@ -696,13 +699,12 @@ export default {
 
     const deleteHolding = async () => {
       if (deleteConfirm.value === null) return
-      const holdingId = deleteConfirm.value
+      const { market, code } = deleteConfirm.value
       deleteConfirm.value = null
       
       try {
-        await api.deleteHolding(holdingId)
-        holdings.value = holdings.value.filter(h => h.id !== holdingId)
-        if (expanded.value === holdingId) expanded.value = null
+        await api.deleteHolding(market, code)
+        holdings.value = holdings.value.filter(h => !(h.market === market && h.code === code))
         showIOMessage('持仓删除成功')
       } catch (err) {
         showIOMessage('删除失败: ' + err.message, true)
@@ -728,21 +730,25 @@ export default {
       resetPrice.value = ''
       api.saveHoldings(holdings.value)
     }
-    const resetCost = (holdingId) => {
-      const enrichedH = enriched.value.find(e => e.id === holdingId)
+    const resetCost = (holding) => {
+      const { market, code } = holding
+      const enrichedH = enriched.value.find(e => e.market === market && e.code === code)
       if (!enrichedH) return
       const price = resetPrice.value !== '' ? +resetPrice.value : enrichedH.cost
-      holdings.value = holdings.value.map(h => h.id !== holdingId ? h : {
-        ...h, trades: [{ id: ++_id, date: today(), qty: enrichedH.qty, price }]
-      })
+      holdings.value = holdings.value.map(h => 
+        !(h.market === market && h.code === code) ? h : {
+          ...h, trades: [{ id: ++_id, date: today(), qty: enrichedH.qty, price }]
+        }
+      )
       resetTarget.value = null
       resetPrice.value = ''
     }
 
-    const openAddTrade = (holdingId) => {
-      const h = enriched.value.find(e => e.id === holdingId)
+    const openAddTrade = (holding) => {
+      const { market, code } = holding
+      const h = enriched.value.find(e => e.market === market && e.code === code)
       if (!h) return
-      addTradeTarget.value = { holdingId, market: h.market, ccy: h.ccy, avgCost: h.cost }
+      addTradeTarget.value = { holdingMarket: market, holdingCode: code, market: h.market, ccy: h.ccy, avgCost: h.cost }
       Object.assign(addTradeForm, { type: '买入', qty: '', price: '', date: today(), note: '' })
     }
 
@@ -754,12 +760,14 @@ export default {
         return
       }
       tradeError.value = ''
-      const { holdingId } = addTradeTarget.value
+      const { holdingMarket, holdingCode } = addTradeTarget.value
       const { type, qty, price, date, note } = addTradeForm
       const signedQty = type === '卖出' ? -Math.abs(+qty) : Math.abs(+qty)
-      holdings.value = holdings.value.map(h => h.id !== holdingId ? h : {
-        ...h, trades: [...h.trades, { id: ++_id, date: date || today(), qty: signedQty, price: +price, note: note || '' }]
-      })
+      holdings.value = holdings.value.map(h => 
+        !(h.market === holdingMarket && h.code === holdingCode) ? h : {
+          ...h, trades: [...h.trades, { id: ++_id, date: date || today(), qty: signedQty, price: +price, note: note || '' }]
+        }
+      )
       addTradeTarget.value = null
       Object.assign(addTradeForm, { type: '买入', qty: '', price: '', date: '', note: '' })
       api.saveHoldings(holdings.value)

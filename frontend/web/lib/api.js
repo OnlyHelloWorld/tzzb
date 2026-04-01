@@ -108,8 +108,8 @@ export async function saveHoldings(holdings) {
   return result.holdings || []
 }
 
-export async function deleteHolding(holdingId) {
-  return request(`/holdings/${holdingId}`, { method: 'DELETE' })
+export async function deleteHolding(market, code) {
+  return request(`/holdings/${market}/${code}`, { method: 'DELETE' })
 }
 
 // ─── 设置 ─────────────────────────────────────────────────────
