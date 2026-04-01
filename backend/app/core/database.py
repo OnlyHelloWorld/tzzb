@@ -9,13 +9,20 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-engine = create_async_engine(
-    settings.DATABASE_URL,
-    echo=False,
-    pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20,
-)
+# 根据数据库类型设置不同的参数
+if settings.DB_DRIVER == "sqlite":
+    engine = create_async_engine(
+        settings.DATABASE_URL,
+        echo=False,
+    )
+else:
+    engine = create_async_engine(
+        settings.DATABASE_URL,
+        echo=False,
+        pool_pre_ping=True,
+        pool_size=10,
+        max_overflow=20,
+    )
 
 AsyncSessionLocal = async_sessionmaker(
     bind=engine,

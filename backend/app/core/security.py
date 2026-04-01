@@ -12,10 +12,12 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
 
 def hash_password(password: str) -> str:
+    # 确保密码长度不超过72字节，这是bcrypt的限制
+    password = password[:72]
     return pwd_context.hash(password)
 
 

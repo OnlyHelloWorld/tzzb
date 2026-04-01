@@ -3,19 +3,22 @@ config.py — 配置管理
 """
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 # 项目根目录
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# 加载.env文件
+load_dotenv(dotenv_path=BASE_DIR / ".env")
 
 class Settings:
     # 数据库
-    DB_DRIVER: str = os.getenv("DB_DRIVER", "mysql")  # mysql | sqlite
+    DB_DRIVER: str = "sqlite"  # mysql | sqlite
     DB_HOST: str = os.getenv("DB_HOST", "localhost")
     DB_PORT: int = int(os.getenv("DB_PORT", "3306"))
     DB_USER: str = os.getenv("DB_USER", "root")
     DB_PASSWORD: str = os.getenv("DB_PASSWORD", "")
-    DB_NAME: str = os.getenv("DB_NAME", "investment_ledger")
+    DB_NAME: str = "investment_ledger"
 
     @property
     def DATABASE_URL(self) -> str:
