@@ -5,7 +5,7 @@
  */
 
 import { jsPDF } from 'jspdf'
-import autoTable from 'jspdf-autotable'
+import html2canvas from 'html2canvas'
 
 // ─── 工具函数 ───────────────────────────────────────────────────
 function downloadBlob(blob, filename) {
@@ -109,68 +109,42 @@ export function exportCSV(holdings, prices, fx) {
 }
 
 // ─── 导出 PDF ───────────────────────────────────────────────────
-export function exportPDF(holdings, enriched, summary, fx) {
-  const doc = new jsPDF()
+export async function exportPDF() {
+  const element = document.querySelector('.app-root')
+  if (!element) {
+    throw new Error('无法找到页面元素')
+  }
 
-  // Title
-  doc.setFontSize(18)
-  doc.text('Investment Portfolio Report', 14, 22)
+  try {
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#f9f7f3',
+    })
 
-  // Date
-  doc.setFontSize(10)
-  doc.setTextColor(150)
-  doc.text(`Generated: ${new Date().toLocaleString('zh-CN')}`, 14, 30)
+    const imgData = canvas.toDataURL('image/png')
+    const imgWidth = 210
+    const pageHeight = 297
+    const imgHeight = (canvas.height * imgWidth) / canvas.width
 
-  // Summary
-  doc.setFontSize(12)
-  doc.setTextColor(30)
-  doc.text('Summary', 14, 42)
+    const doc = new jsPDF('p', 'mm', 'a4')
+    let heightLeft = imgHeight
+    let position = 0
 
-  doc.setFontSize(10)
-  doc.text(`Total Value (CNY): ¥${(summary.totalCNY || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2 })}`, 14, 50)
-  const pnlColor = (summary.pnl || 0) >= 0 ? [26, 122, 74] : [192, 57, 43]
-  doc.setTextColor(...pnlColor)
-  doc.text(
-    `PnL: ${(summary.pnl || 0) >= 0 ? '+' : ''}¥${(summary.pnl || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2 })}  (${(summary.pct || 0).toFixed(2)}%)`,
-    14, 57
-  )
-  doc.setTextColor(30)
-  doc.text(`FX: USD/CNY=${(fx?.USD || 0).toFixed(3)}  HKD/CNY=${(fx?.HKD || 0).toFixed(3)}`, 14, 64)
+    doc.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+    heightLeft -= pageHeight
 
-  // Holdings table
-  const tableData = (enriched || []).map(h => [
-    h.market,
-    h.code,
-    h.name || '',
-    h.qty.toString(),
-    `${SYM[h.ccy]}${h.cost.toFixed(2)}`,
-    `${SYM[h.ccy]}${h.price.toFixed(2)}`,
-    `${SYM[h.ccy]}${h.mv.toFixed(2)}`,
-    `${h.pnl >= 0 ? '+' : ''}${h.pnl.toFixed(2)}`,
-    `${h.pct.toFixed(2)}%`,
-  ])
+    while (heightLeft > 0) {
+      position = heightLeft - imgHeight
+      doc.addPage()
+      doc.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+      heightLeft -= pageHeight
+    }
 
-  autoTable(doc, {
-    startY: 72,
-    head: [['Market', 'Code', 'Name', 'Qty', 'AvgCost', 'Price', 'MV', 'PnL', 'PnL%']],
-    body: tableData,
-    theme: 'grid',
-    styles: { fontSize: 8, cellPadding: 2 },
-    headStyles: { fillColor: [26, 24, 20], textColor: [249, 247, 243] },
-    alternateRowStyles: { fillColor: [249, 247, 243] },
-    columnStyles: {
-      0: { cellWidth: 18 },
-      1: { cellWidth: 22 },
-      2: { cellWidth: 30 },
-      3: { halign: 'right', cellWidth: 18 },
-      4: { halign: 'right' },
-      5: { halign: 'right' },
-      6: { halign: 'right' },
-      7: { halign: 'right' },
-      8: { halign: 'right' },
-    },
-  })
-
-  const date = new Date().toISOString().slice(0, 10)
-  doc.save(`investment-ledger-${date}.pdf`)
+    const date = new Date().toISOString().slice(0, 10)
+    doc.save(`investment-ledger-${date}.pdf`)
+  } catch (error) {
+    console.error('PDF导出失败:', error)
+    throw new Error('PDF导出失败: ' + error.message)
+  }
 }
