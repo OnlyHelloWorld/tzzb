@@ -36,7 +36,11 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
+
+const props = defineProps({
+  loginError: { type: String, default: '' }
+})
 
 const emit = defineEmits(['login'])
 
@@ -45,20 +49,16 @@ const password = ref('')
 const error = ref('')
 const loading = ref(false)
 
+// 同步外部传入的 loginError
+watch(() => props.loginError, (val) => {
+  error.value = val
+})
+
 const handleLogin = () => {
   error.value = ''
   loading.value = true
-
-  setTimeout(() => {
-    if (username.value === 'admin' && password.value === 'admin') {
-      // 记录登录状态到 sessionStorage（关闭浏览器需重新登录）
-      sessionStorage.setItem('investment-auth', '1')
-      emit('login')
-    } else {
-      error.value = '账号或密码错误'
-    }
-    loading.value = false
-  }, 300)
+  emit('login', { username: username.value, password: password.value })
+  loading.value = false
 }
 </script>
 

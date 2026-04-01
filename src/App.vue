@@ -1,5 +1,5 @@
 <template>
-  <LoginPage v-if="!isLoggedIn" @login="handleLogin" />
+  <LoginPage v-if="!isLoggedIn" @login="handleLogin" :loginError="loginError" />
   <div v-else class="app-root">
     <!-- ── Header ── -->
     <div class="header">
@@ -28,15 +28,6 @@
         <button class="btn btn-ghost" style="font-size:12px;padding:6px 10px;color:#999" @click="handleLogout">退出</button>
 
         <button class="btn btn-ink" style="font-size:13px;padding:7px 14px" @click="openAddHolding">+ 添加</button>
-      </div>
-    </div>
-
-    <!-- ── PWA install prompt ── -->
-    <div v-if="showInstallPrompt" class="install-banner">
-      <span>添加到主屏幕，离线使用</span>
-      <div class="install-btns">
-        <button class="btn btn-ink" style="font-size:12px;padding:5px 14px" @click="installPWA">安装</button>
-        <button class="btn btn-ghost" style="font-size:12px;padding:5px 10px" @click="dismissInstall">忽略</button>
       </div>
     </div>
 
@@ -331,7 +322,7 @@ import PnLTag from './components/PnLTag.vue'
 import Tag from './components/Tag.vue'
 import LoginPage from './components/LoginPage.vue'
 import { fetchQuotes, fetchQuote, fetchFxRates } from './lib/quoteApi.js'
-import { loadHoldings, saveHoldings, loadSettings, saveSettings } from './lib/db.js'
+import * as api from './lib/api.js'
 import { exportJSON, importJSON, exportCSV, exportPDF } from './lib/io.js'
 
 // ─── Constants ──────────────────────────────────────────────────
@@ -400,21 +391,22 @@ export default {
     const lastQuoteTime = ref('')
     let refreshTimer = null
 
-    // PWA install
-    const showInstallPrompt = ref(false)
-    let deferredPrompt = null
-
     // IO state
     const importInput = ref(null)
     const ioMessage = ref('')
-    const isLoggedIn = ref(false)
-    try { isLoggedIn.value = !!localStorage.getItem('investment-auth') } catch(e) {}
-    const handleLogin = () => {
-      try { localStorage.setItem('investment-auth', '1') } catch(e) {}
-      isLoggedIn.value = true
+    const loginError = ref('')
+    const isLoggedIn = ref(api.isLoggedIn())
+    const handleLogin = async ({ username, password }) => {
+      loginError.value = ''
+      try {
+        await api.login(username, password)
+        isLoggedIn.value = true
+      } catch (err) {
+        loginError.value = err.message
+      }
     }
     const handleLogout = () => {
-      try { localStorage.removeItem('investment-auth') } catch(e) {}
+      api.logout()
       isLoggedIn.value = false
     }
     const ioMessageClass = ref('')
@@ -466,8 +458,12 @@ export default {
     const debounceSave = () => {
       clearTimeout(saveDebounce)
       saveDebounce = setTimeout(async () => {
-        await saveHoldings(holdings.value)
-        await saveSettings({ fx: { USD: fx.USD, HKD: fx.HKD }, autoRefresh: autoRefresh.value })
+        try {
+          await api.saveHoldings(holdings.value)
+          await api.saveSettings({ fx_usd: fx.USD, fx_hkd: fx.HKD, auto_refresh: autoRefresh.value })
+        } catch (err) {
+          console.warn('保存失败:', err)
+        }
       }, 500)
     }
 
@@ -544,34 +540,6 @@ export default {
       else stopAutoRefresh()
     })
 
-    // ─── PWA install prompt ──────────────────────────────────────
-    function setupInstallPrompt() {
-      window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault()
-        deferredPrompt = e
-        // Only show once per session
-        const dismissed = sessionStorage.getItem('install-dismissed')
-        if (!dismissed) {
-          showInstallPrompt.value = true
-        }
-      })
-    }
-
-    async function installPWA() {
-      if (!deferredPrompt) return
-      deferredPrompt.prompt()
-      const { outcome } = await deferredPrompt.userChoice
-      if (outcome === 'accepted') {
-        showInstallPrompt.value = false
-      }
-      deferredPrompt = null
-    }
-
-    function dismissInstall() {
-      showInstallPrompt.value = false
-      sessionStorage.setItem('install-dismissed', '1')
-    }
-
     // ─── Import/Export ───────────────────────────────────────────
     function showIOMessage(msg, isError = false) {
       ioMessage.value = msg
@@ -643,7 +611,7 @@ export default {
         ...h, trades: h.trades.map(t => t.id !== tradeId ? t : { ...t, qty: +qty, price: +price })
       })
       editingTrade.value = null
-      saveHoldings(holdings.value)
+      api.saveHoldings(holdings.value)
     }
 
     const deleteTrade = (holdingId, tradeId) => {
@@ -652,13 +620,13 @@ export default {
         const trades = h.trades.filter(t => t.id !== tradeId)
         return trades.length > 0 ? { ...h, trades } : h
       })
-      saveHoldings(holdings.value)
+      api.saveHoldings(holdings.value)
     }
 
     const deleteHolding = (holdingId) => {
       holdings.value = holdings.value.filter(h => h.id !== holdingId)
       if (expanded.value === holdingId) expanded.value = null
-      saveHoldings(holdings.value)
+      api.saveHoldings(holdings.value)
     }
 
     const toggleReset = (holdingId) => {
@@ -674,7 +642,7 @@ export default {
     const cancelReset = () => {
       resetTarget.value = null
       resetPrice.value = ''
-      saveHoldings(holdings.value)
+      api.saveHoldings(holdings.value)
     }
     const resetCost = (holdingId) => {
       const enrichedH = enriched.value.find(e => e.id === holdingId)
@@ -710,7 +678,7 @@ export default {
       })
       addTradeTarget.value = null
       Object.assign(addTradeForm, { type: '买入', qty: '', price: '', date: '', note: '' })
-      saveHoldings(holdings.value)
+      api.saveHoldings(holdings.value)
     }
     const addError = ref('')
     const nameLoading = ref(false)
@@ -747,49 +715,43 @@ export default {
       addHolding.value = false
       Object.assign(newForm, { market: 'A股', code: '', name: '', sector: '', qty: '', price: '' })
       // 立即持久化
-      saveHoldings(holdings.value).then(ok => {
-        if (ok) {
-          ioMessage.value = '✅ 已保存到本地'
-          setTimeout(() => { if (ioMessage.value === '✅ 已保存到本地') ioMessage.value = '' }, 3000)
-        }
+      api.saveHoldings(holdings.value).then(() => {
+        ioMessage.value = '✅ 已保存到本地'
+        setTimeout(() => { if (ioMessage.value === '✅ 已保存到本地') ioMessage.value = '' }, 3000)
       })
     }
 
     // ─── Lifecycle ───────────────────────────────────────────────
     onMounted(async () => {
-      // Load data from IndexedDB
-      const savedHoldings = await loadHoldings()
-      const savedSettings = await loadSettings()
-
-      if (savedHoldings.length > 0) {
-        holdings.value = savedHoldings
-        // Set max _id to avoid collisions
-        const maxId = Math.max(...savedHoldings.flatMap(h => h.trades.map(t => t.id)), ...savedHoldings.map(h => h.id))
-        _id = maxId + 1
+      try {
+        const savedHoldings = await api.loadHoldings()
+        if (savedHoldings && savedHoldings.length > 0) {
+          holdings.value = savedHoldings
+          const maxId = Math.max(...savedHoldings.flatMap(h => (h.trades || []).map(t => t.id)), ...savedHoldings.map(h => h.id), 0)
+          _id = maxId + 1
+        }
+      } catch (err) {
+        console.warn('加载持仓失败:', err)
       }
-      // else: start with empty list (no demo data)
 
-      // Initialize prices from holdings if not in cache
+      try {
+        const savedSettings = await api.loadSettings()
+        if (savedSettings) {
+          fx.USD = savedSettings.fx_usd || fx.USD
+          fx.HKD = savedSettings.fx_hkd || fx.HKD
+          autoRefresh.value = savedSettings.auto_refresh !== false
+        }
+      } catch (err) {
+        console.warn('加载设置失败:', err)
+      }
+
       for (const h of holdings.value) {
         if (!(h.code in prices)) {
-          const cost = avgCost(h.trades)
-          prices[h.code] = cost || INITIAL_PRICES[h.code] || 0
+          const cost = avgCost(h.trades || [])
+          prices[h.code] = cost || 0
         }
       }
 
-      // Apply saved settings
-      if (savedSettings.fx) {
-        fx.USD = savedSettings.fx.USD
-        fx.HKD = savedSettings.fx.HKD
-      }
-      if (savedSettings.autoRefresh !== undefined) {
-        autoRefresh.value = savedSettings.autoRefresh
-      }
-
-      // Setup PWA install prompt
-      setupInstallPrompt()
-
-      // Initial quote fetch
       refreshQuotes()
       startAutoRefresh()
     })
@@ -807,8 +769,6 @@ export default {
       fmt, toCNY,
       // Quote
       quoteStatus, quoteError, lastQuoteTime, refreshQuotes,
-      // PWA
-      showInstallPrompt, installPWA, dismissInstall,
       // IO
       importInput, ioMessage, ioMessageClass,
       handleExportJSON, handleExportCSV, handleExportPDF, triggerImport, handleImport,
@@ -817,7 +777,7 @@ export default {
       openAddTrade, saveAddTrade, saveNewHolding,
       // Form helpers
       addError, tradeError, nameLoading, onCodeChange,
-      isLoggedIn, handleLogin, handleLogout,
+      isLoggedIn, handleLogin, handleLogout, loginError,
     }
   }
 }
@@ -861,18 +821,6 @@ input:focus, select:focus { outline: none; }
 .quote-status.loading { color: #b8a882; }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 .spin { animation: spin 1s linear infinite; }
-
-/* Install banner */
-.install-banner {
-  background: #1a1814;
-  color: #f9f7f3;
-  padding: 10px 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 13px;
-}
-.install-btns { display: flex; gap: 8px; }
 
 /* Main */
 .main-content { max-width: 780px; margin: 0 auto; padding: 20px 14px 60px; }
