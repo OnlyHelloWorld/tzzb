@@ -2,7 +2,7 @@
  * api.js — 后端 API 请求层（替代 IndexedDB 的 db.js）
  */
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+const BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
 function getToken() {
   return localStorage.getItem('investment-token') || ''
