@@ -149,7 +149,7 @@
               <button class="btn btn-warn" style="font-size:11px" @click.stop="toggleReset(h.id)">
                 {{ resetTarget === h.id ? '取消' : '一键重置成本' }}
               </button>
-              <button class="btn btn-warn" style="font-size:11px;color:#c0392b;border-color:#c0392b" @click.stop="deleteHolding(h.id)">
+              <button class="btn btn-warn" style="font-size:11px;color:#c0392b;border-color:#c0392b" @click.stop="confirmDeleteHolding(h.id)">
                 删除持仓
               </button>
             </div>
@@ -309,6 +309,21 @@
           <div v-if="addError" style="color:#c0392b;font-size:12px;margin-right:auto">{{ addError }}</div>
           <button class="btn btn-ghost" style="padding:9px 18px" @click="addError='';addHolding = false">取消</button>
           <button class="btn btn-ink" style="padding:9px 22px" @click="saveNewHolding">确认添加</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Delete Confirm Modal ── -->
+    <div v-if="deleteConfirm !== null" class="overlay" @click.self="cancelDelete">
+      <div class="modal">
+        <div class="modal-title">确认删除</div>
+        <div style="margin: 20px 0; font-size: 14px; line-height: 1.5; text-align: center; color: #666;">
+          确定要删除此持仓吗？<br>
+          <span style="color: #c0392b; font-weight: 500;">此操作不可撤销</span>
+        </div>
+        <div class="modal-footer" style="justify-content: center; gap: 20px;">
+          <button class="btn btn-ghost" style="padding: 10px 24px; min-width: 100px; font-size: 14px;" @click="cancelDelete">取消</button>
+          <button class="btn btn-warn" style="padding: 10px 24px; min-width: 100px; font-size: 14px; color: #c0392b; border-color: #c0392b;" @click="deleteHolding">确认删除</button>
         </div>
       </div>
     </div>
@@ -657,10 +672,27 @@ export default {
       api.saveHoldings(holdings.value)
     }
 
-    const deleteHolding = (holdingId) => {
-      holdings.value = holdings.value.filter(h => h.id !== holdingId)
-      if (expanded.value === holdingId) expanded.value = null
-      api.saveHoldings(holdings.value)
+    const confirmDeleteHolding = (holdingId) => {
+      deleteConfirm.value = holdingId
+    }
+
+    const deleteHolding = async () => {
+      if (deleteConfirm.value === null) return
+      const holdingId = deleteConfirm.value
+      deleteConfirm.value = null
+      
+      try {
+        await api.deleteHolding(holdingId)
+        holdings.value = holdings.value.filter(h => h.id !== holdingId)
+        if (expanded.value === holdingId) expanded.value = null
+        showIOMessage('持仓删除成功')
+      } catch (err) {
+        showIOMessage('删除失败: ' + err.message, true)
+      }
+    }
+
+    const cancelDelete = () => {
+      deleteConfirm.value = null
     }
 
     const toggleReset = (holdingId) => {
@@ -716,6 +748,8 @@ export default {
     }
     const addError = ref('')
     const nameLoading = ref(false)
+    // 删除确认
+    const deleteConfirm = ref(null) // 存储要删除的持仓ID
 
     // Auto-fetch stock name when code changes
     const onCodeChange = async (code) => {
@@ -780,11 +814,13 @@ export default {
       importInput, ioMessage, ioMessageClass,
       handleExportJSON, handleExportCSV, handleExportPDF, triggerImport, handleImport,
       // Trade actions
-      updateTrade, deleteTrade, deleteHolding, toggleReset, cancelReset, resetCost,
+      updateTrade, deleteTrade, deleteHolding, confirmDeleteHolding, cancelDelete, toggleReset, cancelReset, resetCost,
       openAddTrade, saveAddTrade, saveNewHolding,
       // Form helpers
       addError, tradeError, nameLoading, onCodeChange,
       isLoggedIn, handleLogin, handleLogout, loginError,
+      // Delete confirm
+      deleteConfirm
     }
   }
 }
@@ -874,15 +910,27 @@ input:focus, select:focus { outline: none; }
 .io-section { margin-top: 14px; padding-top: 12px; border-top: 1px solid #f0ece5; }
 .io-label { font-size: 11px; color: #bbb; letter-spacing: .5px; margin-bottom: 8px; }
 .io-btns { display: flex; gap: 8px; flex-wrap: wrap; }
-.io-message { font-size: 12px; margin-top: 8px; font-family: monospace; }
-.io-message.success { color: #1a7a4a; }
-.io-message.error { color: #c0392b; }
+.io-message { font-size: 12px; margin-top: 8px; font-family: monospace; animation: slideDown .3s ease-out; }
+.io-message.success { color: #1a7a4a; background: #edf7f1; padding: 8px 12px; border-radius: 6px; border: 1px solid #d4e8d4; box-shadow: 0 2px 8px rgba(26, 122, 74, .15); }
+.io-message.error { color: #c0392b; background: #fdf0ef; padding: 8px 12px; border-radius: 6px; border: 1px solid #f5c6c0; box-shadow: 0 2px 8px rgba(192, 57, 43, .15); }
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
 /* Tabs */
 .tabs-row { display: flex; gap: 4px; margin-bottom: 14px; }
-.tab { background: none; border: none; cursor: pointer; font-size: 13px; padding: 6px 14px; border-radius: 20px; color: #888; transition: all .18s; font-family: inherit; }
-.tab.on { background: #1a1814; color: #f9f7f3; }
-.tab:not(.on):hover { background: rgba(26,24,20,.07); color: #1a1814; }
+.tab { background: none; border: none; cursor: pointer; font-size: 13px; padding: 6px 14px; border-radius: 20px; color: #888; transition: all .2s; font-family: inherit; position: relative; overflow: hidden; }
+.tab.on { background: #1a1814; color: #f9f7f3; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+.tab:not(.on):hover { background: rgba(26,24,20,.07); color: #1a1814; transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,.1); }
+.tab:active { transform: translateY(0); box-shadow: none; }
 .tabs-count { margin-left: auto; font-size: 12px; color: #bbb; align-self: center; }
 
 /* Table header */
@@ -892,11 +940,22 @@ input:focus, select:focus { outline: none; }
 }
 
 /* Row */
-.row { background: #fff; border-radius: 12px; margin-bottom: 10px; border: 1px solid #ede9e2; transition: box-shadow .18s; overflow: hidden; }
-.row:hover { box-shadow: 0 2px 12px rgba(0,0,0,.06); }
+.row { background: #fff; border-radius: 12px; margin-bottom: 10px; border: 1px solid #ede9e2; transition: all .2s; overflow: hidden; }
+.row:hover { box-shadow: 0 4px 16px rgba(0,0,0,.08); transform: translateY(-1px); }
+
 .row-head {
   display: grid; padding: 14px 16px; cursor: pointer; user-select: none;
   align-items: center; gap: 8px; grid-template-columns: 1fr auto;
+  transition: background-color .2s;
+}
+
+.row-head:hover {
+  background-color: #faf9f7;
+}
+
+.row-head:active {
+  background-color: #f5f3ef;
+  transform: scale(0.98);
 }
 @media(min-width:640px) { .row-head { grid-template-columns: 2fr 1fr 1fr 1fr auto; } }
 
@@ -955,29 +1014,60 @@ input:focus, select:focus { outline: none; }
 .price-label { font-size: 12px; color: #aaa; }
 
 /* Buttons */
-.btn { border: none; border-radius: 6px; cursor: pointer; font-size: 12px; padding: 5px 11px; transition: all .15s; font-family: inherit; }
-.btn-ink { background: #1a1814; color: #f9f7f3; } .btn-ink:hover { background: #333; }
-.btn-ghost { background: transparent; border: 1px solid #d4cfc6; color: #666; } .btn-ghost:hover { border-color: #aaa; color: #333; }
-.btn-warn { background: transparent; border: 1px solid #f0c0bb; color: #c0392b; } .btn-warn:hover { background: #fdf0ef; }
-.btn-save { background: #1a7a4a; color: #fff; } .btn-save:hover { background: #15643d; }
+.btn { border: none; border-radius: 6px; cursor: pointer; font-size: 12px; padding: 5px 11px; transition: all .15s; font-family: inherit; position: relative; overflow: hidden; }
+.btn-ink { background: #1a1814; color: #f9f7f3; } .btn-ink:hover { background: #333; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+.btn-ink:active { transform: translateY(0); box-shadow: none; }
+.btn-ghost { background: transparent; border: 1px solid #d4cfc6; color: #666; } .btn-ghost:hover { border-color: #aaa; color: #333; transform: translateY(-1px); }
+.btn-ghost:active { transform: translateY(0); }
+.btn-warn { background: transparent; border: 1px solid #f0c0bb; color: #c0392b; } .btn-warn:hover { background: #fdf0ef; transform: translateY(-1px); }
+.btn-warn:active { transform: translateY(0); }
+.btn-save { background: #1a7a4a; color: #fff; } .btn-save:hover { background: #15643d; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(26, 122, 74, .2); }
+.btn-save:active { transform: translateY(0); box-shadow: none; }
 .btn-add-pos {
   background: none; border: 1.5px dashed #c8c0b0; color: #888; border-radius: 10px;
   padding: 12px; width: 100%; text-align: center; cursor: pointer; font-size: 13px; transition: all .2s;
+  position: relative;
 }
-.btn-add-pos:hover { border-color: #9a9080; color: #444; background: rgba(0,0,0,.02); }
+.btn-add-pos:hover { border-color: #9a9080; color: #444; background: rgba(0,0,0,.02); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,.1); }
+.btn-add-pos:active { transform: translateY(0); box-shadow: none; }
 
 /* Inputs */
-.field { background: #f5f3ef; border: 1px solid transparent; border-radius: 6px; padding: 5px 9px; font-size: 13px; color: #1a1814; transition: border .15s; }
-.field:focus { border-color: #b8a882; background: #fff; }
+.field { background: #f5f3ef; border: 1px solid transparent; border-radius: 6px; padding: 5px 9px; font-size: 13px; color: #1a1814; transition: all .2s; }
+.field:focus { border-color: #b8a882; background: #fff; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(184, 168, 130, .2); }
 .field-sm { width: 80px; }
+
+.form-control { transition: all .2s; }
+.form-control:focus { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(184, 168, 130, .2); }
 
 /* Modal */
 .overlay {
   position: fixed; inset: 0; background: rgba(20,18,14,.45); z-index: 200;
   display: flex; align-items: center; justify-content: center; padding: 20px;
   backdrop-filter: blur(3px);
+  animation: fadeIn .2s ease-out;
 }
-.modal { background: #fff; border-radius: 14px; padding: 28px; width: 100%; max-width: 420px; box-shadow: 0 20px 60px rgba(0,0,0,.18); }
+
+.modal {
+  background: #fff; border-radius: 14px; padding: 28px; width: 100%; max-width: 420px; box-shadow: 0 20px 60px rgba(0,0,0,.18);
+  animation: slideIn .3s ease-out;
+  transform-origin: center;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
 .modal-title { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 600; margin-bottom: 20px; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .form-row { margin-bottom: 14px; }
