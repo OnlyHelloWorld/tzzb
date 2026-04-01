@@ -395,10 +395,46 @@ export default {
     const ioMessage = ref('')
     const loginError = ref('')
     const isLoggedIn = ref(api.isLoggedIn())
+    // 加载数据的函数
+    const loadData = async () => {
+      try {
+        const savedHoldings = await api.loadHoldings()
+        if (savedHoldings && savedHoldings.length > 0) {
+          holdings.value = savedHoldings
+          const maxId = Math.max(...savedHoldings.flatMap(h => (h.trades || []).map(t => t.id)), ...savedHoldings.map(h => h.id), 0)
+          _id = maxId + 1
+        }
+      } catch (err) {
+        console.warn('加载持仓失败:', err)
+      }
+
+      try {
+        const savedSettings = await api.loadSettings()
+        if (savedSettings) {
+          fx.USD = savedSettings.fx_usd || fx.USD
+          fx.HKD = savedSettings.fx_hkd || fx.HKD
+          autoRefresh.value = savedSettings.auto_refresh !== false
+        }
+      } catch (err) {
+        console.warn('加载设置失败:', err)
+      }
+
+      for (const h of holdings.value) {
+        if (!(h.code in prices)) {
+          const cost = avgCost(h.trades || [])
+          prices[h.code] = cost || 0
+        }
+      }
+
+      refreshQuotes()
+    }
+
     const handleLogin = async () => {
       loginError.value = ''
       try {
         isLoggedIn.value = true
+        // 登录成功后加载数据
+        await loadData()
       } catch (err) {
         loginError.value = err.message
       }
@@ -721,36 +757,9 @@ export default {
 
     // ─── Lifecycle ───────────────────────────────────────────────
     onMounted(async () => {
-      try {
-        const savedHoldings = await api.loadHoldings()
-        if (savedHoldings && savedHoldings.length > 0) {
-          holdings.value = savedHoldings
-          const maxId = Math.max(...savedHoldings.flatMap(h => (h.trades || []).map(t => t.id)), ...savedHoldings.map(h => h.id), 0)
-          _id = maxId + 1
-        }
-      } catch (err) {
-        console.warn('加载持仓失败:', err)
+      if (isLoggedIn.value) {
+        await loadData()
       }
-
-      try {
-        const savedSettings = await api.loadSettings()
-        if (savedSettings) {
-          fx.USD = savedSettings.fx_usd || fx.USD
-          fx.HKD = savedSettings.fx_hkd || fx.HKD
-          autoRefresh.value = savedSettings.auto_refresh !== false
-        }
-      } catch (err) {
-        console.warn('加载设置失败:', err)
-      }
-
-      for (const h of holdings.value) {
-        if (!(h.code in prices)) {
-          const cost = avgCost(h.trades || [])
-          prices[h.code] = cost || 0
-        }
-      }
-
-      refreshQuotes()
       startAutoRefresh()
     })
 
