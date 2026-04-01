@@ -53,6 +53,6 @@ async def update_settings(
     if req.auto_refresh is not None:
         setting.auto_refresh = req.auto_refresh
 
-    await db.flush()
+    await db.commit()
     logger.info(f"用户 {user.username} 更新设置")
     return {"ok": True}

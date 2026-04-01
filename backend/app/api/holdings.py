@@ -56,6 +56,7 @@ async def create_holding(
         trade = Trade(holding_id=holding.id, date=t.date, qty=t.qty, price=t.price, note=t.note)
         db.add(trade)
 
+    await db.commit()
     await db.refresh(holding, ["trades"])
     logger.info(f"用户 {user.username} 添加持仓: {req.code}")
     return holding
@@ -94,6 +95,7 @@ async def bulk_save_holdings(
             trade = Trade(holding_id=holding.id, date=t.date, qty=t.qty, price=t.price, note=t.note)
             db.add(trade)
 
+    await db.commit()
     logger.info(f"用户 {user.username} 批量保存 {len(req.holdings)} 个持仓")
     return {"ok": True, "count": len(req.holdings)}
 
@@ -116,5 +118,6 @@ async def delete_holding(
         await db.delete(t)
     await db.delete(holding)
 
+    await db.commit()
     logger.info(f"用户 {user.username} 删除持仓 id={holding_id}")
     return {"ok": True}
