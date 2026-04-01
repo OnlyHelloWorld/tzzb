@@ -3,3 +3,13 @@ dist/
 .vite/
 *.local
 .github-token
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.db
+*.log
+logs/
+venv/
+.env
