@@ -1,7 +1,7 @@
 """
 models.py — SQLAlchemy ORM 模型
 """
-from sqlalchemy import Column, Integer, String, Text, Float, Boolean, DateTime, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, Text, Float, Boolean, DateTime, ForeignKey, JSON, PrimaryKeyConstraint, ForeignKeyConstraint
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 
@@ -26,14 +26,18 @@ class User(Base):
 class Holding(Base):
     __tablename__ = "holdings"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     market = Column(String(10), nullable=False)  # A股/港股/美股
     code = Column(String(20), nullable=False)
     name = Column(String(100), nullable=False)
     sector = Column(String(50), default="")
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    # 联合主键: user_id + market + code
+    __table_args__ = (
+        PrimaryKeyConstraint('user_id', 'market', 'code', name='holdings_pkey'),
+    )
 
     # 关系
     user = relationship("User", back_populates="holdings")
@@ -44,11 +48,20 @@ class Trade(Base):
     __tablename__ = "trades"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    holding_id = Column(Integer, ForeignKey("holdings.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, nullable=False)
+    market = Column(String(10), nullable=False)
+    code = Column(String(20), nullable=False)
     date = Column(String(10), nullable=False)  # YYYY-MM-DD
     qty = Column(Float, nullable=False)  # 正数=买入，负数=卖出
     price = Column(Float, nullable=False)
     note = Column(Text, default="")
+
+    # 外键关联到 Holding 的联合主键
+    __table_args__ = (
+        ForeignKeyConstraint(['user_id', 'market', 'code'], 
+                          ['holdings.user_id', 'holdings.market', 'holdings.code'], 
+                          ondelete="CASCADE"),
+    )
 
     # 关系
     holding = relationship("Holding", back_populates="trades")

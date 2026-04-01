@@ -102,8 +102,8 @@
       </div>
 
       <!-- ── Holdings ── -->
-      <div v-for="h in filtered" :key="h.id" class="row">
-        <div class="row-head" @click="expanded = expanded === h.id ? null : h.id">
+      <div v-for="h in filtered" :key="`${h.market}-${h.code}`" class="row">
+        <div class="row-head" @click="expanded = expanded === `${h.market}-${h.code}` ? null : `${h.market}-${h.code}`">
           <div>
             <div class="name-row">
               <span class="stock-name">{{ h.name }}</span>
@@ -134,29 +134,29 @@
               </div>
             </div>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"
-              :style="{ flexShrink: 0, transition: 'transform .2s', transform: expanded === h.id ? 'rotate(180deg)' : 'none' }">
+              :style="{ flexShrink: 0, transition: 'transform .2s', transform: expanded === `${h.market}-${h.code}` ? 'rotate(180deg)' : 'none' }">
               <path d="M4 6l4 4 4-4" stroke="#bbb" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </div>
         </div>
 
         <!-- Trade zone -->
-        <div v-if="expanded === h.id" class="trade-zone">
+        <div v-if="expanded === `${h.market}-${h.code}`" class="trade-zone">
           <div class="trade-header">
             <span class="trade-title">买入记录</span>
             <div class="trade-actions">
-              <button class="btn btn-ghost" style="font-size:11px" @click.stop="openAddTrade(h.id)">+ 新增一笔</button>
-              <button class="btn btn-warn" style="font-size:11px" @click.stop="toggleReset(h.id)">
-                {{ resetTarget === h.id ? '取消' : '一键重置成本' }}
+              <button class="btn btn-ghost" style="font-size:11px" @click.stop="openAddTrade({ market: h.market, code: h.code })">+ 新增一笔</button>
+              <button class="btn btn-warn" style="font-size:11px" @click.stop="toggleReset({ market: h.market, code: h.code })">
+                {{ resetTarget && resetTarget.market === h.market && resetTarget.code === h.code ? '取消' : '一键重置成本' }}
               </button>
-              <button class="btn btn-warn" style="font-size:11px;color:#c0392b;border-color:#c0392b" @click.stop="deleteHolding(h.id)">
+              <button class="btn btn-warn" style="font-size:11px;color:#c0392b;border-color:#c0392b" @click.stop="confirmDeleteHolding({ market: h.market, code: h.code })">
                 删除持仓
               </button>
             </div>
           </div>
 
           <!-- Reset confirm -->
-          <div v-if="resetTarget === h.id" class="confirm-box">
+          <div v-if="resetTarget && resetTarget.market === h.market && resetTarget.code === h.code" class="confirm-box">
             <div style="margin-bottom:10px">将合并全部 {{ h.trades.length }} 笔记录为单笔，持仓量不变。此操作不可撤销。</div>
             <div class="reset-price-row">
               <span class="reset-label">新成本价：</span>
@@ -166,7 +166,7 @@
               <span class="reset-hint">留空则使用均价 {{ SYM[h.ccy] }}{{ fmt(h.cost) }}</span>
             </div>
             <div class="reset-btns">
-              <button class="btn btn-warn" @click="resetCost(h.id)">确认重置</button>
+              <button class="btn btn-warn" @click="resetCost({ market: h.market, code: h.code })">确认重置</button>
               <button class="btn btn-ghost" @click="cancelReset">取消</button>
             </div>
           </div>
@@ -178,7 +178,7 @@
 
           <!-- Trade rows -->
           <div v-for="t in h.trades" :key="t.id" class="trade-row">
-            <template v-if="editingTrade && editingTrade.holdingId === h.id && editingTrade.tradeId === t.id">
+            <template v-if="editingTrade && editingTrade.holdingMarket === h.market && editingTrade.holdingCode === h.code && editingTrade.tradeId === t.id">
               <input class="field field-sm" type="date" v-model="editingTrade.date" />
               <span class="trade-type" :class="t.qty >= 0 ? 'type-buy' : 'type-sell'">
                 {{ t.qty >= 0 ? '买入' : '卖出' }}
@@ -200,11 +200,11 @@
               <div class="trade-btns">
                 <span v-if="t.note" class="trade-note" :title="t.note">{{ t.note }}</span>
                 <button class="btn btn-ghost" style="font-size:11px"
-                  @click="editingTrade = { holdingId: h.id, tradeId: t.id, date: t.date, qty: t.qty, price: t.price }">
+                  @click="editingTrade = { holdingMarket: h.market, holdingCode: h.code, tradeId: t.id, date: t.date, qty: t.qty, price: t.price }">
                   修改
                 </button>
                 <button v-if="h.trades.length > 1" class="btn btn-warn" style="font-size:11px"
-                  @click="deleteTrade(h.id, t.id)">删除</button>
+                  @click="deleteTrade({ market: h.market, code: h.code }, t.id)">删除</button>
               </div>
             </template>
           </div>
@@ -312,6 +312,21 @@
         </div>
       </div>
     </div>
+
+    <!-- ── Delete Confirm Modal ── -->
+    <div v-if="deleteConfirm !== null" class="overlay" @click.self="cancelDelete">
+      <div class="modal">
+        <div class="modal-title">确认删除</div>
+        <div style="margin: 20px 0; font-size: 14px; line-height: 1.5; text-align: center; color: #666;">
+          确定要删除此持仓吗？<br>
+          <span style="color: #c0392b; font-weight: 500;">此操作不可撤销</span>
+        </div>
+        <div class="modal-footer" style="justify-content: center; gap: 20px;">
+          <button class="btn btn-ghost" style="padding: 10px 24px; min-width: 100px; font-size: 14px;" @click="cancelDelete">取消</button>
+          <button class="btn btn-warn" style="padding: 10px 24px; min-width: 100px; font-size: 14px; color: #c0392b; border-color: #c0392b;" @click="deleteHolding">确认删除</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -360,7 +375,7 @@ const today = () => new Date().toISOString().slice(0, 10)
 
 // ─── Main App ───────────────────────────────────────────────────
 export default {
-  components: { PnLTag, Tag },
+  components: { PnLTag, Tag, LoginPage },
   setup() {
     // State
     const holdings = ref([])
@@ -395,13 +410,59 @@ export default {
     const ioMessage = ref('')
     const loginError = ref('')
     const isLoggedIn = ref(api.isLoggedIn())
-    const handleLogin = async ({ username, password }) => {
+    // 加载数据的函数
+    const loadData = async () => {
+      try {
+        const savedHoldings = await api.loadHoldings()
+        // 无论是否有数据，都更新 holdings
+        holdings.value = savedHoldings || []
+        if (savedHoldings && savedHoldings.length > 0) {
+          const maxId = Math.max(...savedHoldings.flatMap(h => (h.trades || []).map(t => t.id)), ...savedHoldings.map(h => h.id), 0)
+          _id = maxId + 1
+        } else {
+          _id = 100 // 重置 ID 计数器
+        }
+        console.log('加载到持仓数据:', savedHoldings)
+      } catch (err) {
+        console.warn('加载持仓失败:', err)
+        showIOMessage('加载持仓失败: ' + err.message, true)
+        // 加载失败时使用初始数据
+        holdings.value = INITIAL_HOLDINGS
+        _id = 100
+      }
+
+      try {
+        const savedSettings = await api.loadSettings()
+        if (savedSettings) {
+          fx.USD = savedSettings.fx_usd || fx.USD
+          fx.HKD = savedSettings.fx_hkd || fx.HKD
+          autoRefresh.value = savedSettings.auto_refresh !== false
+        }
+      } catch (err) {
+        console.warn('加载设置失败:', err)
+        showIOMessage('加载设置失败: ' + err.message, true)
+      }
+
+      for (const h of holdings.value) {
+        if (!(h.code in prices)) {
+          const cost = avgCost(h.trades || [])
+          prices[h.code] = cost || 0
+        }
+      }
+
+      refreshQuotes()
+    }
+
+    const handleLogin = async () => {
       loginError.value = ''
       try {
-        await api.login(username, password)
         isLoggedIn.value = true
+        // 登录成功后加载数据
+        await loadData()
+        showIOMessage('登录成功，数据加载完成')
       } catch (err) {
         loginError.value = err.message
+        showIOMessage('登录后数据加载失败: ' + err.message, true)
       }
     }
     const handleLogout = () => {
@@ -458,10 +519,17 @@ export default {
       clearTimeout(saveDebounce)
       saveDebounce = setTimeout(async () => {
         try {
-          await api.saveHoldings(holdings.value)
+          // 保存持仓并更新本地数据（包含新的 ID）
+          const savedHoldings = await api.saveHoldings(holdings.value)
+          if (savedHoldings && savedHoldings.length > 0) {
+            holdings.value = savedHoldings
+            const maxId = Math.max(...savedHoldings.flatMap(h => (h.trades || []).map(t => t.id)), ...savedHoldings.map(h => h.id), 0)
+            _id = maxId + 1
+          }
           await api.saveSettings({ fx_usd: fx.USD, fx_hkd: fx.HKD, auto_refresh: autoRefresh.value })
         } catch (err) {
           console.warn('保存失败:', err)
+          showIOMessage('保存失败: ' + err.message, true)
         }
       }, 500)
     }
@@ -564,9 +632,9 @@ export default {
       }
     }
 
-    function handleExportPDF() {
+    async function handleExportPDF() {
       try {
-        exportPDF(holdings.value, enriched.value, summary.value, fx)
+        await exportPDF()
         showIOMessage('PDF 导出成功')
       } catch (err) {
         showIOMessage('导出失败: ' + err.message, true)
@@ -605,27 +673,46 @@ export default {
     // ─── Trade actions ───────────────────────────────────────────
     const updateTrade = () => {
       if (!editingTrade.value) return
-      const { holdingId, tradeId, qty, price } = editingTrade.value
-      holdings.value = holdings.value.map(h => h.id !== holdingId ? h : {
-        ...h, trades: h.trades.map(t => t.id !== tradeId ? t : { ...t, qty: +qty, price: +price })
-      })
+      const { holdingMarket, holdingCode, tradeId, qty, price } = editingTrade.value
+      holdings.value = holdings.value.map(h => 
+        !(h.market === holdingMarket && h.code === holdingCode) ? h : {
+          ...h, trades: h.trades.map(t => t.id !== tradeId ? t : { ...t, qty: +qty, price: +price })
+        }
+      )
       editingTrade.value = null
       api.saveHoldings(holdings.value)
     }
 
-    const deleteTrade = (holdingId, tradeId) => {
+    const deleteTrade = (holding, tradeId) => {
+      const { market, code } = holding
       holdings.value = holdings.value.map(h => {
-        if (h.id !== holdingId) return h
+        if (!(h.market === market && h.code === code)) return h
         const trades = h.trades.filter(t => t.id !== tradeId)
         return trades.length > 0 ? { ...h, trades } : h
       })
       api.saveHoldings(holdings.value)
     }
 
-    const deleteHolding = (holdingId) => {
-      holdings.value = holdings.value.filter(h => h.id !== holdingId)
-      if (expanded.value === holdingId) expanded.value = null
-      api.saveHoldings(holdings.value)
+    const confirmDeleteHolding = (holdingId) => {
+      deleteConfirm.value = holdingId
+    }
+
+    const deleteHolding = async () => {
+      if (deleteConfirm.value === null) return
+      const { market, code } = deleteConfirm.value
+      deleteConfirm.value = null
+      
+      try {
+        await api.deleteHolding(market, code)
+        holdings.value = holdings.value.filter(h => !(h.market === market && h.code === code))
+        showIOMessage('持仓删除成功')
+      } catch (err) {
+        showIOMessage('删除失败: ' + err.message, true)
+      }
+    }
+
+    const cancelDelete = () => {
+      deleteConfirm.value = null
     }
 
     const toggleReset = (holdingId) => {
@@ -643,21 +730,25 @@ export default {
       resetPrice.value = ''
       api.saveHoldings(holdings.value)
     }
-    const resetCost = (holdingId) => {
-      const enrichedH = enriched.value.find(e => e.id === holdingId)
+    const resetCost = (holding) => {
+      const { market, code } = holding
+      const enrichedH = enriched.value.find(e => e.market === market && e.code === code)
       if (!enrichedH) return
       const price = resetPrice.value !== '' ? +resetPrice.value : enrichedH.cost
-      holdings.value = holdings.value.map(h => h.id !== holdingId ? h : {
-        ...h, trades: [{ id: ++_id, date: today(), qty: enrichedH.qty, price }]
-      })
+      holdings.value = holdings.value.map(h => 
+        !(h.market === market && h.code === code) ? h : {
+          ...h, trades: [{ id: ++_id, date: today(), qty: enrichedH.qty, price }]
+        }
+      )
       resetTarget.value = null
       resetPrice.value = ''
     }
 
-    const openAddTrade = (holdingId) => {
-      const h = enriched.value.find(e => e.id === holdingId)
+    const openAddTrade = (holding) => {
+      const { market, code } = holding
+      const h = enriched.value.find(e => e.market === market && e.code === code)
       if (!h) return
-      addTradeTarget.value = { holdingId, market: h.market, ccy: h.ccy, avgCost: h.cost }
+      addTradeTarget.value = { holdingMarket: market, holdingCode: code, market: h.market, ccy: h.ccy, avgCost: h.cost }
       Object.assign(addTradeForm, { type: '买入', qty: '', price: '', date: today(), note: '' })
     }
 
@@ -669,18 +760,22 @@ export default {
         return
       }
       tradeError.value = ''
-      const { holdingId } = addTradeTarget.value
+      const { holdingMarket, holdingCode } = addTradeTarget.value
       const { type, qty, price, date, note } = addTradeForm
       const signedQty = type === '卖出' ? -Math.abs(+qty) : Math.abs(+qty)
-      holdings.value = holdings.value.map(h => h.id !== holdingId ? h : {
-        ...h, trades: [...h.trades, { id: ++_id, date: date || today(), qty: signedQty, price: +price, note: note || '' }]
-      })
+      holdings.value = holdings.value.map(h => 
+        !(h.market === holdingMarket && h.code === holdingCode) ? h : {
+          ...h, trades: [...h.trades, { id: ++_id, date: date || today(), qty: signedQty, price: +price, note: note || '' }]
+        }
+      )
       addTradeTarget.value = null
       Object.assign(addTradeForm, { type: '买入', qty: '', price: '', date: '', note: '' })
       api.saveHoldings(holdings.value)
     }
     const addError = ref('')
     const nameLoading = ref(false)
+    // 删除确认
+    const deleteConfirm = ref(null) // 存储要删除的持仓ID
 
     // Auto-fetch stock name when code changes
     const onCodeChange = async (code) => {
@@ -722,36 +817,9 @@ export default {
 
     // ─── Lifecycle ───────────────────────────────────────────────
     onMounted(async () => {
-      try {
-        const savedHoldings = await api.loadHoldings()
-        if (savedHoldings && savedHoldings.length > 0) {
-          holdings.value = savedHoldings
-          const maxId = Math.max(...savedHoldings.flatMap(h => (h.trades || []).map(t => t.id)), ...savedHoldings.map(h => h.id), 0)
-          _id = maxId + 1
-        }
-      } catch (err) {
-        console.warn('加载持仓失败:', err)
+      if (isLoggedIn.value) {
+        await loadData()
       }
-
-      try {
-        const savedSettings = await api.loadSettings()
-        if (savedSettings) {
-          fx.USD = savedSettings.fx_usd || fx.USD
-          fx.HKD = savedSettings.fx_hkd || fx.HKD
-          autoRefresh.value = savedSettings.auto_refresh !== false
-        }
-      } catch (err) {
-        console.warn('加载设置失败:', err)
-      }
-
-      for (const h of holdings.value) {
-        if (!(h.code in prices)) {
-          const cost = avgCost(h.trades || [])
-          prices[h.code] = cost || 0
-        }
-      }
-
-      refreshQuotes()
       startAutoRefresh()
     })
 
@@ -772,11 +840,13 @@ export default {
       importInput, ioMessage, ioMessageClass,
       handleExportJSON, handleExportCSV, handleExportPDF, triggerImport, handleImport,
       // Trade actions
-      updateTrade, deleteTrade, deleteHolding, toggleReset, cancelReset, resetCost,
+      updateTrade, deleteTrade, deleteHolding, confirmDeleteHolding, cancelDelete, toggleReset, cancelReset, resetCost,
       openAddTrade, saveAddTrade, saveNewHolding,
       // Form helpers
       addError, tradeError, nameLoading, onCodeChange,
       isLoggedIn, handleLogin, handleLogout, loginError,
+      // Delete confirm
+      deleteConfirm
     }
   }
 }
@@ -866,15 +936,27 @@ input:focus, select:focus { outline: none; }
 .io-section { margin-top: 14px; padding-top: 12px; border-top: 1px solid #f0ece5; }
 .io-label { font-size: 11px; color: #bbb; letter-spacing: .5px; margin-bottom: 8px; }
 .io-btns { display: flex; gap: 8px; flex-wrap: wrap; }
-.io-message { font-size: 12px; margin-top: 8px; font-family: monospace; }
-.io-message.success { color: #1a7a4a; }
-.io-message.error { color: #c0392b; }
+.io-message { font-size: 12px; margin-top: 8px; font-family: monospace; animation: slideDown .3s ease-out; }
+.io-message.success { color: #1a7a4a; background: #edf7f1; padding: 8px 12px; border-radius: 6px; border: 1px solid #d4e8d4; box-shadow: 0 2px 8px rgba(26, 122, 74, .15); }
+.io-message.error { color: #c0392b; background: #fdf0ef; padding: 8px 12px; border-radius: 6px; border: 1px solid #f5c6c0; box-shadow: 0 2px 8px rgba(192, 57, 43, .15); }
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
 /* Tabs */
 .tabs-row { display: flex; gap: 4px; margin-bottom: 14px; }
-.tab { background: none; border: none; cursor: pointer; font-size: 13px; padding: 6px 14px; border-radius: 20px; color: #888; transition: all .18s; font-family: inherit; }
-.tab.on { background: #1a1814; color: #f9f7f3; }
-.tab:not(.on):hover { background: rgba(26,24,20,.07); color: #1a1814; }
+.tab { background: none; border: none; cursor: pointer; font-size: 13px; padding: 6px 14px; border-radius: 20px; color: #888; transition: all .2s; font-family: inherit; position: relative; overflow: hidden; }
+.tab.on { background: #1a1814; color: #f9f7f3; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+.tab:not(.on):hover { background: rgba(26,24,20,.07); color: #1a1814; transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,.1); }
+.tab:active { transform: translateY(0); box-shadow: none; }
 .tabs-count { margin-left: auto; font-size: 12px; color: #bbb; align-self: center; }
 
 /* Table header */
@@ -884,11 +966,22 @@ input:focus, select:focus { outline: none; }
 }
 
 /* Row */
-.row { background: #fff; border-radius: 12px; margin-bottom: 10px; border: 1px solid #ede9e2; transition: box-shadow .18s; overflow: hidden; }
-.row:hover { box-shadow: 0 2px 12px rgba(0,0,0,.06); }
+.row { background: #fff; border-radius: 12px; margin-bottom: 10px; border: 1px solid #ede9e2; transition: all .2s; overflow: hidden; }
+.row:hover { box-shadow: 0 4px 16px rgba(0,0,0,.08); transform: translateY(-1px); }
+
 .row-head {
   display: grid; padding: 14px 16px; cursor: pointer; user-select: none;
   align-items: center; gap: 8px; grid-template-columns: 1fr auto;
+  transition: background-color .2s;
+}
+
+.row-head:hover {
+  background-color: #faf9f7;
+}
+
+.row-head:active {
+  background-color: #f5f3ef;
+  transform: scale(0.98);
 }
 @media(min-width:640px) { .row-head { grid-template-columns: 2fr 1fr 1fr 1fr auto; } }
 
@@ -947,29 +1040,60 @@ input:focus, select:focus { outline: none; }
 .price-label { font-size: 12px; color: #aaa; }
 
 /* Buttons */
-.btn { border: none; border-radius: 6px; cursor: pointer; font-size: 12px; padding: 5px 11px; transition: all .15s; font-family: inherit; }
-.btn-ink { background: #1a1814; color: #f9f7f3; } .btn-ink:hover { background: #333; }
-.btn-ghost { background: transparent; border: 1px solid #d4cfc6; color: #666; } .btn-ghost:hover { border-color: #aaa; color: #333; }
-.btn-warn { background: transparent; border: 1px solid #f0c0bb; color: #c0392b; } .btn-warn:hover { background: #fdf0ef; }
-.btn-save { background: #1a7a4a; color: #fff; } .btn-save:hover { background: #15643d; }
+.btn { border: none; border-radius: 6px; cursor: pointer; font-size: 12px; padding: 5px 11px; transition: all .15s; font-family: inherit; position: relative; overflow: hidden; }
+.btn-ink { background: #1a1814; color: #f9f7f3; } .btn-ink:hover { background: #333; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+.btn-ink:active { transform: translateY(0); box-shadow: none; }
+.btn-ghost { background: transparent; border: 1px solid #d4cfc6; color: #666; } .btn-ghost:hover { border-color: #aaa; color: #333; transform: translateY(-1px); }
+.btn-ghost:active { transform: translateY(0); }
+.btn-warn { background: transparent; border: 1px solid #f0c0bb; color: #c0392b; } .btn-warn:hover { background: #fdf0ef; transform: translateY(-1px); }
+.btn-warn:active { transform: translateY(0); }
+.btn-save { background: #1a7a4a; color: #fff; } .btn-save:hover { background: #15643d; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(26, 122, 74, .2); }
+.btn-save:active { transform: translateY(0); box-shadow: none; }
 .btn-add-pos {
   background: none; border: 1.5px dashed #c8c0b0; color: #888; border-radius: 10px;
   padding: 12px; width: 100%; text-align: center; cursor: pointer; font-size: 13px; transition: all .2s;
+  position: relative;
 }
-.btn-add-pos:hover { border-color: #9a9080; color: #444; background: rgba(0,0,0,.02); }
+.btn-add-pos:hover { border-color: #9a9080; color: #444; background: rgba(0,0,0,.02); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,.1); }
+.btn-add-pos:active { transform: translateY(0); box-shadow: none; }
 
 /* Inputs */
-.field { background: #f5f3ef; border: 1px solid transparent; border-radius: 6px; padding: 5px 9px; font-size: 13px; color: #1a1814; transition: border .15s; }
-.field:focus { border-color: #b8a882; background: #fff; }
+.field { background: #f5f3ef; border: 1px solid transparent; border-radius: 6px; padding: 5px 9px; font-size: 13px; color: #1a1814; transition: all .2s; }
+.field:focus { border-color: #b8a882; background: #fff; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(184, 168, 130, .2); }
 .field-sm { width: 80px; }
+
+.form-control { transition: all .2s; }
+.form-control:focus { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(184, 168, 130, .2); }
 
 /* Modal */
 .overlay {
   position: fixed; inset: 0; background: rgba(20,18,14,.45); z-index: 200;
   display: flex; align-items: center; justify-content: center; padding: 20px;
   backdrop-filter: blur(3px);
+  animation: fadeIn .2s ease-out;
 }
-.modal { background: #fff; border-radius: 14px; padding: 28px; width: 100%; max-width: 420px; box-shadow: 0 20px 60px rgba(0,0,0,.18); }
+
+.modal {
+  background: #fff; border-radius: 14px; padding: 28px; width: 100%; max-width: 420px; box-shadow: 0 20px 60px rgba(0,0,0,.18);
+  animation: slideIn .3s ease-out;
+  transform-origin: center;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
 .modal-title { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 600; margin-bottom: 20px; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .form-row { margin-bottom: 14px; }

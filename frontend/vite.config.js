@@ -3,7 +3,7 @@ import vue from '@vitejs/plugin-vue'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/investment-pwa/',
+  base: '/',
   plugins: [
     vue(),
   ],
@@ -14,5 +14,10 @@ export default defineConfig({
         changeOrigin: true,
       }
     }
+  },
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    base: '/'
   }
 })

@@ -2,7 +2,7 @@
  * api.js — 后端 API 请求层（替代 IndexedDB 的 db.js）
  */
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+const BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
 function getToken() {
   return localStorage.getItem('investment-token') || ''
@@ -101,14 +101,15 @@ export async function saveHoldings(holdings) {
       note: t.note || '',
     })),
   }))
-  return request('/holdings/bulk', {
+  const result = await request('/holdings/bulk', {
     method: 'PUT',
     body: JSON.stringify({ holdings: data }),
   })
+  return result.holdings || []
 }
 
-export async function deleteHolding(holdingId) {
-  return request(`/holdings/${holdingId}`, { method: 'DELETE' })
+export async function deleteHolding(market, code) {
+  return request(`/holdings/${market}/${code}`, { method: 'DELETE' })
 }
 
 // ─── 设置 ─────────────────────────────────────────────────────

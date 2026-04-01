@@ -3,19 +3,26 @@ config.py — 配置管理
 """
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 # 项目根目录
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
+# 加载.env文件
+print(f"Loading .env from: {BASE_DIR / '.env'}")
+print(f"File exists: {(BASE_DIR / '.env').exists()}")
+load_dotenv(dotenv_path=BASE_DIR / ".env")
+print(f"SMTP_USER: {os.getenv('SMTP_USER')}")
+print(f"SMTP_PASSWORD: {os.getenv('SMTP_PASSWORD')}")
 
 class Settings:
     # 数据库
-    DB_DRIVER: str = os.getenv("DB_DRIVER", "mysql")  # mysql | sqlite
+    DB_DRIVER: str = "sqlite"  # mysql | sqlite
     DB_HOST: str = os.getenv("DB_HOST", "localhost")
     DB_PORT: int = int(os.getenv("DB_PORT", "3306"))
     DB_USER: str = os.getenv("DB_USER", "root")
     DB_PASSWORD: str = os.getenv("DB_PASSWORD", "")
-    DB_NAME: str = os.getenv("DB_NAME", "investment_ledger")
+    DB_NAME: str = "investment_ledger"
 
     @property
     def DATABASE_URL(self) -> str:
@@ -29,7 +36,7 @@ class Settings:
 
     # JWT
     JWT_SECRET: str = os.getenv("JWT_SECRET", "change-me-in-production")
-    JWT_EXPIRE_HOURS: int = int(os.getenv("JWT_EXPIRE_HOURS", "72"))
+    JWT_EXPIRE_HOURS: int = int(os.getenv("JWT_EXPIRE_HOURS", "87600"))  # 10年 = 永久有效
 
     # 服务
     HOST: str = os.getenv("HOST", "0.0.0.0")
@@ -38,8 +45,12 @@ class Settings:
     # CORS
     CORS_ORIGINS: list = [
         "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:5175",
         "http://localhost:4173",
         "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
+        "http://127.0.0.1:5175",
         "http://127.0.0.1:4173",
     ]
 
