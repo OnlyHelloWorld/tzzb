@@ -10,6 +10,9 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from pathlib import Path
 
 from app.core.config import settings
 from app.core.database import init_db
@@ -131,6 +134,18 @@ def create_app() -> FastAPI:
     @app.get("/api/health")
     async def health():
         return {"status": "ok"}
+
+    # 前端静态文件服务
+    frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"
+    if frontend_dist.exists():
+        app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="assets")
+        
+        @app.get("/{path:path}")
+        async def serve_frontend(path: str):
+            index_path = frontend_dist / "index.html"
+            if (frontend_dist / path).exists() and path:
+                return FileResponse(str(frontend_dist / path))
+            return FileResponse(str(index_path))
 
     return app
 
