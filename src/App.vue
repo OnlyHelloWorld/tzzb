@@ -55,8 +55,7 @@
             <span class="fx-label">汇率</span>
             <div v-for="item in fxList" :key="item.key" class="fx-chip">
               <span>{{ item.label }}</span>
-              <input class="fx-input" type="number" step="0.01" :value="fx[item.key]"
-                @input="e => fx[item.key] = Math.round(+e.target.value * 100) / 100" />
+              <span class="fx-value">{{ fx[item.key] }}</span>
             </div>
             <!-- Auto refresh toggle -->
             <div class="fx-chip">
@@ -483,10 +482,10 @@ export default {
           holdings.value.length > 0 ? fetchQuotes(holdings.value) : Promise.resolve({ prices: {}, errors: [] })
         ])
 
-        // 更新汇率
+        // 更新汇率（保留两位小数）
         if (fxResult.status === 'fulfilled' && fxResult.value) {
-          fx.USD = fxResult.value.USD
-          fx.HKD = fxResult.value.HKD
+          fx.USD = Math.round(fxResult.value.USD * 100) / 100
+          fx.HKD = Math.round(fxResult.value.HKD * 100) / 100
         }
 
         // 更新行情
@@ -847,7 +846,7 @@ input:focus, select:focus { outline: none; }
 .fx-bar { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
 .fx-label { font-size: 11px; color: #bbb; letter-spacing: .5px; }
 .fx-chip { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #888; }
-.fx-input { width: 58px; background: transparent; border: none; border-bottom: 1px solid #d4cfc6; font-size: 12px; font-family: monospace; color: #444; padding: 1px 0; text-align: center; }
+.fx-value { font-family: monospace; font-weight: 600; color: #444; min-width: 50px; display: inline-block; text-align: center; }
 
 /* Toggle switch */
 .toggle-switch { position: relative; display: inline-block; width: 36px; height: 20px; cursor: pointer; }
