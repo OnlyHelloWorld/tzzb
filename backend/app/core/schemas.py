@@ -54,7 +54,6 @@ class TradeCreate(TradeBase):
 
 class TradeResponse(TradeBase):
     id: int
-    holding_id: int
 
     class Config:
         from_attributes = True
@@ -73,7 +72,6 @@ class HoldingCreate(HoldingBase):
 
 
 class HoldingResponse(HoldingBase):
-    id: int
     user_id: int
     trades: List[TradeResponse] = []
 
