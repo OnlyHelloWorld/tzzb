@@ -426,8 +426,8 @@ export default {
       } catch (err) {
         console.warn('加载持仓失败:', err)
         showIOMessage('加载持仓失败: ' + err.message, true)
-        // 加载失败时使用初始数据
-        holdings.value = INITIAL_HOLDINGS
+        // 加载失败时保持为空数组，避免显示已删除的持仓
+        holdings.value = []
         _id = 100
       }
 
