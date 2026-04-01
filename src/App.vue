@@ -407,10 +407,14 @@ export default {
     // IO state
     const importInput = ref(null)
     const ioMessage = ref('')
-    const isLoggedIn = ref(!!sessionStorage.getItem('investment-auth'))
-    const handleLogin = () => { isLoggedIn.value = true }
+    const isLoggedIn = ref(false)
+    try { isLoggedIn.value = !!localStorage.getItem('investment-auth') } catch(e) {}
+    const handleLogin = () => {
+      try { localStorage.setItem('investment-auth', '1') } catch(e) {}
+      isLoggedIn.value = true
+    }
     const handleLogout = () => {
-      sessionStorage.removeItem('investment-auth')
+      try { localStorage.removeItem('investment-auth') } catch(e) {}
       isLoggedIn.value = false
     }
     const ioMessageClass = ref('')
