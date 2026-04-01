@@ -360,7 +360,7 @@ const today = () => new Date().toISOString().slice(0, 10)
 
 // ─── Main App ───────────────────────────────────────────────────
 export default {
-  components: { PnLTag, Tag },
+  components: { PnLTag, Tag, LoginPage },
   setup() {
     // State
     const holdings = ref([])
