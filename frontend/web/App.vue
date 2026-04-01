@@ -395,10 +395,9 @@ export default {
     const ioMessage = ref('')
     const loginError = ref('')
     const isLoggedIn = ref(api.isLoggedIn())
-    const handleLogin = async ({ username, password }) => {
+    const handleLogin = async () => {
       loginError.value = ''
       try {
-        await api.login(username, password)
         isLoggedIn.value = true
       } catch (err) {
         loginError.value = err.message
