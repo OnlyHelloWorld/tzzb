@@ -55,8 +55,8 @@
             <span class="fx-label">汇率</span>
             <div v-for="item in fxList" :key="item.key" class="fx-chip">
               <span>{{ item.label }}</span>
-              <input class="fx-input" type="number" step="0.001" :value="fx[item.key]"
-                @input="e => fx[item.key] = +e.target.value" />
+              <input class="fx-input" type="number" step="0.01" :value="fx[item.key]"
+                @input="e => fx[item.key] = Math.round(+e.target.value * 100) / 100" />
             </div>
             <!-- Auto refresh toggle -->
             <div class="fx-chip">
