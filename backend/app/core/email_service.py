@@ -24,6 +24,12 @@ def _generate_code() -> str:
 
 def _send_email(to_email: str, subject: str, html_body: str):
     """发送邮件"""
+    # 模拟模式：当SMTP配置为空时，不实际发送邮件
+    if not settings.SMTP_USER or not settings.SMTP_PASSWORD:
+        logger.info(f"[模拟模式] 验证码已发送到 {to_email} - {subject}")
+        logger.info(f"[模拟模式] 验证码内容: {html_body}")
+        return
+    
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"] = settings.SMTP_USER
