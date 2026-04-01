@@ -6,15 +6,27 @@
  *   2. 腾讯财经（备源，GBK 编码，已用 TextDecoder 正确解码）
  *   3. 新浪财经（兜底，GBK 编码，已用 TextDecoder 正确解码）
  *
- * 三个源均可正确获取中文名称和价格。
+ * A股代码规则：
+ *   沪市：6xx、5xx(ETF)、9xx(B股) → secid=1.x / sh / s_sh
+ *   深市：0xx、1xx、2xx、3xx(ETF) → secid=0.x / sz / s_sz
+ *
+ * 东方财富价格单位（f43）：
+ *   A股：分（÷100）
+ *   港股：厘（÷1000）
+ *   美股：厘（÷1000）
  */
+
+// ─── 判断 A 股是沪市还是深市 ───────────────────────────────────
+function isShanghai(code) {
+  const c = code.toString()
+  return c.startsWith('6') || c.startsWith('5') || c.startsWith('9')
+}
 
 // ─── 东方财富（主源，JSON/UTF-8）────────────────────────────────
 async function fetchEastmoney(market, code) {
   let secid
   if (market === 'A股') {
-    const c = code.toString()
-    secid = (c.startsWith('6') || c.startsWith('9')) ? `1.${c}` : `0.${c}`
+    secid = isShanghai(code) ? `1.${code}` : `0.${code}`
   } else if (market === '港股') {
     secid = `116.${code}`
   } else if (market === '美股') {
@@ -31,12 +43,13 @@ async function fetchEastmoney(market, code) {
   if (!json || json.rc !== 0 || !json.data) throw new Error('Eastmoney invalid response')
 
   const d = json.data
-  // f58=名称(UTF-8), f43=价格, f170=涨跌幅(百分之一)
-  // A股/港股: f43 单位是分(÷100)
-  // 美股: f43 单位是厘(÷1000)
   let price = 0
   if (d.f43) {
-    price = market === '美股' ? d.f43 / 1000 : d.f43 / 100
+    if (market === 'A股') {
+      price = d.f43 / 100   // A股：分
+    } else {
+      price = d.f43 / 1000  // 港股/美股：厘
+    }
   }
   const name = d.f58 || ''
   const changePercent = d.f170 != null ? d.f170 / 100 : 0
@@ -48,8 +61,7 @@ async function fetchEastmoney(market, code) {
 async function fetchTencent(market, code) {
   let prefix
   if (market === 'A股') {
-    const c = code.toString()
-    prefix = (c.startsWith('6') || c.startsWith('9')) ? `s_sh${c}` : `s_sz${c}`
+    prefix = isShanghai(code) ? `s_sh${code}` : `s_sz${code}`
   } else if (market === '港股') {
     prefix = `hk${code}`
   } else if (market === '美股') {
@@ -63,7 +75,6 @@ async function fetchTencent(market, code) {
   if (!res.ok) throw new Error(`Tencent HTTP ${res.status}`)
 
   const buffer = await res.arrayBuffer()
-  // 腾讯返回 GBK 编码，用 TextDecoder 解码
   const text = new TextDecoder('gbk').decode(buffer)
   const match = text.match(/="(.+?)"/)
   if (!match) throw new Error('Tencent parse error')
@@ -80,8 +91,7 @@ async function fetchTencent(market, code) {
 async function fetchSina(market, code) {
   let prefix
   if (market === 'A股') {
-    const c = code.toString()
-    prefix = (c.startsWith('6') || c.startsWith('9')) ? `sh${c}` : `sz${c}`
+    prefix = isShanghai(code) ? `sh${code}` : `sz${code}`
   } else if (market === '港股') {
     prefix = `hk${code}`
   } else if (market === '美股') {
@@ -95,7 +105,6 @@ async function fetchSina(market, code) {
   if (!res.ok) throw new Error(`Sina HTTP ${res.status}`)
 
   const buffer = await res.arrayBuffer()
-  // 新浪返回 GBK 编码，用 TextDecoder 解码
   const text = new TextDecoder('gbk').decode(buffer)
   const match = text.match(/="(.+?)"/)
   if (!match) throw new Error('Sina parse error')
@@ -143,7 +152,7 @@ export async function fetchQuotes(holdings) {
       const quote = await fetchQuote(h.market, h.code)
       result[h.code] = quote.price
     } catch (err) {
-      errors.push({ market: h.market, code: h.code, error: err.message })
+      errors.push({ market: h.market, code: h.code, name: h.name, error: err.message })
     }
   })
 
@@ -153,11 +162,11 @@ export async function fetchQuotes(holdings) {
     console.warn(`[quoteApi] ${errors.length} quotes failed:`, errors)
   }
 
-  return result
+  // 返回 { prices, errors } 供调用方展示错误信息
+  return { prices: result, errors }
 }
 
 // ─── 汇率获取（多源兜底）─────────────────────────────────────────
-// 主源：exchangerate-api（免费，无需 Key，标准 JSON）
 async function fetchFxFromExchangeApi() {
   const res = await fetch('https://api.exchangerate-api.com/v4/latest/USD', { mode: 'cors' })
   if (!res.ok) throw new Error(`ExchangeRate API HTTP ${res.status}`)
@@ -165,14 +174,11 @@ async function fetchFxFromExchangeApi() {
   const cny = json.rates?.CNY || 0
   const hkd = json.rates?.HKD || 0
   if (cny > 0 && hkd > 0) {
-    // 返回 USD/CNY 和 HKD/CNY
-    // exchangerate-api 返回的是 1 USD = X HKD，需转换为 1 HKD = ? CNY
     return { USD: cny, HKD: cny / hkd }
   }
   throw new Error('ExchangeRate API parse error')
 }
 
-// 备源：东方财富汇率接口
 async function fetchFxFromEastmoney() {
   const [res1, res2] = await Promise.all([
     fetch('https://push2.eastmoney.com/api/qt/stock/get?secid=118.USD0000001&fields=f43', { mode: 'cors' }),

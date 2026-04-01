@@ -13,7 +13,7 @@
       <div class="header-right">
         <!-- Quote status -->
         <span v-if="quoteStatus === 'loading'" class="quote-status loading">加载中...</span>
-        <span v-else-if="quoteStatus === 'error'" class="quote-status error" :title="quoteError">行情异常</span>
+        <span v-else-if="quoteStatus === 'error' && !quoteError" class="quote-status error">行情异常</span>
         <span v-else-if="lastQuoteTime" class="quote-status ok">{{ lastQuoteTime }}</span>
 
         <!-- Refresh button -->
@@ -88,6 +88,12 @@
           </div>
           <div v-if="ioMessage" class="io-message" :class="ioMessageClass">{{ ioMessage }}</div>
         </div>
+      </div>
+
+      <!-- ── Error banner ── -->
+      <div v-if="quoteError" class="error-banner">
+        <span>⚠️ {{ quoteError }}</span>
+        <button class="btn btn-ghost" style="font-size:11px;padding:2px 8px;margin-left:8px" @click="quoteError=''">关闭</button>
       </div>
 
       <!-- ── Tabs ── -->
@@ -465,7 +471,7 @@ export default {
         // 并行获取汇率和行情
         const [fxResult, quoteResult] = await Promise.allSettled([
           fetchFxRates(),
-          holdings.value.length > 0 ? fetchQuotes(holdings.value) : Promise.resolve({})
+          holdings.value.length > 0 ? fetchQuotes(holdings.value) : Promise.resolve({ prices: {}, errors: [] })
         ])
 
         // 更新汇率
@@ -475,15 +481,22 @@ export default {
         }
 
         // 更新行情
-        if (quoteResult.status === 'fulfilled' && Object.keys(quoteResult.value || {}).length > 0) {
-          Object.assign(prices, quoteResult.value)
+        const quoteData = quoteResult.status === 'fulfilled' ? quoteResult.value : { prices: {}, errors: [] }
+        if (quoteData.prices && Object.keys(quoteData.prices).length > 0) {
+          Object.assign(prices, quoteData.prices)
+        }
+
+        // 收集错误信息
+        const failedList = (quoteData.errors || []).map(e => `${e.name || e.code}(${e.market})`)
+        if (failedList.length > 0) {
+          quoteError.value = `以下标的行情获取失败：${failedList.join('、')}`
         }
 
         const hasFx = fxResult.status === 'fulfilled' && fxResult.value
-        const hasQuotes = holdings.value.length === 0 || (quoteResult.status === 'fulfilled' && Object.keys(quoteResult.value || {}).length > 0)
+        const hasQuotes = holdings.value.length === 0 || (quoteData.prices && Object.keys(quoteData.prices).length > 0)
 
         if (hasFx || hasQuotes) {
-          quoteStatus.value = 'ok'
+          quoteStatus.value = (holdings.value.length > 0 && failedList.length === holdings.value.length) ? 'error' : 'ok'
           const now = new Date()
           lastQuoteTime.value = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
         } else {
@@ -617,6 +630,7 @@ export default {
         ...h, trades: h.trades.map(t => t.id !== tradeId ? t : { ...t, qty: +qty, price: +price })
       })
       editingTrade.value = null
+      saveHoldings(holdings.value)
     }
 
     const deleteTrade = (holdingId, tradeId) => {
@@ -625,11 +639,13 @@ export default {
         const trades = h.trades.filter(t => t.id !== tradeId)
         return trades.length > 0 ? { ...h, trades } : h
       })
+      saveHoldings(holdings.value)
     }
 
     const deleteHolding = (holdingId) => {
       holdings.value = holdings.value.filter(h => h.id !== holdingId)
       if (expanded.value === holdingId) expanded.value = null
+      saveHoldings(holdings.value)
     }
 
     const toggleReset = (holdingId) => {
@@ -645,8 +661,8 @@ export default {
     const cancelReset = () => {
       resetTarget.value = null
       resetPrice.value = ''
+      saveHoldings(holdings.value)
     }
-
     const resetCost = (holdingId) => {
       const enrichedH = enriched.value.find(e => e.id === holdingId)
       if (!enrichedH) return
@@ -681,8 +697,8 @@ export default {
       })
       addTradeTarget.value = null
       Object.assign(addTradeForm, { type: '买入', qty: '', price: '', date: '', note: '' })
+      saveHoldings(holdings.value)
     }
-
     const addError = ref('')
     const nameLoading = ref(false)
 
@@ -717,6 +733,13 @@ export default {
       prices[code] = +price
       addHolding.value = false
       Object.assign(newForm, { market: 'A股', code: '', name: '', sector: '', qty: '', price: '' })
+      // 立即持久化
+      saveHoldings(holdings.value).then(ok => {
+        if (ok) {
+          ioMessage.value = '✅ 已保存到本地'
+          setTimeout(() => { if (ioMessage.value === '✅ 已保存到本地') ioMessage.value = '' }, 3000)
+        }
+      })
     }
 
     // ─── Lifecycle ───────────────────────────────────────────────
@@ -1000,6 +1023,12 @@ select.form-control { cursor: pointer; }
 
 /* Empty */
 .empty-hint { text-align: center; padding: 60px 0; color: #ccc; font-size: 14px; }
+
+.error-banner {
+  background: #fff8f0; border: 1px solid #f5c6c0; border-radius: 8px;
+  padding: 10px 14px; margin-bottom: 14px; font-size: 12px; color: #c0392b;
+  display: flex; align-items: center; line-height: 1.4;
+}
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-thumb { background: #d4cfc6; border-radius: 2px; }

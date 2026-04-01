@@ -55,8 +55,11 @@ export async function saveHoldings(data) {
       await store.put(item)
     }
     await tx.done
+    console.log(`[db] saveHoldings ok: ${data.length} items`)
+    return true
   } catch (err) {
     console.error('[db] saveHoldings failed:', err)
+    return false
   }
 }
 
