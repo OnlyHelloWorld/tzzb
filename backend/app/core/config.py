@@ -6,10 +6,14 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # 项目根目录
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 # 加载.env文件
+print(f"Loading .env from: {BASE_DIR / '.env'}")
+print(f"File exists: {(BASE_DIR / '.env').exists()}")
 load_dotenv(dotenv_path=BASE_DIR / ".env")
+print(f"SMTP_USER: {os.getenv('SMTP_USER')}")
+print(f"SMTP_PASSWORD: {os.getenv('SMTP_PASSWORD')}")
 
 class Settings:
     # 数据库
