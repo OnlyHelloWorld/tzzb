@@ -22,7 +22,12 @@ log_info "=========================================="
 log_step "1/10 安装系统依赖..."
 export DEBIAN_FRONTEND=noninteractive
 apt-get update && apt-get upgrade -y
-apt-get install -y --no-install-recommends python3.12 python3.12-venv python3-pip nginx git curl openssl
+apt-get install -y --no-install-recommends software-properties-common nginx git curl openssl
+
+# 添加 deadsnakes PPA 以安装 Python 3.12
+add-apt-repository -y ppa:deadsnakes/ppa
+apt-get update
+apt-get install -y --no-install-recommends python3.12 python3.12-venv python3-pip
 
 log_step "2/10 安装 Node.js 22..."
 curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
