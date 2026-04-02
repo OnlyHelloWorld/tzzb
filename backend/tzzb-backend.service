@@ -1,0 +1,15 @@
+[Unit]
+Description=tzzb Backend
+After=network.target mysql.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/tzzb/backend
+EnvironmentFile=/opt/tzzb/backend/.env
+ExecStart=/opt/tzzb/backend/venv/bin/python main.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

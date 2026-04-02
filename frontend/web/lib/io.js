@@ -142,7 +142,7 @@ export async function exportPDF() {
     }
 
     const date = new Date().toISOString().slice(0, 10)
-    doc.save(`investment-ledger-${date}.pdf`)
+    doc.save(`tzzb-${date}.pdf`)
   } catch (error) {
     console.error('PDF导出失败:', error)
     throw new Error('PDF导出失败: ' + error.message)

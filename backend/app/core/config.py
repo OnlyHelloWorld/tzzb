@@ -22,7 +22,7 @@ class Settings:
     DB_PORT: int = int(os.getenv("DB_PORT", "3306"))
     DB_USER: str = os.getenv("DB_USER", "root")
     DB_PASSWORD: str = os.getenv("DB_PASSWORD", "")
-    DB_NAME: str = "investment_ledger"
+    DB_NAME: str = "tzzb"
 
     @property
     def DATABASE_URL(self) -> str:
