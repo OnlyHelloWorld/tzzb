@@ -638,7 +638,7 @@ export default {
 
     async function handleExportPDF() {
       try {
-        await exportPDF()
+        await exportPDF(holdings.value, prices, fx)
         showIOMessage('PDF 导出成功')
       } catch (err) {
         showIOMessage('导出失败: ' + err.message, true)
