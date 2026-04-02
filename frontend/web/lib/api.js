@@ -87,11 +87,68 @@ export async function resetPassword(email, code, newPassword) {
   })
 }
 
-// ─── 持仓 ─────────────────────────────────────────────────────
-export async function loadHoldings() {
-  console.log('开始加载持仓数据')
+// ─── 账本 ─────────────────────────────────────────────────────
+export async function loadLedgers() {
+  console.log('开始加载账本数据')
   try {
-    const data = await request('/holdings')
+    const data = await request('/ledgers')
+    console.log('加载账本数据成功:', data)
+    return data
+  } catch (error) {
+    console.error('加载账本数据失败:', error)
+    throw error
+  }
+}
+
+export async function createLedger(name, color = '#1a1814') {
+  console.log('开始创建账本:', name)
+  try {
+    const data = await request('/ledgers', {
+      method: 'POST',
+      body: JSON.stringify({ name, color }),
+    })
+    console.log('创建账本成功:', data)
+    return data
+  } catch (error) {
+    console.error('创建账本失败:', error)
+    throw error
+  }
+}
+
+export async function updateLedger(ledgerId, data) {
+  console.log('开始更新账本:', ledgerId, data)
+  try {
+    const result = await request(`/ledgers/${ledgerId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+    console.log('更新账本成功:', result)
+    return result
+  } catch (error) {
+    console.error('更新账本失败:', error)
+    throw error
+  }
+}
+
+export async function deleteLedger(ledgerId) {
+  console.log('开始删除账本:', ledgerId)
+  try {
+    const result = await request(`/ledgers/${ledgerId}`, {
+      method: 'DELETE',
+    })
+    console.log('删除账本成功:', result)
+    return result
+  } catch (error) {
+    console.error('删除账本失败:', error)
+    throw error
+  }
+}
+
+// ─── 持仓 ─────────────────────────────────────────────────────
+export async function loadHoldings(ledgerId) {
+  console.log('开始加载持仓数据，账本ID:', ledgerId)
+  try {
+    const data = await request(`/holdings?ledger_id=${ledgerId}`)
     console.log('加载持仓数据成功:', data)
     return data
   } catch (error) {
@@ -100,8 +157,8 @@ export async function loadHoldings() {
   }
 }
 
-export async function saveHoldings(holdings) {
-  console.log('开始保存持仓数据，持仓数量:', holdings.length)
+export async function saveHoldings(holdings, ledgerId) {
+  console.log('开始保存持仓数据，持仓数量:', holdings.length, '账本ID:', ledgerId)
   try {
     // 转换前端格式为后端格式
     const data = holdings.map(h => ({
@@ -117,7 +174,7 @@ export async function saveHoldings(holdings) {
       })),
     }))
     console.log('转换后的持仓数据:', data)
-    const result = await request('/holdings/bulk', {
+    const result = await request(`/holdings/bulk?ledger_id=${ledgerId}`, {
       method: 'PUT',
       body: JSON.stringify({ holdings: data }),
     })
@@ -129,8 +186,8 @@ export async function saveHoldings(holdings) {
   }
 }
 
-export async function deleteHolding(market, code) {
-  return request(`/holdings/${market}/${code}`, { method: 'DELETE' })
+export async function deleteHolding(ledgerId, market, code) {
+  return request(`/holdings/${ledgerId}/${market}/${code}`, { method: 'DELETE' })
 }
 
 // ─── 设置 ─────────────────────────────────────────────────────

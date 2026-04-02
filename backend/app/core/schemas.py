@@ -84,6 +84,29 @@ class HoldingBulkUpdate(BaseModel):
     holdings: List[HoldingCreate]
 
 
+# ─── Ledger ─────────────────────────────────────────────────
+class LedgerBase(BaseModel):
+    name: str
+    color: str = "#1a1814"
+
+
+class LedgerCreate(LedgerBase):
+    pass
+
+
+class LedgerUpdate(BaseModel):
+    name: Optional[str] = None
+    color: Optional[str] = None
+
+
+class LedgerResponse(LedgerBase):
+    id: int
+    user_id: int
+
+    class Config:
+        from_attributes = True
+
+
 # ─── Settings ────────────────────────────────────────────────
 class SettingsResponse(BaseModel):
     fx_usd: float = 7.28
