@@ -13,7 +13,7 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 log_step() { echo -e "${BLUE}[STEP]${NC} $1"; }
 
 REGISTRY=${REGISTRY:-"registry.cn-hangzhou.aliyuncs.com"}
-NAMESPACE=${NAMESPACE:-"investment-ledger"}
+NAMESPACE=${NAMESPACE:-"tzzb"}
 IMAGE_NAME=${IMAGE_NAME:-"app"}
 VERSION=${VERSION:-"latest"}
 

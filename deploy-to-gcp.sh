@@ -15,10 +15,10 @@ log_step() { echo -e "${BLUE}[STEP]${NC} $1"; }
 SERVER_IP=${1:-"34.21.169.1"}
 SERVER_USER=${2:-"root"}
 SERVER_PASS=${3:-"11110000aaa!"}
-PROJECT_DIR="/opt/investment-ledger"
+PROJECT_DIR="/opt/tzzb"
 
 log_info "=========================================="
-log_info "   投资账本 - 部署到谷歌云"
+log_info "   tzzb - 部署到谷歌云"
 log_info "=========================================="
 log_info "服务器: ${SERVER_USER}@${SERVER_IP}"
 echo ""

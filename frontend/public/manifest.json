@@ -1,6 +1,6 @@
 {
-  "name": "投资账本",
-  "short_name": "投资账本",
+  "name": "tzzb",
+  "short_name": "tzzb",
   "description": "个人投资组合管理工具",
   "start_url": "/",
   "display": "standalone",

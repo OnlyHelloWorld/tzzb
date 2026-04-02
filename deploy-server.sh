@@ -12,11 +12,11 @@ log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 log_step() { echo -e "${BLUE}[STEP]${NC} $1"; }
 
-PROJECT_DIR="/opt/investment-ledger"
-WEB_DIR="/var/www/investment-ledger"
+PROJECT_DIR="/opt/tzzb"
+WEB_DIR="/var/www/tzzb"
 
 log_info "=========================================="
-log_info "   投资账本 - 服务器部署脚本"
+log_info "   tzzb - 服务器部署脚本"
 log_info "=========================================="
 
 log_step "1/10 安装系统依赖..."
@@ -57,9 +57,9 @@ EOF
 fi
 
 log_step "5/10 创建 Systemd 服务..."
-cat > /etc/systemd/system/investment-backend.service << EOF
+cat > /etc/systemd/system/tzzb-backend.service << EOF
 [Unit]
-Description=Investment Ledger Backend
+Description=tzzb Backend
 After=network.target
 
 [Service]
@@ -76,8 +76,8 @@ WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload
-systemctl enable investment-backend
-systemctl restart investment-backend
+systemctl enable tzzb-backend
+systemctl restart tzzb-backend
 
 log_step "6/10 构建前端..."
 cd ${PROJECT_DIR}/frontend
@@ -88,12 +88,12 @@ log_step "7/10 部署前端..."
 cp -r dist/* ${WEB_DIR}/
 
 log_step "8/10 配置 Nginx..."
-cat > /etc/nginx/sites-available/investment-ledger << 'EOF'
+cat > /etc/nginx/sites-available/tzzb << 'EOF'
 server {
     listen 80;
     server_name _;
 
-    root /var/www/investment-ledger;
+    root /var/www/tzzb;
     index index.html;
 
     location / {
@@ -122,7 +122,7 @@ server {
 EOF
 
 rm -f /etc/nginx/sites-enabled/default
-ln -sf /etc/nginx/sites-available/investment-ledger /etc/nginx/sites-enabled/
+ln -sf /etc/nginx/sites-available/tzzb /etc/nginx/sites-enabled/
 
 nginx -t
 systemctl reload nginx
@@ -145,7 +145,7 @@ log_info "访问地址: http://$(curl -s ifconfig.me 2>/dev/null || echo 'localh
 log_info "默认账号: admin / admin"
 echo ""
 log_info "常用命令:"
-log_info "  后端状态: systemctl status investment-backend"
-log_info "  后端日志: journalctl -u investment-backend -f"
+log_info "  后端状态: systemctl status tzzb-backend"
+log_info "  后端日志: journalctl -u tzzb-backend -f"
 log_info "  Nginx 状态: systemctl status nginx"
 log_info "  Nginx 日志: tail -f /var/log/nginx/access.log"
