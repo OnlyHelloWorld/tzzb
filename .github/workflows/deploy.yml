@@ -44,6 +44,9 @@ jobs:
             
             # 拉取最新代码
             if [ -d ".git" ]; then
+              # 处理本地更改
+              git reset --hard HEAD
+              git clean -fd
               git pull
             else
               git clone https://github.com/${{ github.repository }} .
