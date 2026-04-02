@@ -21,7 +21,7 @@ log_info "=========================================="
 
 log_step "1/10 安装系统依赖..."
 apt-get update && apt-get upgrade -y
-apt-get install -y python3.12 python3.12-venv python3-pip nginx git curl
+apt-get install -y python3.12 python3.12-venv python3-pip nginx git curl openssl
 
 log_step "2/10 安装 Node.js 22..."
 curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
