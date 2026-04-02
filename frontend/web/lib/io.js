@@ -119,19 +119,22 @@ export async function exportPDF(holdings = [], prices = {}, fx = { USD: 7.28, HK
   // 添加标题
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(18)
-  doc.text('投资账本', pageWidth / 2, 20, { align: 'center' })
+  doc.text('Investment Ledger', pageWidth / 2, 20, { align: 'center' })
   
   // 添加导出日期
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(10)
-  doc.text(`导出日期: ${new Date().toLocaleString('zh-CN')}`, pageWidth / 2, 28, { align: 'center' })
+  doc.text(`Export Date: ${new Date().toLocaleString('en-US')}`, pageWidth / 2, 28, { align: 'center' })
   
   // 准备表格数据
-  const headers = ['市场', '代码', '名称', '持仓量', '成本均价', '现价', '市值', '盈亏', '盈亏%']
+  const headers = ['Market', 'Code', 'Name', 'Qty', 'Avg Cost', 'Price', 'MV', 'PnL', 'PnL%']
   const rows = []
   
   let totalMV = 0
   let totalPnL = 0
+  
+  // 市场名称映射
+  const marketMap = { 'A股': 'A-Share', '港股': 'HK', '美股': 'US' }
   
   for (const h of holdings) {
     const ccy = MARKET_CCY[h.market] || 'CNY'
@@ -152,14 +155,14 @@ export async function exportPDF(holdings = [], prices = {}, fx = { USD: 7.28, HK
     totalPnL += pnlCNY
     
     rows.push([
-      h.market,
+      marketMap[h.market] || h.market,
       h.code,
       h.name || '',
       qty.toFixed(0),
       `${SYM[ccy]}${avgCost.toFixed(2)}`,
       `${SYM[ccy]}${price.toFixed(2)}`,
-      `¥${mvCNY.toFixed(2)}`,
-      `¥${pnlCNY.toFixed(2)}`,
+      `${SYM.CNY}${mvCNY.toFixed(2)}`,
+      `${SYM.CNY}${pnlCNY.toFixed(2)}`,
       `${pnlPct.toFixed(2)}%`
     ])
   }
@@ -203,10 +206,10 @@ export async function exportPDF(holdings = [], prices = {}, fx = { USD: 7.28, HK
   const finalY = doc.lastAutoTable.finalY
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(12)
-  doc.text(`总计市值: ¥${totalMV.toFixed(2)}`, 10, finalY + 15)
-  doc.text(`总计盈亏: ¥${totalPnL.toFixed(2)}`, 10, finalY + 22)
+  doc.text(`Total MV: ${SYM.CNY}${totalMV.toFixed(2)}`, 10, finalY + 15)
+  doc.text(`Total PnL: ${SYM.CNY}${totalPnL.toFixed(2)}`, 10, finalY + 22)
   
   // 保存PDF
   const date = new Date().toISOString().slice(0, 10)
-  doc.save(`tzzb-${date}.pdf`)
+  doc.save(`investment-ledger-${date}.pdf`)
 }
