@@ -38,8 +38,11 @@ jobs:
           username: ${{ secrets.GCP_USER }}
           password: ${{ secrets.GCP_PASSWORD }}
           script: |
+            # 设置非交互式环境
+            export DEBIAN_FRONTEND=noninteractive
+            
             # 安装必要的系统依赖
-            apt-get update && apt-get install -y git curl
+            apt-get update && apt-get install -y --no-install-recommends git curl
             
             # 创建项目目录
             mkdir -p /opt/tzzb

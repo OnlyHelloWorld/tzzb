@@ -20,12 +20,13 @@ log_info "   tzzb - 服务器部署脚本"
 log_info "=========================================="
 
 log_step "1/10 安装系统依赖..."
+export DEBIAN_FRONTEND=noninteractive
 apt-get update && apt-get upgrade -y
-apt-get install -y python3.12 python3.12-venv python3-pip nginx git curl openssl
+apt-get install -y --no-install-recommends python3.12 python3.12-venv python3-pip nginx git curl openssl
 
 log_step "2/10 安装 Node.js 22..."
 curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
-apt-get install -y nodejs
+apt-get install -y --no-install-recommends nodejs
 
 log_step "3/10 创建项目目录..."
 mkdir -p ${PROJECT_DIR}
