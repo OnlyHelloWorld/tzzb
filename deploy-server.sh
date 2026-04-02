@@ -1,0 +1,151 @@
+#!/bin/bash
+set -e
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
+log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+log_step() { echo -e "${BLUE}[STEP]${NC} $1"; }
+
+PROJECT_DIR="/opt/investment-ledger"
+WEB_DIR="/var/www/investment-ledger"
+
+log_info "=========================================="
+log_info "   投资账本 - 服务器部署脚本"
+log_info "=========================================="
+
+log_step "1/10 安装系统依赖..."
+apt-get update && apt-get upgrade -y
+apt-get install -y python3.12 python3.12-venv python3-pip nginx git curl
+
+log_step "2/10 安装 Node.js 22..."
+curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+apt-get install -y nodejs
+
+log_step "3/10 创建项目目录..."
+mkdir -p ${PROJECT_DIR}
+mkdir -p ${WEB_DIR}
+
+log_step "4/10 配置后端..."
+cd ${PROJECT_DIR}/backend
+
+if [ ! -d "venv" ]; then
+    log_info "创建 Python 虚拟环境..."
+    python3.12 -m venv venv
+fi
+
+source venv/bin/activate
+pip install -r requirements.txt
+
+if [ ! -f ".env" ]; then
+    log_info "创建 .env 文件..."
+    cat > .env << EOF
+DB_DRIVER=sqlite
+JWT_SECRET=$(openssl rand -hex 32)
+HOST=127.0.0.1
+PORT=8000
+SMTP_HOST=smtp.qq.com
+SMTP_PORT=465
+SMTP_USER=
+SMTP_PASSWORD=
+EOF
+fi
+
+log_step "5/10 创建 Systemd 服务..."
+cat > /etc/systemd/system/investment-backend.service << EOF
+[Unit]
+Description=Investment Ledger Backend
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=${PROJECT_DIR}/backend
+EnvironmentFile=${PROJECT_DIR}/backend/.env
+ExecStart=${PROJECT_DIR}/backend/venv/bin/python main.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable investment-backend
+systemctl restart investment-backend
+
+log_step "6/10 构建前端..."
+cd ${PROJECT_DIR}/frontend
+npm install
+npm run build
+
+log_step "7/10 部署前端..."
+cp -r dist/* ${WEB_DIR}/
+
+log_step "8/10 配置 Nginx..."
+cat > /etc/nginx/sites-available/investment-ledger << 'EOF'
+server {
+    listen 80;
+    server_name _;
+
+    root /var/www/investment-ledger;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location /api {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /docs {
+        proxy_pass http://127.0.0.1:8000;
+    }
+
+    location /redoc {
+        proxy_pass http://127.0.0.1:8000;
+    }
+
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+}
+EOF
+
+rm -f /etc/nginx/sites-enabled/default
+ln -sf /etc/nginx/sites-available/investment-ledger /etc/nginx/sites-enabled/
+
+nginx -t
+systemctl reload nginx
+
+log_step "9/10 配置防火墙..."
+ufw --force enable
+ufw allow 22/tcp
+ufw allow 80/tcp
+ufw allow 443/tcp
+
+log_step "10/10 验证服务状态..."
+sleep 3
+
+echo ""
+log_info "=========================================="
+log_info "   部署完成！"
+log_info "=========================================="
+echo ""
+log_info "访问地址: http://$(curl -s ifconfig.me 2>/dev/null || echo 'localhost')"
+log_info "默认账号: admin / admin"
+echo ""
+log_info "常用命令:"
+log_info "  后端状态: systemctl status investment-backend"
+log_info "  后端日志: journalctl -u investment-backend -f"
+log_info "  Nginx 状态: systemctl status nginx"
+log_info "  Nginx 日志: tail -f /var/log/nginx/access.log"
