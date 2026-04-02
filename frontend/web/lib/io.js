@@ -54,8 +54,8 @@ export function importJSON(file) {
         }
         // 验证每个 holding 的基本结构
         for (const h of data.holdings) {
-          if (!h.id || !h.market || !h.code || !h.trades || !Array.isArray(h.trades)) {
-            reject(new Error(`Invalid holding: missing required fields (id, market, code, trades)`))
+          if (!h.market || !h.code || !h.trades || !Array.isArray(h.trades)) {
+            reject(new Error(`Invalid holding: missing required fields (market, code, trades)`))
             return
           }
         }
