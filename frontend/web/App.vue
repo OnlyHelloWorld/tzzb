@@ -11,7 +11,15 @@
         </svg>
         <span class="app-title">投资账本</span>
       </div>
-      <div class="header-right">
+      <div v-if="!currentLedger" class="header-right">
+        <button class="btn btn-ink" @click="openCreateLedger">+ 新建账本</button>
+      </div>
+      <div v-else class="header-right">
+        <span class="ledger-badge" :style="{ backgroundColor: currentLedger.color, color: '#fff' }">
+          {{ currentLedger.name }}
+          <span class="ledger-badge-action" @click="showLedgerList = !showLedgerList">▼</span>
+        </span>
+        <button class="btn btn-ink" @click="openCreateLedger">+ 新建账本</button>
         <!-- Quote status -->
         <span v-if="quoteStatus === 'loading'" class="quote-status loading">加载中...</span>
         <span v-else-if="quoteStatus === 'error' && !quoteError" class="quote-status error">行情异常</span>
@@ -29,9 +37,51 @@
 
         <button class="btn btn-ink" style="font-size:13px;padding:7px 14px" @click="openAddHolding">+ 添加</button>
       </div>
+      
+      <!-- Ledger dropdown -->
+      <div v-if="showLedgerList" class="ledger-dropdown">
+        <div v-for="ledger in ledgers" :key="ledger.id" class="ledger-item" @click="switchLedger(ledger)">
+          <div class="ledger-color" :style="{ backgroundColor: ledger.color }"></div>
+          <div class="ledger-info">
+            <div class="ledger-name">{{ ledger.name }}</div>
+          </div>
+          <div class="ledger-actions">
+            <button class="btn btn-ghost btn-sm" @click.stop="editLedger(ledger)">编辑</button>
+            <button class="btn btn-warn btn-sm" @click.stop="confirmDeleteLedger(ledger)">删除</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="main-content">
+      <!-- Ledger management page -->
+      <div v-if="!currentLedger" class="ledger-management">
+        <div class="ledger-welcome">
+          <h2>欢迎使用投资账本</h2>
+          <p>创建多个账本，管理不同的投资组合</p>
+        </div>
+        <div class="ledgers-grid">
+          <div v-for="ledger in ledgers" :key="ledger.id" class="ledger-card" @click="switchLedger(ledger)">
+            <div class="ledger-card-header" :style="{ backgroundColor: ledger.color }"></div>
+            <div class="ledger-card-body">
+              <h3>{{ ledger.name }}</h3>
+              <p class="ledger-card-hint">点击进入账本</p>
+            </div>
+          </div>
+          <div class="ledger-card ledger-card-empty" @click="openCreateLedger">
+            <div class="ledger-card-empty-content">
+              <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                <circle cx="24" cy="24" r="22" stroke="#ddd" stroke-width="2"/>
+                <path d="M24 16v16M16 24h16" stroke="#ddd" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+              <p>创建新账本</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Holding management (existing content) -->
+      <div v-else>
 
       <!-- ── Summary ── -->
       <div class="summary-card">
@@ -232,6 +282,7 @@
       </div>
 
       <button class="btn-add-pos" @click="openAddHolding">+ 添加持仓</button>
+      </div>
     </div>
 
     <!-- ── Add Trade Modal ── -->
@@ -331,6 +382,75 @@
         </div>
       </div>
     </div>
+
+    <!-- ── Create Ledger Modal ── -->
+    <div v-if="createLedgerModal" class="overlay" @click.self="createLedgerModal = false">
+      <div class="modal">
+        <div class="modal-title">创建新账本</div>
+        <div class="form-grid">
+          <div class="form-row" style="grid-column:1/-1">
+            <div class="form-label">账本名称</div>
+            <input class="form-control" placeholder="输入账本名称" v-model="newLedgerName" />
+          </div>
+          <div class="form-row" style="grid-column:1/-1">
+            <div class="form-label">主题色</div>
+            <div class="color-picker">
+              <div v-for="color in ledgerColors" :key="color" 
+                   class="color-option" 
+                   :style="{ backgroundColor: color }" 
+                   :class="{ active: newLedgerColor === color }"
+                   @click="newLedgerColor = color"></div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" @click="createLedgerModal = false">取消</button>
+          <button class="btn btn-ink" @click="saveNewLedger">创建</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Edit Ledger Modal ── -->
+    <div v-if="editLedgerModal" class="overlay" @click.self="editLedgerModal = false">
+      <div class="modal">
+        <div class="modal-title">编辑账本</div>
+        <div class="form-grid">
+          <div class="form-row" style="grid-column:1/-1">
+            <div class="form-label">账本名称</div>
+            <input class="form-control" placeholder="输入账本名称" v-model="editingLedger.name" />
+          </div>
+          <div class="form-row" style="grid-column:1/-1">
+            <div class="form-label">主题色</div>
+            <div class="color-picker">
+              <div v-for="color in ledgerColors" :key="color" 
+                   class="color-option" 
+                   :style="{ backgroundColor: color }" 
+                   :class="{ active: editingLedger.color === color }"
+                   @click="editingLedger.color = color"></div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" @click="editLedgerModal = false">取消</button>
+          <button class="btn btn-ink" @click="saveEditLedger">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Delete Ledger Confirm Modal ── -->
+    <div v-if="deleteLedgerConfirm" class="overlay" @click.self="deleteLedgerConfirm = false">
+      <div class="modal">
+        <div class="modal-title">确认删除账本</div>
+        <div style="margin: 20px 0; font-size: 14px; line-height: 1.5; text-align: center; color: #666;">
+          确定要删除账本 "{{ deleteLedgerConfirm.name }}" 吗？<br>
+          <span style="color: #c0392b; font-weight: 500;">此操作不可撤销，所有相关持仓数据将被删除</span>
+        </div>
+        <div class="modal-footer" style="justify-content: center; gap: 20px;">
+          <button class="btn btn-ghost" style="padding: 10px 24px; min-width: 100px; font-size: 14px;" @click="deleteLedgerConfirm = false">取消</button>
+          <button class="btn btn-warn" style="padding: 10px 24px; min-width: 100px; font-size: 14px; color: #c0392b; border-color: #c0392b;" @click="deleteSelectedLedger">确认删除</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -396,6 +516,23 @@ export default {
     const addHolding = ref(false)
     const newForm = reactive({ market: 'A股', code: '', name: '', sector: '', qty: '100', price: '', date: today() })
 
+    // Ledger state
+    const ledgers = ref([])
+    const currentLedger = ref(null)
+    const showLedgerList = ref(false)
+    const createLedgerModal = ref(false)
+    const editLedgerModal = ref(false)
+    const deleteLedgerConfirm = ref(null)
+    const newLedgerName = ref('')
+    const newLedgerColor = ref('#1a1814')
+    const editingLedger = ref({ id: null, name: '', color: '#1a1814' })
+    
+    // Available ledger colors
+    const ledgerColors = [
+      '#1a1814', '#1a7a4a', '#c0392b', '#1a6fa8', '#8e44ad',
+      '#f39c12', '#e74c3c', '#3498db', '#27ae60', '#9b59b6'
+    ]
+
     const openAddHolding = () => {
       Object.assign(newForm, { market: 'A股', code: '', name: '', sector: '', qty: '100', price: '', date: today() })
       addError.value = ''
@@ -417,22 +554,42 @@ export default {
     // 加载数据的函数
     const loadData = async () => {
       try {
-        const savedHoldings = await api.loadHoldings()
-        // 无论是否有数据，都更新 holdings
-        holdings.value = savedHoldings || []
-        if (savedHoldings && savedHoldings.length > 0) {
-          const maxId = Math.max(...savedHoldings.flatMap(h => (h.trades || []).map(t => t.id)), ...savedHoldings.map(h => h.id), 0)
-          _id = maxId + 1
-        } else {
-          _id = 100 // 重置 ID 计数器
+        // 首先加载账本数据
+        const savedLedgers = await api.loadLedgers()
+        ledgers.value = savedLedgers || []
+        console.log('加载到账本数据:', savedLedgers)
+        
+        // 如果有账本，自动选择第一个
+        if (ledgers.value.length > 0 && !currentLedger.value) {
+          currentLedger.value = ledgers.value[0]
         }
-        console.log('加载到持仓数据:', savedHoldings)
       } catch (err) {
-        console.warn('加载持仓失败:', err)
-        showIOMessage('加载持仓失败: ' + err.message, true)
-        // 加载失败时保持为空数组，避免显示已删除的持仓
+        console.warn('加载账本失败:', err)
+        showIOMessage('加载账本失败: ' + err.message, true)
+        ledgers.value = []
+      }
+
+      if (currentLedger.value) {
+        try {
+          const savedHoldings = await api.loadHoldings(currentLedger.value.id)
+          // 无论是否有数据，都更新 holdings
+          holdings.value = savedHoldings || []
+          if (savedHoldings && savedHoldings.length > 0) {
+            const maxId = Math.max(...savedHoldings.flatMap(h => (h.trades || []).map(t => t.id)), ...savedHoldings.map(h => h.id), 0)
+            _id = maxId + 1
+          } else {
+            _id = 100 // 重置 ID 计数器
+          }
+          console.log('加载到持仓数据:', savedHoldings)
+        } catch (err) {
+          console.warn('加载持仓失败:', err)
+          showIOMessage('加载持仓失败: ' + err.message, true)
+          // 加载失败时保持为空数组，避免显示已删除的持仓
+          holdings.value = []
+          _id = 100
+        }
+      } else {
         holdings.value = []
-        _id = 100
       }
 
       try {
@@ -520,11 +677,13 @@ export default {
     // ─── Data persistence (watch) ────────────────────────────────
     let saveDebounce = null
     const debounceSave = () => {
+      if (!currentLedger.value) return
+      
       clearTimeout(saveDebounce)
       saveDebounce = setTimeout(async () => {
         try {
           // 保存持仓并更新本地数据（包含新的 ID）
-          const savedHoldings = await api.saveHoldings(holdings.value)
+          const savedHoldings = await api.saveHoldings(holdings.value, currentLedger.value.id)
           if (savedHoldings && savedHoldings.length > 0) {
             holdings.value = savedHoldings
             const maxId = Math.max(...savedHoldings.flatMap(h => (h.trades || []).map(t => t.id)), ...savedHoldings.map(h => h.id), 0)
@@ -541,6 +700,116 @@ export default {
     watch(holdings, debounceSave, { deep: true })
     watch(() => ({ USD: fx.USD, HKD: fx.HKD }), debounceSave, { deep: true })
     watch(autoRefresh, debounceSave)
+
+    // ─── Ledger management ────────────────────────────────────────
+    const openCreateLedger = () => {
+      newLedgerName.value = ''
+      newLedgerColor.value = '#1a1814'
+      createLedgerModal.value = true
+    }
+
+    const saveNewLedger = async () => {
+      if (!newLedgerName.value.trim()) {
+        showIOMessage('请输入账本名称', true)
+        return
+      }
+
+      try {
+        const newLedger = await api.createLedger(newLedgerName.value.trim(), newLedgerColor.value)
+        ledgers.value.push(newLedger)
+        currentLedger.value = newLedger
+        createLedgerModal.value = false
+        showIOMessage('账本创建成功')
+        await loadData()
+      } catch (err) {
+        showIOMessage('创建账本失败: ' + err.message, true)
+      }
+    }
+
+    const editLedger = (ledger) => {
+      editingLedger.value = { ...ledger }
+      editLedgerModal.value = true
+    }
+
+    const saveEditLedger = async () => {
+      if (!editingLedger.value.name.trim()) {
+        showIOMessage('请输入账本名称', true)
+        return
+      }
+
+      try {
+        const updatedLedger = await api.updateLedger(editingLedger.value.id, {
+          name: editingLedger.value.name.trim(),
+          color: editingLedger.value.color
+        })
+        const index = ledgers.value.findIndex(l => l.id === updatedLedger.id)
+        if (index !== -1) {
+          ledgers.value[index] = updatedLedger
+        }
+        if (currentLedger.value && currentLedger.value.id === updatedLedger.id) {
+          currentLedger.value = updatedLedger
+        }
+        editLedgerModal.value = false
+        showIOMessage('账本更新成功')
+      } catch (err) {
+        showIOMessage('更新账本失败: ' + err.message, true)
+      }
+    }
+
+    const confirmDeleteLedger = (ledger) => {
+      deleteLedgerConfirm.value = ledger
+    }
+
+    const deleteSelectedLedger = async () => {
+      if (!deleteLedgerConfirm.value) return
+
+      try {
+        await api.deleteLedger(deleteLedgerConfirm.value.id)
+        ledgers.value = ledgers.value.filter(l => l.id !== deleteLedgerConfirm.value.id)
+        if (currentLedger.value && currentLedger.value.id === deleteLedgerConfirm.value.id) {
+          currentLedger.value = ledgers.value.length > 0 ? ledgers.value[0] : null
+          await loadData()
+        }
+        deleteLedgerConfirm.value = null
+        showIOMessage('账本删除成功')
+      } catch (err) {
+        showIOMessage('删除账本失败: ' + err.message, true)
+      }
+    }
+
+    const switchLedger = (ledger) => {
+      currentLedger.value = ledger
+      showLedgerList.value = false
+      loadData()
+    }
+
+    // ─── Update export functions ─────────────────────────────────
+    function handleExportJSON() {
+      try {
+        exportJSON(holdings.value, { fx: { USD: fx.USD, HKD: fx.HKD }, autoRefresh: autoRefresh.value })
+        showIOMessage('JSON 导出成功')
+      } catch (err) {
+        showIOMessage('导出失败: ' + err.message, true)
+      }
+    }
+
+    function handleExportCSV() {
+      try {
+        exportCSV(holdings.value, prices, fx)
+        showIOMessage('CSV 导出成功')
+      } catch (err) {
+        showIOMessage('导出失败: ' + err.message, true)
+      }
+    }
+
+    async function handleExportPDF() {
+      try {
+        await exportPDF(holdings.value, prices, fx)
+        showIOMessage('PDF 导出成功')
+      } catch (err) {
+        showIOMessage('导出失败: ' + err.message, true)
+      }
+    }
 
     // ─── Quote & FX refresh ───────────────────────────────────────
     async function refreshQuotes() {
@@ -684,7 +953,9 @@ export default {
         }
       )
       editingTrade.value = null
-      api.saveHoldings(holdings.value)
+      if (currentLedger.value) {
+        api.saveHoldings(holdings.value, currentLedger.value.id)
+      }
     }
 
     const deleteTrade = (holding, tradeId) => {
@@ -694,7 +965,9 @@ export default {
         const trades = h.trades.filter(t => t.id !== tradeId)
         return trades.length > 0 ? { ...h, trades } : h
       })
-      api.saveHoldings(holdings.value)
+      if (currentLedger.value) {
+        api.saveHoldings(holdings.value, currentLedger.value.id)
+      }
     }
 
     const confirmDeleteHolding = (holdingId) => {
@@ -702,12 +975,12 @@ export default {
     }
 
     const deleteHolding = async () => {
-      if (deleteConfirm.value === null) return
+      if (deleteConfirm.value === null || !currentLedger.value) return
       const { market, code } = deleteConfirm.value
       deleteConfirm.value = null
       
       try {
-        await api.deleteHolding(market, code)
+        await api.deleteHolding(currentLedger.value.id, market, code)
         holdings.value = holdings.value.filter(h => !(h.market === market && h.code === code))
         showIOMessage('持仓删除成功')
       } catch (err) {
@@ -732,7 +1005,9 @@ export default {
     const cancelReset = () => {
       resetTarget.value = null
       resetPrice.value = ''
-      api.saveHoldings(holdings.value)
+      if (currentLedger.value) {
+        api.saveHoldings(holdings.value, currentLedger.value.id)
+      }
     }
     const resetCost = (holding) => {
       const { market, code } = holding
@@ -746,6 +1021,9 @@ export default {
       )
       resetTarget.value = null
       resetPrice.value = ''
+      if (currentLedger.value) {
+        api.saveHoldings(holdings.value, currentLedger.value.id)
+      }
     }
 
     const openAddTrade = (holding) => {
@@ -774,7 +1052,9 @@ export default {
       )
       addTradeTarget.value = null
       Object.assign(addTradeForm, { type: '买入', qty: '', price: '', date: '', note: '' })
-      api.saveHoldings(holdings.value)
+      if (currentLedger.value) {
+        api.saveHoldings(holdings.value, currentLedger.value.id)
+      }
     }
     const addError = ref('')
     const nameLoading = ref(false)
@@ -813,10 +1093,12 @@ export default {
       addHolding.value = false
       Object.assign(newForm, { market: 'A股', code: '', name: '', sector: '', qty: '', price: '', date: today() })
       // 立即持久化
-      api.saveHoldings(holdings.value).then(() => {
-        ioMessage.value = '✅ 已保存到本地'
-        setTimeout(() => { if (ioMessage.value === '✅ 已保存到本地') ioMessage.value = '' }, 3000)
-      })
+      if (currentLedger.value) {
+        api.saveHoldings(holdings.value, currentLedger.value.id).then(() => {
+          ioMessage.value = '✅ 已保存到本地'
+          setTimeout(() => { if (ioMessage.value === '✅ 已保存到本地') ioMessage.value = '' }, 3000)
+        })
+      }
     }
 
     // ─── Lifecycle ───────────────────────────────────────────────
@@ -850,7 +1132,13 @@ export default {
       addError, tradeError, nameLoading, onCodeChange,
       isLoggedIn, handleLogin, handleLogout, loginError,
       // Delete confirm
-      deleteConfirm
+      deleteConfirm,
+      // Ledger management
+      ledgers, currentLedger, showLedgerList,
+      createLedgerModal, editLedgerModal, deleteLedgerConfirm,
+      newLedgerName, newLedgerColor, editingLedger, ledgerColors,
+      openCreateLedger, saveNewLedger, editLedger, saveEditLedger,
+      confirmDeleteLedger, deleteSelectedLedger, switchLedger
     }
   }
 }
@@ -886,6 +1174,169 @@ input:focus, select:focus { outline: none; }
 .header-left { display: flex; align-items: center; gap: 10px; }
 .header-right { display: flex; align-items: center; gap: 8px; }
 .app-title { font-family: 'Playfair Display', serif; font-size: 17px; font-weight: 600; letter-spacing: .2px; }
+
+/* Ledger badge */
+.ledger-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  position: relative;
+}
+.ledger-badge-action {
+  font-size: 10px;
+  opacity: 0.8;
+  transition: transform 0.2s;
+}
+.ledger-badge:hover .ledger-badge-action {
+  transform: rotate(180deg);
+}
+
+/* Ledger dropdown */
+.ledger-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 20px;
+  margin-top: 8px;
+  background: #fff;
+  border: 1px solid #ede9e2;
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  min-width: 280px;
+  z-index: 200;
+  max-height: 400px;
+  overflow-y: auto;
+}
+.ledger-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.ledger-item:hover {
+  background-color: #f9f7f3;
+}
+.ledger-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  margin-right: 12px;
+}
+.ledger-info {
+  flex: 1;
+}
+.ledger-name {
+  font-size: 14px;
+  font-weight: 500;
+}
+.ledger-actions {
+  display: flex;
+  gap: 6px;
+}
+.btn-sm {
+  font-size: 11px;
+  padding: 4px 8px;
+}
+
+/* Ledger management */
+.ledger-management {
+  max-width: 600px;
+  margin: 0 auto;
+}
+.ledger-welcome {
+  text-align: center;
+  margin-bottom: 40px;
+  padding: 40px 0;
+}
+.ledger-welcome h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 28px;
+  margin-bottom: 12px;
+  color: #1a1814;
+}
+.ledger-welcome p {
+  color: #666;
+  font-size: 16px;
+}
+.ledgers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
+}
+.ledger-card {
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.ledger-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+.ledger-card-header {
+  height: 4px;
+}
+.ledger-card-body {
+  padding: 24px;
+  text-align: center;
+}
+.ledger-card h3 {
+  font-size: 16px;
+  margin-bottom: 8px;
+  color: #1a1814;
+}
+.ledger-card-hint {
+  font-size: 12px;
+  color: #999;
+}
+.ledger-card-empty {
+  border: 2px dashed #ddd;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+}
+.ledger-card-empty-content {
+  text-align: center;
+  color: #999;
+}
+.ledger-card-empty-content svg {
+  margin-bottom: 12px;
+}
+.ledger-card-empty-content p {
+  font-size: 14px;
+}
+
+/* Color picker */
+.color-picker {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.color-option {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.2s;
+}
+.color-option:hover {
+  transform: scale(1.1);
+}
+.color-option.active {
+  border-color: #1a1814;
+  transform: scale(1.1);
+  box-shadow: 0 0 0 2px rgba(26, 24, 20, 0.1);
+}
 
 /* Quote status */
 .quote-status { font-size: 11px; font-family: monospace; white-space: nowrap; }

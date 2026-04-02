@@ -6,6 +6,7 @@
 
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import html2canvas from 'html2canvas'
 
 // ─── 工具函数 ───────────────────────────────────────────────────
 function downloadBlob(blob, filename) {
@@ -111,28 +112,44 @@ export function exportCSV(holdings, prices, fx) {
 
 // ─── 导出 PDF ───────────────────────────────────────────────────
 export async function exportPDF(holdings = [], prices = {}, fx = { USD: 7.28, HKD: 0.925 }) {
+  // 创建临时容器
+  const container = document.createElement('div')
+  container.style.position = 'fixed'
+  container.style.left = '-9999px'
+  container.style.top = '0'
+  container.style.width = '800px'
+  container.style.backgroundColor = '#ffffff'
+  container.style.padding = '40px'
+  container.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+  container.style.color = '#1a1814'
+  document.body.appendChild(container)
 
-  // 创建PDF文档
-  const doc = new jsPDF('p', 'mm', 'a4')
-  const pageWidth = doc.internal.pageSize.getWidth()
-  
-  // 添加标题
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(18)
-  doc.text('投资账本', pageWidth / 2, 20, { align: 'center' })
-  
-  // 添加导出日期
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(10)
-  doc.text(`导出日期: ${new Date().toLocaleString('zh-CN')}`, pageWidth / 2, 28, { align: 'center' })
-  
-  // 准备表格数据
-  const headers = ['市场', '代码', '名称', '持仓量', '成本均价', '现价', '市值', '盈亏', '盈亏%']
-  const rows = []
-  
   let totalMV = 0
   let totalPnL = 0
-  
+
+  // 构建 HTML 内容
+  let htmlContent = `
+    <div style="text-align: center; margin-bottom: 30px;">
+      <h1 style="font-size: 28px; margin: 0 0 10px 0; font-weight: 600;">投资账本</h1>
+      <p style="color: #666; margin: 0; font-size: 14px;">导出日期: ${new Date().toLocaleString('zh-CN')}</p>
+    </div>
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+      <thead>
+        <tr style="background-color: #1a1814; color: #f9f7f3;">
+          <th style="padding: 12px 10px; text-align: left; border: 1px solid #ddd;">市场</th>
+          <th style="padding: 12px 10px; text-align: left; border: 1px solid #ddd;">代码</th>
+          <th style="padding: 12px 10px; text-align: left; border: 1px solid #ddd;">名称</th>
+          <th style="padding: 12px 10px; text-align: right; border: 1px solid #ddd;">持仓量</th>
+          <th style="padding: 12px 10px; text-align: right; border: 1px solid #ddd;">成本均价</th>
+          <th style="padding: 12px 10px; text-align: right; border: 1px solid #ddd;">现价</th>
+          <th style="padding: 12px 10px; text-align: right; border: 1px solid #ddd;">市值</th>
+          <th style="padding: 12px 10px; text-align: right; border: 1px solid #ddd;">盈亏</th>
+          <th style="padding: 12px 10px; text-align: right; border: 1px solid #ddd;">盈亏%</th>
+        </tr>
+      </thead>
+      <tbody>
+  `
+
   for (const h of holdings) {
     const ccy = MARKET_CCY[h.market] || 'CNY'
     const price = prices[h.code] || 0
@@ -144,69 +161,72 @@ export async function exportPDF(holdings = [], prices = {}, fx = { USD: 7.28, HK
     const pnl = mv - costBasis
     const pnlPct = costBasis > 0 ? (pnl / costBasis * 100) : 0
     
-    // 转换为人民币
     const mvCNY = ccy === 'CNY' ? mv : mv * (fx[ccy] || 1)
     const pnlCNY = ccy === 'CNY' ? pnl : pnl * (fx[ccy] || 1)
     
     totalMV += mvCNY
     totalPnL += pnlCNY
-    
-    rows.push([
-      h.market,
-      h.code,
-      h.name || '',
-      qty.toFixed(0),
-      `${SYM[ccy]}${avgCost.toFixed(2)}`,
-      `${SYM[ccy]}${price.toFixed(2)}`,
-      `¥${mvCNY.toFixed(2)}`,
-      `¥${pnlCNY.toFixed(2)}`,
-      `${pnlPct.toFixed(2)}%`
-    ])
+
+    const pnlColor = pnl >= 0 ? '#1a7a4a' : '#c0392b'
+
+    htmlContent += `
+      <tr style="background-color: #f9f7f3;">
+        <td style="padding: 10px; border: 1px solid #ddd;">${h.market}</td>
+        <td style="padding: 10px; border: 1px solid #ddd;">${h.code}</td>
+        <td style="padding: 10px; border: 1px solid #ddd;">${h.name || ''}</td>
+        <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">${qty.toFixed(0)}</td>
+        <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">${SYM[ccy]}${avgCost.toFixed(2)}</td>
+        <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">${SYM[ccy]}${price.toFixed(2)}</td>
+        <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">${SYM.CNY}${mvCNY.toFixed(2)}</td>
+        <td style="padding: 10px; text-align: right; border: 1px solid #ddd; color: ${pnlColor};">${SYM.CNY}${pnlCNY.toFixed(2)}</td>
+        <td style="padding: 10px; text-align: right; border: 1px solid #ddd; color: ${pnlColor};">${pnlPct.toFixed(2)}%</td>
+      </tr>
+    `
   }
-  
-  // 添加表格
-  autoTable(doc, {
-    head: [headers],
-    body: rows,
-    startY: 35,
-    margin: {
-      top: 35,
-      left: 10,
-      right: 10
-    },
-    styles: {
-      font: 'helvetica',
-      fontSize: 10
-    },
-    headStyles: {
-      fillColor: [26, 24, 20],
-      textColor: [249, 247, 243],
-      fontStyle: 'bold'
-    },
-    alternateRowStyles: {
-      fillColor: [249, 247, 243]
-    },
-    columnStyles: {
-      0: { cellWidth: 25 },
-      1: { cellWidth: 25 },
-      2: { cellWidth: 40 },
-      3: { cellWidth: 20, halign: 'right' },
-      4: { cellWidth: 25, halign: 'right' },
-      5: { cellWidth: 25, halign: 'right' },
-      6: { cellWidth: 25, halign: 'right' },
-      7: { cellWidth: 25, halign: 'right' },
-      8: { cellWidth: 25, halign: 'right' }
+
+  htmlContent += `
+      </tbody>
+    </table>
+    <div style="margin-top: 20px; font-size: 16px; font-weight: 600;">
+      <p>总计市值: ${SYM.CNY}${totalMV.toFixed(2)}</p>
+      <p style="color: ${totalPnL >= 0 ? '#1a7a4a' : '#c0392b'};">总计盈亏: ${SYM.CNY}${totalPnL.toFixed(2)}</p>
+    </div>
+  `
+
+  container.innerHTML = htmlContent
+
+  try {
+    // 使用 html2canvas 捕获
+    const canvas = await html2canvas(container, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff'
+    })
+
+    // 创建 PDF
+    const imgWidth = 210
+    const pageHeight = 297
+    const imgHeight = (canvas.height * imgWidth) / canvas.width
+
+    const doc = new jsPDF('p', 'mm', 'a4')
+    let heightLeft = imgHeight
+    let position = 0
+
+    doc.addImage(canvas.toDataURL('image/jpeg', 1.0), 'JPEG', 0, position, imgWidth, imgHeight)
+    heightLeft -= pageHeight
+
+    while (heightLeft > 0) {
+      position = heightLeft - imgHeight
+      doc.addPage()
+      doc.addImage(canvas.toDataURL('image/jpeg', 1.0), 'JPEG', 0, position, imgWidth, imgHeight)
+      heightLeft -= pageHeight
     }
-  })
-  
-  // 添加总计
-  const finalY = doc.lastAutoTable.finalY
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(12)
-  doc.text(`总计市值: ¥${totalMV.toFixed(2)}`, 10, finalY + 15)
-  doc.text(`总计盈亏: ¥${totalPnL.toFixed(2)}`, 10, finalY + 22)
-  
-  // 保存PDF
-  const date = new Date().toISOString().slice(0, 10)
-  doc.save(`tzzb-${date}.pdf`)
+
+    // 保存 PDF
+    const date = new Date().toISOString().slice(0, 10)
+    doc.save(`tzzb-${date}.pdf`)
+  } finally {
+    // 清理临时容器
+    document.body.removeChild(container)
+  }
 }

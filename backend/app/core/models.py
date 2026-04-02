@@ -19,14 +19,31 @@ class User(Base):
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # 关系
+    ledgers = relationship("Ledger", back_populates="user", cascade="all, delete-orphan")
     holdings = relationship("Holding", back_populates="user", cascade="all, delete-orphan")
     settings = relationship("UserSetting", back_populates="user", cascade="all, delete-orphan", uselist=False)
+
+
+class Ledger(Base):
+    __tablename__ = "ledgers"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    name = Column(String(100), nullable=False, default="默认账本")
+    color = Column(String(20), nullable=False, default="#1a1814")
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    # 关系
+    user = relationship("User", back_populates="ledgers")
+    holdings = relationship("Holding", back_populates="ledger", cascade="all, delete-orphan")
 
 
 class Holding(Base):
     __tablename__ = "holdings"
 
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    ledger_id = Column(Integer, ForeignKey("ledgers.id", ondelete="CASCADE"), nullable=False)
     market = Column(String(10), nullable=False)  # A股/港股/美股
     code = Column(String(20), nullable=False)
     name = Column(String(100), nullable=False)
@@ -34,13 +51,14 @@ class Holding(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
-    # 联合主键: user_id + market + code
+    # 联合主键: user_id + ledger_id + market + code
     __table_args__ = (
-        PrimaryKeyConstraint('user_id', 'market', 'code', name='holdings_pkey'),
+        PrimaryKeyConstraint('user_id', 'ledger_id', 'market', 'code', name='holdings_pkey'),
     )
 
     # 关系
     user = relationship("User", back_populates="holdings")
+    ledger = relationship("Ledger", back_populates="holdings")
     trades = relationship("Trade", back_populates="holding", cascade="all, delete-orphan", order_by="Trade.date")
 
 
@@ -49,6 +67,7 @@ class Trade(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, nullable=False)
+    ledger_id = Column(Integer, nullable=False)
     market = Column(String(10), nullable=False)
     code = Column(String(20), nullable=False)
     date = Column(String(10), nullable=False)  # YYYY-MM-DD
@@ -58,8 +77,8 @@ class Trade(Base):
 
     # 外键关联到 Holding 的联合主键
     __table_args__ = (
-        ForeignKeyConstraint(['user_id', 'market', 'code'], 
-                          ['holdings.user_id', 'holdings.market', 'holdings.code'], 
+        ForeignKeyConstraint(['user_id', 'ledger_id', 'market', 'code'], 
+                          ['holdings.user_id', 'holdings.ledger_id', 'holdings.market', 'holdings.code'], 
                           ondelete="CASCADE"),
     )
 

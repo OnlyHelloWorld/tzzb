@@ -22,14 +22,15 @@ router = APIRouter(prefix="/holdings", tags=["持仓"])
 
 @router.get("", response_model=List[HoldingResponse])
 async def get_holdings(
+    ledger_id: int,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """获取当前用户所有持仓"""
+    """获取指定账本的所有持仓"""
     result = await db.execute(
         select(Holding)
         .options(selectinload(Holding.trades))
-        .where(Holding.user_id == user.id)
+        .where(Holding.user_id == user.id, Holding.ledger_id == ledger_id)
         .order_by(Holding.market, Holding.code)
     )
     return result.scalars().all()
@@ -38,12 +39,14 @@ async def get_holdings(
 @router.post("", response_model=HoldingResponse)
 async def create_holding(
     req: HoldingCreate,
+    ledger_id: int,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """添加单个持仓"""
     holding = Holding(
         user_id=user.id,
+        ledger_id=ledger_id,
         market=req.market,
         code=req.code,
         name=req.name,
@@ -55,6 +58,7 @@ async def create_holding(
     for t in req.trades:
         trade = Trade(
             user_id=user.id,
+            ledger_id=ledger_id,
             market=holding.market,
             code=holding.code,
             date=t.date, qty=t.qty, price=t.price, note=t.note
@@ -70,18 +74,27 @@ async def create_holding(
 @router.put("/bulk")
 async def bulk_save_holdings(
     req: HoldingBulkUpdate,
+    ledger_id: int,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """批量保存持仓（全量覆盖，与前端逻辑一致）"""
     # 删除旧数据
-    result = await db.execute(select(Holding).where(Holding.user_id == user.id))
+    result = await db.execute(
+        select(Holding)
+        .where(Holding.user_id == user.id, Holding.ledger_id == ledger_id)
+    )
     old_holdings = result.scalars().all()
     for h in old_holdings:
         # 删除关联的 trades
         t_result = await db.execute(
             select(Trade)
-            .where(Trade.user_id == user.id, Trade.market == h.market, Trade.code == h.code)
+            .where(
+                Trade.user_id == user.id, 
+                Trade.ledger_id == ledger_id,
+                Trade.market == h.market, 
+                Trade.code == h.code
+            )
         )
         for t in t_result.scalars().all():
             await db.delete(t)
@@ -92,7 +105,12 @@ async def bulk_save_holdings(
         # 检查持仓是否已存在
         existing = await db.execute(
             select(Holding)
-            .where(Holding.user_id == user.id, Holding.market == h.market, Holding.code == h.code)
+            .where(
+                Holding.user_id == user.id, 
+                Holding.ledger_id == ledger_id,
+                Holding.market == h.market, 
+                Holding.code == h.code
+            )
         )
         holding = existing.scalar_one_or_none()
         
@@ -100,6 +118,7 @@ async def bulk_save_holdings(
             # 创建新持仓
             holding = Holding(
                 user_id=user.id,
+                ledger_id=ledger_id,
                 market=h.market,
                 code=h.code,
                 name=h.name,
@@ -114,7 +133,12 @@ async def bulk_save_holdings(
             # 删除旧的交易记录
             old_trades = await db.execute(
                 select(Trade)
-                .where(Trade.user_id == user.id, Trade.market == h.market, Trade.code == h.code)
+                .where(
+                    Trade.user_id == user.id, 
+                    Trade.ledger_id == ledger_id,
+                    Trade.market == h.market, 
+                    Trade.code == h.code
+                )
             )
             for t in old_trades.scalars().all():
                 await db.delete(t)
@@ -123,6 +147,7 @@ async def bulk_save_holdings(
         for t in h.trades:
             trade = Trade(
                 user_id=user.id,
+                ledger_id=ledger_id,
                 market=h.market,
                 code=h.code,
                 date=t.date,
@@ -137,7 +162,7 @@ async def bulk_save_holdings(
     result = await db.execute(
         select(Holding)
         .options(selectinload(Holding.trades))
-        .where(Holding.user_id == user.id)
+        .where(Holding.user_id == user.id, Holding.ledger_id == ledger_id)
         .order_by(Holding.market, Holding.code)
     )
     saved_holdings = result.scalars().all()
@@ -145,8 +170,9 @@ async def bulk_save_holdings(
     return {"ok": True, "count": len(saved_holdings), "holdings": saved_holdings}
 
 
-@router.delete("/{market}/{code}")
+@router.delete("/{ledger_id}/{market}/{code}")
 async def delete_holding(
+    ledger_id: int,
     market: str,
     code: str,
     user: User = Depends(get_current_user),
@@ -155,7 +181,12 @@ async def delete_holding(
     """删除持仓"""
     result = await db.execute(
         select(Holding)
-        .where(Holding.user_id == user.id, Holding.market == market, Holding.code == code)
+        .where(
+            Holding.user_id == user.id, 
+            Holding.ledger_id == ledger_id,
+            Holding.market == market, 
+            Holding.code == code
+        )
     )
     holding = result.scalar_one_or_none()
     if not holding:
@@ -164,7 +195,12 @@ async def delete_holding(
     # 删除关联 trades
     t_result = await db.execute(
         select(Trade)
-        .where(Trade.user_id == user.id, Trade.market == market, Trade.code == code)
+        .where(
+            Trade.user_id == user.id, 
+            Trade.ledger_id == ledger_id,
+            Trade.market == market, 
+            Trade.code == code
+        )
     )
     for t in t_result.scalars().all():
         await db.delete(t)
