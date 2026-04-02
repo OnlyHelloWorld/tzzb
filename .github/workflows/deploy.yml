@@ -38,9 +38,6 @@ jobs:
           username: ${{ secrets.GCP_USER }}
           password: ${{ secrets.GCP_PASSWORD }}
           script: |
-            # 安装必要的系统依赖
-            apt-get update && apt-get install -y git curl
-            
             # 创建项目目录
             mkdir -p /opt/tzzb
             cd /opt/tzzb
