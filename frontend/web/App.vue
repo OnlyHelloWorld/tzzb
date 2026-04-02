@@ -300,6 +300,10 @@
             <div class="form-label">成本价</div>
             <input class="form-control" type="number" placeholder="0.00" v-model="newForm.price" />
           </div>
+          <div class="form-row">
+            <div class="form-label">日期</div>
+            <input class="form-control" type="date" v-model="newForm.date" />
+          </div>
           <div class="form-row" style="grid-column:1/-1">
             <div class="form-label">板块（可选）</div>
             <input class="form-control" placeholder="如 科技、消费" v-model="newForm.sector" />
@@ -390,10 +394,10 @@ export default {
     const addTradeTarget = ref(null)
     const addTradeForm = reactive({ type: '买入', qty: '', price: '', date: '', note: '' })
     const addHolding = ref(false)
-    const newForm = reactive({ market: 'A股', code: '', name: '', sector: '', qty: '100', price: '' })
+    const newForm = reactive({ market: 'A股', code: '', name: '', sector: '', qty: '100', price: '', date: today() })
 
     const openAddHolding = () => {
-      Object.assign(newForm, { market: 'A股', code: '', name: '', sector: '', qty: '100', price: '' })
+      Object.assign(newForm, { market: 'A股', code: '', name: '', sector: '', qty: '100', price: '', date: today() })
       addError.value = ''
       addHolding.value = true
     }
@@ -795,7 +799,7 @@ export default {
     }
 
     const saveNewHolding = () => {
-      const { market, code, name, sector, qty, price } = newForm
+      const { market, code, name, sector, qty, price, date } = newForm
       if (!code || !name || !qty || !price) {
         addError.value = '请填写股票代码、名称、数量和成本价'
         return
@@ -803,11 +807,11 @@ export default {
       addError.value = ''
       holdings.value = [...holdings.value, {
         id: ++_id, market, code, name, sector,
-        trades: [{ id: ++_id, date: today(), qty: +qty, price: +price }]
+        trades: [{ id: ++_id, date: date || today(), qty: +qty, price: +price }]
       }]
       prices[code] = +price
       addHolding.value = false
-      Object.assign(newForm, { market: 'A股', code: '', name: '', sector: '', qty: '', price: '' })
+      Object.assign(newForm, { market: 'A股', code: '', name: '', sector: '', qty: '', price: '', date: today() })
       // 立即持久化
       api.saveHoldings(holdings.value).then(() => {
         ioMessage.value = '✅ 已保存到本地'
