@@ -38,28 +38,6 @@ jobs:
           username: ${{ secrets.GCP_USER }}
           password: ${{ secrets.GCP_PASSWORD }}
           script: |
-            # 设置非交互式环境
-            export DEBIAN_FRONTEND=noninteractive
-            
-            # 检查并安装必要的系统依赖
-            install_missing() {
-              local pkg=$1
-              if ! command -v $pkg &> /dev/null; then
-                echo "Installing $pkg..."
-                apt-get install -y --no-install-recommends $pkg
-              else
-                echo "$pkg is already installed"
-              fi
-            }
-            
-            # 只在需要时更新 apt
-            if ! command -v git &> /dev/null || ! command -v curl &> /dev/null; then
-              apt-get update
-            fi
-            
-            install_missing git
-            install_missing curl
-            
             # 创建项目目录
             mkdir -p /opt/tzzb
             cd /opt/tzzb

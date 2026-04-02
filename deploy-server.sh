@@ -19,25 +19,11 @@ log_info "=========================================="
 log_info "   tzzb - 服务器部署脚本"
 log_info "=========================================="
 
-log_step "1/10 安装系统依赖..."
-export DEBIAN_FRONTEND=noninteractive
-apt-get update && apt-get upgrade -y
-apt-get install -y --no-install-recommends software-properties-common nginx git curl openssl
-
-# 添加 deadsnakes PPA 以安装 Python 3.12
-add-apt-repository -y ppa:deadsnakes/ppa
-apt-get update
-apt-get install -y --no-install-recommends python3.12 python3.12-venv python3-pip
-
-log_step "2/10 安装 Node.js 22..."
-curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
-apt-get install -y --no-install-recommends nodejs
-
-log_step "3/10 创建项目目录..."
+log_step "1/7 创建项目目录..."
 mkdir -p ${PROJECT_DIR}
 mkdir -p ${WEB_DIR}
 
-log_step "4/10 配置后端..."
+log_step "2/7 配置后端..."
 cd ${PROJECT_DIR}/backend
 
 if [ ! -d "venv" ]; then
@@ -62,7 +48,7 @@ SMTP_PASSWORD=
 EOF
 fi
 
-log_step "5/10 创建 Systemd 服务..."
+log_step "3/7 创建 Systemd 服务..."
 cat > /etc/systemd/system/tzzb-backend.service << EOF
 [Unit]
 Description=tzzb Backend
@@ -85,15 +71,15 @@ systemctl daemon-reload
 systemctl enable tzzb-backend
 systemctl restart tzzb-backend
 
-log_step "6/10 构建前端..."
+log_step "4/7 构建前端..."
 cd ${PROJECT_DIR}/frontend
 npm install
 npm run build
 
-log_step "7/10 部署前端..."
+log_step "5/7 部署前端..."
 cp -r dist/* ${WEB_DIR}/
 
-log_step "8/10 配置 Nginx..."
+log_step "6/7 配置 Nginx..."
 cat > /etc/nginx/sites-available/tzzb << 'EOF'
 server {
     listen 80;
@@ -133,13 +119,7 @@ ln -sf /etc/nginx/sites-available/tzzb /etc/nginx/sites-enabled/
 nginx -t
 systemctl reload nginx
 
-log_step "9/10 配置防火墙..."
-ufw --force enable
-ufw allow 22/tcp
-ufw allow 80/tcp
-ufw allow 443/tcp
-
-log_step "10/10 验证服务状态..."
+log_step "7/7 验证服务状态..."
 sleep 3
 
 echo ""
