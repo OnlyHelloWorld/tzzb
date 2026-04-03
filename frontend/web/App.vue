@@ -1,4 +1,18 @@
 <template>
+  <!-- Global loading overlay -->
+  <transition name="fade">
+    <div v-if="isLoading" class="loading-overlay">
+      <div class="loading-wave">
+        <div class="loading-bar"></div>
+        <div class="loading-bar"></div>
+        <div class="loading-bar"></div>
+        <div class="loading-bar"></div>
+        <div class="loading-bar"></div>
+      </div>
+      <div class="loading-text">加载中...</div>
+    </div>
+  </transition>
+  
   <transition name="page" mode="out-in">
     <LoginPage v-if="!isLoggedIn" key="login" @login="handleLogin" :loginError="loginError" />
     <div v-else key="app" class="app-root">
@@ -31,14 +45,14 @@
               </svg>
             </button>
             <div v-if="showDropdown" class="dropdown-menu" @click.stop>
-              <button class="dropdown-item" @click="goHome; showDropdown = false;">
+              <button class="dropdown-item" @click="goHome(); showDropdown = false;">
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="vertical-align:middle;margin-right:6px">
                   <path d="M2 6h8M6 2l4 4-4 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
                 返回主页
               </button>
               <div class="dropdown-divider"></div>
-              <button class="dropdown-item" @click="openCreateLedger; showDropdown = false;">+ 新建账本</button>
+              <button class="dropdown-item" @click="openCreateLedger(); showDropdown = false;">+ 新建账本</button>
               <div class="dropdown-divider"></div>
               <button class="dropdown-item" @click="refreshQuotes(); showDropdown = false;" :disabled="quoteStatus === 'loading'">
                 <svg :class="{ 'spin': quoteStatus === 'loading' }" width="12" height="12" viewBox="0 0 14 14" fill="none" style="vertical-align:middle;margin-right:6px">
@@ -53,7 +67,7 @@
                 </span>
               </div>
               <div class="dropdown-divider"></div>
-              <button class="dropdown-item" @click="handleLogout; showDropdown = false;" style="color: #c0392b;">退出</button>
+              <button class="dropdown-item" @click="handleLogout(); showDropdown = false;" style="color: #c0392b;">退出</button>
             </div>
           </div>
         </div>
@@ -634,6 +648,9 @@ export default {
     const quoteError = ref('')
     const lastQuoteTime = ref('')
     let refreshTimer = null
+    
+    // Global loading state
+    const isLoading = ref(false)
 
     // IO state
     const importInput = ref(null)
@@ -682,6 +699,7 @@ export default {
 
     // 加载数据的函数
     const loadData = async () => {
+      isLoading.value = true
       try {
         // 首先加载账本数据
         const savedLedgers = await api.loadLedgers()
@@ -765,6 +783,7 @@ export default {
       }
 
       refreshQuotes()
+      isLoading.value = false
     }
 
     const handleLogin = async () => {
@@ -992,11 +1011,13 @@ export default {
       await loadData()
     }
 
-    const goHome = () => {
+    const goHome = async () => {
       if (currentLedger.value) {
         currentLedger.value = null
         showLedgerList.value = false
         showDropdown.value = false
+        holdings.value = []
+        await loadData()
       }
     }
 
@@ -1339,11 +1360,18 @@ export default {
         return
       }
       addError.value = ''
+      // 规范化股票代码：统一大写，港股补0
+      let normalizedCode = code.toUpperCase().trim()
+      if (market === '港股' && /^\d+$/.test(normalizedCode)) {
+        while (normalizedCode.length < 5) {
+          normalizedCode = '0' + normalizedCode
+        }
+      }
       holdings.value = [...holdings.value, {
-        id: ++_id, market, code, name, sector,
+        id: ++_id, market, code: normalizedCode, name, sector,
         trades: [{ id: ++_id, date: date || today(), qty: +qty, price: +price }]
       }]
-      prices[code] = +price
+      prices[normalizedCode] = +price
       addHolding.value = false
       Object.assign(newForm, { market: 'A股', code: '', name: '', sector: '', qty: '', price: '', date: today() })
       // 立即持久化
@@ -1742,6 +1770,69 @@ input:focus, select:focus { outline: none; }
 }
 .ledger-io-section .io-message {
   margin-top: 0;
+}
+
+/* Loading overlay */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.loading-wave {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.loading-bar {
+  width: 6px;
+  height: 40px;
+  background: linear-gradient(180deg, #b8a882 0%, #1a1814 100%);
+  border-radius: 3px;
+  animation: loadingWave 1.2s ease-in-out infinite;
+}
+
+.loading-bar:nth-child(1) { animation-delay: 0s; }
+.loading-bar:nth-child(2) { animation-delay: 0.1s; }
+.loading-bar:nth-child(3) { animation-delay: 0.2s; }
+.loading-bar:nth-child(4) { animation-delay: 0.3s; }
+.loading-bar:nth-child(5) { animation-delay: 0.4s; }
+
+@keyframes loadingWave {
+  0%, 100% {
+    transform: scaleY(0.5);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+.loading-text {
+  font-size: 14px;
+  color: #666;
+  letter-spacing: 1px;
+}
+
+/* Fade transition */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 
 /* Header actions group */

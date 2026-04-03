@@ -22,6 +22,22 @@ function isShanghai(code) {
   return c.startsWith('6') || c.startsWith('5') || c.startsWith('9')
 }
 
+// ─── 规范化股票代码 ───────────────────────────────────
+function normalizeCode(market, code) {
+  // 统一转大写
+  let normalized = code.toString().toUpperCase().trim()
+  
+  // 港股代码：如果全是数字且长度小于5，自动补0
+  if (market === '港股' && /^\d+$/.test(normalized)) {
+    // 港股代码通常是5位，如果不足5位前面补0
+    while (normalized.length < 5) {
+      normalized = '0' + normalized
+    }
+  }
+  
+  return normalized
+}
+
 // ─── 东方财富（主源，JSON/UTF-8）────────────────────────────────
 async function fetchEastmoney(market, code) {
   let secid
@@ -119,6 +135,9 @@ async function fetchSina(market, code) {
 
 // ─── 获取单只股票行情（多源兜底）────────────────────────────────
 export async function fetchQuote(market, code) {
+  // 规范化股票代码
+  const normalizedCode = normalizeCode(market, code)
+  
   const sources = [
     { name: 'eastmoney', fn: fetchEastmoney },
     { name: 'tencent', fn: fetchTencent },
@@ -128,16 +147,16 @@ export async function fetchQuote(market, code) {
   let lastError = null
   for (const source of sources) {
     try {
-      const result = await source.fn(market, code)
+      const result = await source.fn(market, normalizedCode)
       if (result.price > 0) return result
       lastError = new Error(`${source.name} returned price=0`)
     } catch (err) {
       lastError = err
-      console.warn(`[quoteApi] ${source.name} failed for ${market}:${code}`, err.message)
+      console.warn(`[quoteApi] ${source.name} failed for ${market}:${normalizedCode}`, err.message)
     }
   }
 
-  throw lastError || new Error(`All sources failed for ${market}:${code}`)
+  throw lastError || new Error(`All sources failed for ${market}:${normalizedCode}`)
 }
 
 // ─── 批量获取行情 ───────────────────────────────────────────────
