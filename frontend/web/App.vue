@@ -4,7 +4,7 @@
     <div v-else key="app" class="app-root">
     <!-- ── Header ── -->
     <div class="header">
-      <div class="header-left" :style="{ cursor: currentLedger ? 'pointer' : 'default' }" @click="goHome">
+      <div class="header-left" :style="{ cursor: currentLedger ? 'pointer' : 'default' }" @click="currentLedger && goHome()">
         <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
           <rect width="28" height="28" rx="7" fill="#1a1814"/>
           <path d="M7 9h14M7 14h10M7 19h12" stroke="#f9f7f3" stroke-width="1.8" stroke-linecap="round"/>
@@ -16,15 +16,13 @@
         <button class="btn btn-ink" @click="openCreateLedger">+ 新建账本</button>
       </div>
       <div v-else class="header-right">
-        <button class="btn btn-ghost" @click="goHome">← 返回主页</button>
-        
         <div class="header-actions-group">
           <span class="ledger-badge" :style="{ backgroundColor: currentLedger.color, color: '#fff' }">
             {{ currentLedger.name }}
             <span class="ledger-badge-action" @click="showLedgerList = !showLedgerList">▼</span>
           </span>
           
-          <div class="dropdown-container">
+          <div class="dropdown-container" @click.stop>
             <button class="btn btn-ghost" style="padding: 6px 10px;" @click="showDropdown = !showDropdown">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:middle">
                 <circle cx="7" cy="7" r="1" fill="currentColor"/>
@@ -33,6 +31,13 @@
               </svg>
             </button>
             <div v-if="showDropdown" class="dropdown-menu" @click.stop>
+              <button class="dropdown-item" @click="goHome; showDropdown = false;">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="vertical-align:middle;margin-right:6px">
+                  <path d="M2 6h8M6 2l4 4-4 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                返回主页
+              </button>
+              <div class="dropdown-divider"></div>
               <button class="dropdown-item" @click="openCreateLedger; showDropdown = false;">+ 新建账本</button>
               <div class="dropdown-divider"></div>
               <button class="dropdown-item" @click="refreshQuotes(); showDropdown = false;" :disabled="quoteStatus === 'loading'">
@@ -52,8 +57,6 @@
             </div>
           </div>
         </div>
-        
-        <button class="btn btn-ink" style="font-size:13px;padding:7px 14px" @click="openAddHolding">+ 添加</button>
       </div>
       
       <!-- Ledger dropdown -->
@@ -160,7 +163,15 @@
 
         <!-- ── Summary ── -->
       <div class="summary-card">
-        <div class="summary-label">总市值（人民币）</div>
+        <div class="summary-card-header">
+          <div class="summary-label">总市值（人民币）</div>
+          <button class="btn btn-ink add-holding-btn" @click="openAddHolding">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:middle;margin-right:4px">
+              <path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+            添加持仓
+          </button>
+        </div>
         <div class="summary-row">
           <div class="big-num">¥ {{ fmt(summary.totalCNY) }}</div>
           <div class="summary-pnl">
@@ -353,10 +364,9 @@
       </div>
 
       <div v-if="filtered.length === 0" class="empty-hint">
-        暂无持仓，点击右上角「添加」开始记录
+        暂无持仓，点击上方「添加持仓」开始记录
       </div>
 
-        <button class="btn-add-pos" @click="openAddHolding">+ 添加持仓</button>
         </div>
       </transition>
     </div>
@@ -1345,6 +1355,13 @@ export default {
       }
     }
 
+    // 点击外部关闭下拉菜单
+    const handleDocumentClick = (e) => {
+      if (showDropdown.value) {
+        showDropdown.value = false
+      }
+    }
+
     // ─── Lifecycle ───────────────────────────────────────────────
     onMounted(async () => {
       if (isLoggedIn.value) {
@@ -1353,16 +1370,12 @@ export default {
       startAutoRefresh()
       
       // 点击外部关闭下拉菜单
-      document.addEventListener('click', (e) => {
-        if (showDropdown.value) {
-          showDropdown.value = false
-        }
-      })
+      document.addEventListener('click', handleDocumentClick)
     })
 
     onUnmounted(() => {
       stopAutoRefresh()
-      document.removeEventListener('click', () => {})
+      document.removeEventListener('click', handleDocumentClick)
     })
 
     return {
@@ -1425,7 +1438,21 @@ input:focus, select:focus { outline: none; }
   top: 0;
   z-index: 100;
 }
-.header-left { display: flex; align-items: center; gap: 10px; }
+.header-left { 
+  display: flex; 
+  align-items: center; 
+  gap: 10px; 
+  transition: all 0.2s;
+  padding: 4px 8px;
+  border-radius: 6px;
+  margin: -4px -8px;
+}
+.header-left:hover {
+  background-color: #f9f7f3;
+}
+.header-left:active {
+  transform: scale(0.98);
+}
 .header-right { display: flex; align-items: center; gap: 8px; }
 .app-title { font-family: 'Playfair Display', serif; font-size: 17px; font-weight: 600; letter-spacing: .2px; }
 
@@ -1519,8 +1546,8 @@ input:focus, select:focus { outline: none; }
 }
 .ledgers-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 16px;
 }
 .ledger-card {
   background: #fff;
@@ -1543,17 +1570,17 @@ input:focus, select:focus { outline: none; }
   height: 4px;
 }
 .ledger-card-body {
-  padding: 24px;
+  padding: 18px 14px;
   text-align: center;
 }
 .ledger-card h3 {
-  font-size: 16px;
-  margin-bottom: 8px;
+  font-size: 14px;
+  margin-bottom: 6px;
   color: #1a1814;
 }
 .ledger-summary {
-  margin: 16px 0;
-  padding: 12px;
+  margin: 12px 0;
+  padding: 10px;
   background: #f9f7f3;
   border-radius: 8px;
 }
@@ -1562,7 +1589,7 @@ input:focus, select:focus { outline: none; }
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 4px 0;
+  padding: 3px 0;
 }
 
 .summary-item:not(:last-child) {
@@ -1570,12 +1597,12 @@ input:focus, select:focus { outline: none; }
 }
 
 .summary-label {
-  font-size: 12px;
+  font-size: 11px;
   color: #888;
 }
 
 .summary-value {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   font-family: monospace;
 }
@@ -1649,6 +1676,16 @@ input:focus, select:focus { outline: none; }
 .summary-card {
   background: #fff; border-radius: 14px; border: 1px solid #ede9e2;
   padding: 22px 22px 18px; margin-bottom: 20px;
+}
+.summary-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.add-holding-btn {
+  font-size: 13px;
+  padding: 8px 14px;
 }
 .summary-label { font-size: 11px; color: #aaa; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
 .summary-row { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
