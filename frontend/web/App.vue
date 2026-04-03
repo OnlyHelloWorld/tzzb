@@ -459,13 +459,21 @@
         <div class="form-grid">
           <div class="form-row" style="grid-column:1/-1">
             <div class="form-label">市场</div>
-            <select class="form-control" v-model="newForm.market">
-              <option v-for="m in ['A股','港股','美股']" :key="m">{{ m }}</option>
-            </select>
+            <div class="market-toggle-group">
+              <button
+                v-for="m in MARKET_OPTIONS"
+                :key="m"
+                type="button"
+                :class="['market-toggle', { active: newForm.market === m }]"
+                @click="selectNewHoldingMarket(m)"
+              >
+                {{ m }}
+              </button>
+            </div>
           </div>
           <div class="form-row">
             <div class="form-label">股票代码</div>
-            <input class="form-control" placeholder="如 600519" v-model="newForm.code" @blur="newForm.code = newForm.code.toUpperCase().trim(); onCodeChange(newForm.code)" />
+            <input class="form-control" placeholder="如 600519" v-model="newForm.code" @blur="handleCodeBlur" />
           </div>
           <div class="form-row">
             <div class="form-label">股票名称{{ nameLoading ? ' (获取中…)' : '' }}</div>
@@ -623,6 +631,7 @@ const totalQty = (trades) => trades.reduce((s, t) => s + t.qty, 0)
 const fmt = (n, d = 2) => Number(n).toLocaleString('zh-CN', { minimumFractionDigits: d, maximumFractionDigits: d })
 const toCNY = (val, ccy, fx) => ccy === 'CNY' ? val : val * (fx[ccy] || 1)
 const today = () => new Date().toISOString().slice(0, 10)
+const MARKET_OPTIONS = ['A股', '港股', '美股']
 
 // ─── Sub-components ─────────────────────────────────────────────
 
@@ -684,6 +693,19 @@ export default {
       Object.assign(newForm, { market: 'A股', code: '', name: '', sector: '', qty: '100', price: '', date: today() })
       addError.value = ''
       addHolding.value = true
+    }
+
+    const normalizeCodeForMarket = (code, market) => {
+      let normalizedCode = (code || '').toUpperCase().trim()
+      if (market === '港股' && /^\d+$/.test(normalizedCode) && !normalizedCode.startsWith('0')) {
+        normalizedCode = `0${normalizedCode}`
+      }
+      return normalizedCode
+    }
+
+    const selectNewHoldingMarket = (market) => {
+      newForm.market = market
+      newForm.code = normalizeCodeForMarket(newForm.code, market)
     }
 
     const triggerBlessingEffect = (duration = 1800) => {
@@ -1452,6 +1474,11 @@ export default {
       nameLoading.value = false
     }
 
+    const handleCodeBlur = () => {
+      newForm.code = normalizeCodeForMarket(newForm.code, newForm.market)
+      onCodeChange(newForm.code)
+    }
+
     const saveNewHolding = () => {
       const { market, code, name, sector, qty, price, date } = newForm
       if (!code || !name || !qty || !price) {
@@ -1459,13 +1486,8 @@ export default {
         return
       }
       addError.value = ''
-      // 规范化股票代码：统一大写，港股补0
-      let normalizedCode = code.toUpperCase().trim()
-      if (market === '港股' && /^\d+$/.test(normalizedCode)) {
-        while (normalizedCode.length < 5) {
-          normalizedCode = '0' + normalizedCode
-        }
-      }
+      // 规范化股票代码：统一大写，港股自动补前导0
+      const normalizedCode = normalizeCodeForMarket(code, market)
       holdings.value = [...holdings.value, {
         id: ++_id, market, code: normalizedCode, name, sector,
         trades: [{ id: ++_id, date: date || today(), qty: +qty, price: +price }]
@@ -1517,7 +1539,7 @@ export default {
     })
 
     return {
-      SYM, TABS, fxList,
+      SYM, TABS, fxList, MARKET_OPTIONS,
       holdings, prices, fx, autoRefresh, tab, expanded, editingTrade,
       resetTarget, resetPrice, addTradeTarget, addTradeForm,
       addHolding, newForm, openAddHolding,
@@ -1534,7 +1556,7 @@ export default {
       updateTrade, deleteTrade, deleteHolding, confirmDeleteHolding, cancelDelete, toggleReset, cancelReset, resetCost,
       openAddTrade, saveAddTrade, saveNewHolding,
       // Form helpers
-      addError, tradeError, nameLoading, onCodeChange,
+      addError, tradeError, nameLoading, onCodeChange, selectNewHoldingMarket, handleCodeBlur,
       isLoggedIn, handleLogin, handleLogout, loginError,
       // Delete confirm
       deleteConfirm, deletingHoldings, blessingChars, showBlessingEffect, blessingEffectKey,
@@ -2415,6 +2437,27 @@ input:focus, select:focus { outline: none; }
 }
 .form-control:focus { border-color: #b8a882; background: #fff; outline: none; }
 select.form-control { cursor: pointer; }
+.market-toggle-group {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.market-toggle {
+  border: 1px solid #e7e1d6;
+  border-radius: 7px;
+  background: #f5f3ef;
+  color: #6f675a;
+  font-size: 13px;
+  padding: 9px 10px;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.market-toggle.active {
+  border-color: #b8a882;
+  background: #fff;
+  color: #1a1814;
+  font-weight: 600;
+}
 .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
 
 /* Empty */
