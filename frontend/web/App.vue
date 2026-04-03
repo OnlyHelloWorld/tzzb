@@ -11,32 +11,56 @@
         </svg>
         <span class="app-title">投资账本</span>
       </div>
-      <div v-if="!currentLedger" class="header-right">
-        <button class="btn btn-ink" @click="openCreateLedger">+ 新建账本</button>
-      </div>
-      <div v-else class="header-right">
-        <button class="btn btn-ghost" @click="goHome">← 返回主页</button>
-        <span class="ledger-badge" :style="{ backgroundColor: currentLedger.color, color: '#fff' }">
+      <div class="header-right">
+        <button v-if="currentLedger" class="btn btn-ghost" @click="goHome">← 返回主页</button>
+        <span v-if="currentLedger" class="ledger-badge" :style="{ backgroundColor: currentLedger.color, color: '#fff' }">
           {{ currentLedger.name }}
           <span class="ledger-badge-action" @click="showLedgerList = !showLedgerList">▼</span>
         </span>
-        <button class="btn btn-ink" @click="openCreateLedger">+ 新建账本</button>
         <!-- Quote status -->
         <span v-if="quoteStatus === 'loading'" class="quote-status loading">加载中...</span>
         <span v-else-if="quoteStatus === 'error' && !quoteError" class="quote-status error">行情异常</span>
         <span v-else-if="lastQuoteTime" class="quote-status ok">{{ lastQuoteTime }}</span>
 
-        <!-- Refresh button -->
-        <button class="btn btn-ghost" style="font-size:12px;padding:6px 10px" @click="refreshQuotes" :disabled="quoteStatus === 'loading'">
-          <svg :class="{ 'spin': quoteStatus === 'loading' }" width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:middle;margin-right:3px">
-            <path d="M1.5 7a5.5 5.5 0 0 1 9.3-3.95M12.5 7a5.5 5.5 0 0 1-9.3 3.95" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-            <path d="M10.8.5v2.55h-2.55M3.2 13.5v-2.55h2.55" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          {{ quoteStatus === 'loading' ? '获取中…' : '刷新' }}
-        </button>
-        <button class="btn btn-ghost" style="font-size:12px;padding:6px 10px;color:#999" @click="handleLogout">退出</button>
-
-        <button class="btn btn-ink" style="font-size:13px;padding:7px 14px" @click="openAddHolding">+ 添加</button>
+        <!-- More actions dropdown -->
+        <div class="header-actions">
+          <button class="btn btn-ghost" @click="showActionsMenu = !showActionsMenu" style="font-size:14px;padding:6px 10px">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <circle cx="8" cy="3" r="1.5" fill="currentColor"/>
+              <circle cx="8" cy="8" r="1.5" fill="currentColor"/>
+              <circle cx="8" cy="13" r="1.5" fill="currentColor"/>
+            </svg>
+          </button>
+          <div v-if="showActionsMenu" class="actions-dropdown">
+            <button v-if="currentLedger" class="action-item" @click="openAddHolding">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="margin-right:8px">
+                <path d="M7 3v8M3 7h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+              添加持仓
+            </button>
+            <button class="action-item" @click="openCreateLedger">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="margin-right:8px">
+                <path d="M7 3v8M3 7h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+              新建账本
+            </button>
+            <button v-if="currentLedger" class="action-item" @click="refreshQuotes" :disabled="quoteStatus === 'loading'">
+              <svg :class="{ 'spin': quoteStatus === 'loading' }" width="14" height="14" viewBox="0 0 14 14" fill="none" style="margin-right:8px">
+                <path d="M1.5 7a5.5 5.5 0 0 1 9.3-3.95M12.5 7a5.5 5.5 0 0 1-9.3 3.95" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                <path d="M10.8.5v2.55h-2.55M3.2 13.5v-2.55h2.55" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              {{ quoteStatus === 'loading' ? '获取中…' : '刷新行情' }}
+            </button>
+            <div class="action-divider"></div>
+            <button class="action-item logout" @click="handleLogout">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="margin-right:8px">
+                <path d="M7 3v8M11 7H3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                <path d="M11 7l-3-3M11 7l-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+              退出
+            </button>
+          </div>
+        </div>
       </div>
       
       <!-- Ledger dropdown -->
@@ -567,6 +591,7 @@ export default {
     const currentLedger = ref(null)
     const allLedgersHoldings = ref([])
     const showLedgerList = ref(false)
+    const showActionsMenu = ref(false)
     const createLedgerModal = ref(false)
     const editLedgerModal = ref(false)
     const deleteLedgerConfirm = ref(null)
@@ -1347,7 +1372,7 @@ export default {
       // Delete confirm
       deleteConfirm,
       // Ledger management
-      ledgers, ledgerSummaries, currentLedger, showLedgerList,
+      ledgers, ledgerSummaries, currentLedger, showLedgerList, showActionsMenu,
       createLedgerModal, editLedgerModal, deleteLedgerConfirm,
       newLedgerName, newLedgerColor, editingLedger, ledgerColors,
       openCreateLedger, saveNewLedger, editLedger, saveEditLedger,
@@ -1822,4 +1847,62 @@ select.form-control { cursor: pointer; }
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-thumb { background: #d4cfc6; border-radius: 2px; }
+
+/* Header actions */
+.header-actions {
+  position: relative;
+  margin-left: 8px;
+}
+
+.actions-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  background: #fff;
+  border: 1px solid #ede9e2;
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  min-width: 160px;
+  z-index: 200;
+  overflow: hidden;
+}
+
+.action-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 10px 16px;
+  border: none;
+  background: none;
+  text-align: left;
+  font-size: 13px;
+  color: #333;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-family: inherit;
+}
+
+.action-item:hover {
+  background-color: #f9f7f3;
+}
+
+.action-item:disabled {
+  color: #ccc;
+  cursor: not-allowed;
+}
+
+.action-item.logout {
+  color: #c0392b;
+}
+
+.action-item.logout:hover {
+  background-color: #fdf0ef;
+}
+
+.action-divider {
+  height: 1px;
+  background-color: #ede9e2;
+  margin: 4px 0;
+}
 </style>
