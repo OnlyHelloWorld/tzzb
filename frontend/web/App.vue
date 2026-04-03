@@ -82,17 +82,16 @@
               <span v-if="item.ccy !== 'CNY'" class="ccy-conv"> ≈ ¥{{ fmt(toCNY(item.val, item.ccy, fx)) }}</span>
             </div>
           </div>
-        </div>
-
-        <!-- ── Import/Export for all ledgers ── -->
-        <div class="io-section" style="margin-top: 20px;">
-          <div class="io-label">账本导入导出</div>
-          <div class="io-btns">
-            <button class="btn btn-ghost" style="font-size:11px" @click="handleExportAllLedgersCSV">导出所有账本 CSV</button>
-            <button class="btn btn-ghost" style="font-size:11px" @click="triggerAllLedgersImport">导入账本 CSV</button>
-            <input ref="allLedgersImportInput" type="file" accept=".csv" style="display:none" @change="handleAllLedgersImport" />
+          <!-- Import/Export for all ledgers -->
+          <div class="io-section" style="margin-top: 14px; padding-top: 12px; border-top: 1px solid #f0ece5;">
+            <div class="io-label" style="margin-bottom: 8px;">账本导入导出</div>
+            <div class="io-btns">
+              <button class="btn btn-ghost" style="font-size:11px" @click="handleExportAllLedgersCSV">导出所有账本 CSV</button>
+              <button class="btn btn-ghost" style="font-size:11px" @click="triggerAllLedgersImport">导入账本 CSV</button>
+              <input ref="allLedgersImportInput" type="file" accept=".csv" style="display:none" @change="handleAllLedgersImport" />
+            </div>
+            <div v-if="ioMessage" class="io-message" :class="ioMessageClass">{{ ioMessage }}</div>
           </div>
-          <div v-if="ioMessage" class="io-message" :class="ioMessageClass">{{ ioMessage }}</div>
         </div>
 
         <div class="ledgers-grid">
