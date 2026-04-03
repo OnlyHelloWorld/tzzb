@@ -53,6 +53,9 @@
                 </span>
               </div>
               <div class="dropdown-divider"></div>
+              <button class="dropdown-item" @click="editLedger(currentLedger); showDropdown = false;">编辑当前账本</button>
+              <button class="dropdown-item" @click="confirmDeleteLedger(currentLedger); showDropdown = false;" style="color: #c0392b;">删除当前账本</button>
+              <div class="dropdown-divider"></div>
               <button class="dropdown-item" @click="handleLogout(); showDropdown = false;" style="color: #c0392b;">退出</button>
             </div>
           </div>
@@ -60,7 +63,7 @@
       </div>
       
       <!-- Ledger dropdown -->
-      <div v-if="showLedgerList" class="ledger-dropdown">
+      <div v-if="currentLedger && showLedgerList" class="ledger-dropdown">
         <div v-for="ledger in ledgers" :key="ledger.id" class="ledger-item" @click="switchLedger(ledger)">
           <div class="ledger-color" :style="{ backgroundColor: ledger.color }"></div>
           <div class="ledger-info">
@@ -75,8 +78,12 @@
     </div>
 
     <div class="main-content">
-      <div v-if="showBlessingEffect" class="blessing-overlay">
-        <span v-for="(char, index) in blessingChars" :key="`${blessingEffectKey}-${index}`" class="blessing-char blessing-char-pop">{{ char }}</span>
+      <div v-if="showBlessingEffect || isLoading" :class="['blessing-overlay', { 'blessing-overlay-loop': isLoading }]">
+        <span
+          v-for="(char, index) in blessingChars"
+          :key="`${isLoading ? 'loading' : blessingEffectKey}-${index}`"
+          :class="['blessing-char', isLoading ? 'blessing-char-loop' : 'blessing-char-pop']"
+        >{{ char }}</span>
       </div>
       <div v-if="isLoading" class="section-loading">
         <div class="loading-wave">
@@ -142,7 +149,16 @@
           <div v-for="summary in ledgerSummaries" :key="summary.id" class="ledger-card" @click="switchLedger(summary)">
             <div class="ledger-card-header" :style="{ backgroundColor: summary.color }"></div>
             <div class="ledger-card-body">
-              <h3>{{ summary.name }}</h3>
+              <div class="ledger-card-title-row">
+                <h3>{{ summary.name }}</h3>
+                <div class="ledger-card-menu-wrap" @click.stop>
+                  <button class="ledger-card-menu-btn" @click.stop="toggleLedgerActionMenu(summary.id)">⋯</button>
+                  <div v-if="openLedgerActionMenuId === summary.id" class="ledger-card-menu">
+                    <button class="ledger-card-menu-item" @click.stop="editLedger(summary); closeLedgerActionMenu()">编辑账本</button>
+                    <button class="ledger-card-menu-item ledger-card-menu-item-danger" @click.stop="confirmDeleteLedger(summary); closeLedgerActionMenu()">删除账本</button>
+                  </div>
+                </div>
+              </div>
               <div class="ledger-summary">
                 <div class="summary-item">
                   <span class="summary-label">总市值</span>
@@ -632,6 +648,7 @@ export default {
     const blessingChars = ['恭', '喜', '发', '财']
     const showBlessingEffect = ref(false)
     const blessingEffectKey = ref(0)
+    const openLedgerActionMenuId = ref(null)
     let blessingEffectTimer = null
 
     // Ledger state
@@ -669,7 +686,7 @@ export default {
       addHolding.value = true
     }
 
-    const triggerBlessingEffect = () => {
+    const triggerBlessingEffect = (duration = 1800) => {
       if (blessingEffectTimer) {
         clearTimeout(blessingEffectTimer)
       }
@@ -678,7 +695,15 @@ export default {
       blessingEffectTimer = setTimeout(() => {
         showBlessingEffect.value = false
         blessingEffectTimer = null
-      }, 920)
+      }, duration)
+    }
+
+    const toggleLedgerActionMenu = (ledgerId) => {
+      openLedgerActionMenuId.value = openLedgerActionMenuId.value === ledgerId ? null : ledgerId
+    }
+
+    const closeLedgerActionMenu = () => {
+      openLedgerActionMenuId.value = null
     }
 
     // Quote state
@@ -1021,6 +1046,7 @@ export default {
           currentLedger.value = updatedLedger
         }
         editLedgerModal.value = false
+        triggerBlessingEffect()
         showIOMessage('账本更新成功')
       } catch (err) {
         showIOMessage('更新账本失败: ' + err.message, true)
@@ -1038,6 +1064,8 @@ export default {
         const deletedId = deleteLedgerConfirm.value.id
         await api.deleteLedger(deletedId)
         ledgers.value = ledgers.value.filter(l => l.id !== deletedId)
+        showLedgerList.value = false
+        closeLedgerActionMenu()
         
         // 从 ledgerSummaries 中删除对应的账本
         ledgerSummaries.value = ledgerSummaries.value.filter(s => s.id !== deletedId)
@@ -1049,6 +1077,7 @@ export default {
           await loadData()
         }
         deleteLedgerConfirm.value = null
+        triggerBlessingEffect()
         showIOMessage('账本删除成功')
       } catch (err) {
         showIOMessage('删除账本失败: ' + err.message, true)
@@ -1059,6 +1088,7 @@ export default {
       currentLedger.value = ledger
       showLedgerList.value = false
       showDropdown.value = false
+      closeLedgerActionMenu()
       await loadData()
     }
 
@@ -1067,6 +1097,7 @@ export default {
         currentLedger.value = null
         showLedgerList.value = false
         showDropdown.value = false
+        closeLedgerActionMenu()
         holdings.value = []
         await loadData()
       }
@@ -1309,7 +1340,7 @@ export default {
         setTimeout(() => {
           holdings.value = holdings.value.filter(h => !(h.market === market && h.code === code))
           deletingHoldings.value = deletingHoldings.value.filter(key => key !== holdingKey)
-        }, 820)
+        }, 1500)
         showIOMessage('持仓删除成功')
       } catch (err) {
         showIOMessage('删除失败: ' + err.message, true)
@@ -1455,9 +1486,12 @@ export default {
     }
 
     // 点击外部关闭下拉菜单
-    const handleDocumentClick = (e) => {
+    const handleDocumentClick = () => {
       if (showDropdown.value) {
         showDropdown.value = false
+      }
+      if (openLedgerActionMenuId.value !== null) {
+        closeLedgerActionMenu()
       }
     }
 
@@ -1504,6 +1538,7 @@ export default {
       isLoggedIn, handleLogin, handleLogout, loginError,
       // Delete confirm
       deleteConfirm, deletingHoldings, blessingChars, showBlessingEffect, blessingEffectKey,
+      openLedgerActionMenuId, toggleLedgerActionMenu, closeLedgerActionMenu,
       // Ledger management
       ledgers, ledgerSummaries, currentLedger, showLedgerList, showDropdown,
       createLedgerModal, editLedgerModal, deleteLedgerConfirm,
@@ -1679,10 +1714,56 @@ input:focus, select:focus { outline: none; }
   padding: 18px 14px;
   text-align: center;
 }
+.ledger-card-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
 .ledger-card h3 {
   font-size: 14px;
   margin-bottom: 6px;
   color: #1a1814;
+  text-align: left;
+}
+.ledger-card-menu-wrap {
+  position: relative;
+}
+.ledger-card-menu-btn {
+  width: 24px;
+  height: 24px;
+  border: 1px solid #e4dfd6;
+  border-radius: 6px;
+  background: #fff;
+  color: #6c6458;
+  cursor: pointer;
+  line-height: 1;
+}
+.ledger-card-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 104px;
+  background: #fff;
+  border: 1px solid #ede9e2;
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  z-index: 20;
+}
+.ledger-card-menu-item {
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 8px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.ledger-card-menu-item:hover {
+  background: #f9f7f3;
+}
+.ledger-card-menu-item-danger {
+  color: #c0392b;
 }
 .ledger-summary {
   margin: 12px 0;
@@ -1789,7 +1870,13 @@ input:focus, select:focus { outline: none; }
   background: radial-gradient(circle, rgba(255, 248, 224, 0.24), rgba(255, 255, 255, 0));
 }
 .blessing-char-pop {
-  animation: blessingPop .9s ease forwards;
+  animation: blessingPop 1.8s ease forwards;
+}
+.blessing-overlay-loop {
+  background: radial-gradient(circle, rgba(255, 248, 224, 0.34), rgba(255, 255, 255, 0));
+}
+.blessing-char-loop {
+  animation: blessingLoop 1.8s ease-in-out infinite;
 }
 .section-loading {
   min-height: 360px;
@@ -1855,7 +1942,7 @@ input:focus, select:focus { outline: none; }
 .io-label { font-size: 11px; color: #bbb; letter-spacing: .5px; margin-bottom: 8px; }
 .io-btns { display: flex; gap: 8px; flex-wrap: wrap; }
 .io-message { font-size: 12px; margin-top: 8px; font-family: monospace; animation: slideDown .3s ease-out; }
-.io-message.success { color: #1a7a4a; background: #edf7f1; padding: 8px 12px; border-radius: 6px; border: 1px solid #d4e8d4; box-shadow: 0 2px 8px rgba(26, 122, 74, .15); animation: slideDown .3s ease-out, celebrateGlow 1.6s ease-in-out; }
+.io-message.success { color: #1a7a4a; background: #edf7f1; padding: 8px 12px; border-radius: 6px; border: 1px solid #d4e8d4; box-shadow: 0 2px 8px rgba(26, 122, 74, .15); animation: slideDown .3s ease-out, celebrateGlow 2.8s ease-in-out; }
 .io-message.error { color: #c0392b; background: #fdf0ef; padding: 8px 12px; border-radius: 6px; border: 1px solid #f5c6c0; box-shadow: 0 2px 8px rgba(192, 57, 43, .15); }
 
 /* Ledger IO section inside summary card */
@@ -2092,7 +2179,7 @@ input:focus, select:focus { outline: none; }
   animation: pulse 1.5s ease-in-out infinite;
 }
 .row-deleting {
-  animation: explodeOut .82s ease forwards;
+  animation: explodeOut 1.5s ease forwards;
   pointer-events: none;
 }
 .delete-blessing {
@@ -2117,7 +2204,7 @@ input:focus, select:focus { outline: none; }
   box-shadow: 0 4px 12px rgba(192, 57, 43, 0.32);
   font-size: 16px;
   font-weight: 700;
-  animation: blessingBurst .82s ease forwards;
+  animation: blessingBurst 1.5s ease forwards;
 }
 .blessing-char:nth-child(1) { --dx: -70px; --dy: -36px; }
 .blessing-char:nth-child(2) { --dx: -20px; --dy: -64px; }
@@ -2151,6 +2238,12 @@ input:focus, select:focus { outline: none; }
   22% { opacity: 1; }
   70% { transform: translate(var(--dx), calc(var(--dy) * 1.1)) scale(1.1); opacity: 1; }
   100% { transform: translate(calc(var(--dx) * 1.35), calc(var(--dy) * 1.5)) scale(0.76); opacity: 0; }
+}
+@keyframes blessingLoop {
+  0% { transform: translate(0, 0) scale(0.86); opacity: 0; }
+  20% { opacity: 1; }
+  55% { transform: translate(var(--dx), calc(var(--dy) * 0.8)) scale(1.05); opacity: 1; }
+  100% { transform: translate(calc(var(--dx) * 1.15), calc(var(--dy) * 1.2)) scale(0.85); opacity: 0; }
 }
 
 .row-head {
