@@ -34,7 +34,7 @@ class Ledger(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
-    # 关系
+    # 关系 - 不使用级联删除
     user = relationship("User", back_populates="ledgers")
 
 
@@ -42,7 +42,6 @@ class Holding(Base):
     __tablename__ = "holdings"
 
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    ledger_id = Column(Integer, ForeignKey("ledgers.id"), nullable=False)
     market = Column(String(10), nullable=False)
     code = Column(String(20), nullable=False)
     name = Column(String(100), nullable=False)
@@ -50,14 +49,13 @@ class Holding(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
-    # 联合主键: user_id + ledger_id + market + code
+    # 联合主键: user_id + market + code (与生产环境一致)
     __table_args__ = (
-        PrimaryKeyConstraint('user_id', 'ledger_id', 'market', 'code', name='holdings_pkey'),
+        PrimaryKeyConstraint('user_id', 'market', 'code', name='holdings_pkey'),
     )
 
     # 关系 - 不使用级联删除
     user = relationship("User", back_populates="holdings")
-    ledger = relationship("Ledger")
     trades = relationship("Trade", back_populates="holding", order_by="Trade.date")
 
 
@@ -76,8 +74,8 @@ class Trade(Base):
 
     # 外键关联到 Holding 的联合主键 - 不使用级联删除
     __table_args__ = (
-        ForeignKeyConstraint(['user_id', 'ledger_id', 'market', 'code'], 
-                          ['holdings.user_id', 'holdings.ledger_id', 'holdings.market', 'holdings.code']),
+        ForeignKeyConstraint(['user_id', 'market', 'code'], 
+                          ['holdings.user_id', 'holdings.market', 'holdings.code']),
     )
 
     # 关系
@@ -94,5 +92,5 @@ class UserSetting(Base):
     auto_refresh = Column(Boolean, default=True)
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
-    # 关系
+    # 关系 - 不使用级联删除
     user = relationship("User", back_populates="settings")

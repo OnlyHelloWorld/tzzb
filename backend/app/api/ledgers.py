@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.models import User, Ledger
+from app.core.models import User, Ledger, Holding, Trade
 from app.core.schemas import LedgerCreate, LedgerResponse, LedgerUpdate
 from app.api.auth import get_current_user
 
@@ -129,6 +129,7 @@ async def delete_ledger(
     """删除账本"""
     logger.info(f"用户 {user.username} 开始删除账本: ID={ledger_id}")
     try:
+        # 1. 查询账本
         result = await db.execute(
             select(Ledger)
             .where(Ledger.id == ledger_id, Ledger.user_id == user.id)
@@ -139,6 +140,11 @@ async def delete_ledger(
             raise HTTPException(status_code=404, detail="账本不存在")
 
         ledger_name = ledger.name
+
+        # 注意：由于holdings表不再关联ledger_id，删除账本不会影响持仓数据
+        # 如果需要删除关联的持仓，需要在前端或其他地方手动处理
+
+        # 2. 删除账本
         await db.delete(ledger)
         await db.commit()
         logger.info(f"用户 {user.username} 删除账本成功: {ledger_name}")

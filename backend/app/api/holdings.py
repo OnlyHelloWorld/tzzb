@@ -22,17 +22,16 @@ router = APIRouter(prefix="/holdings", tags=["持仓"])
 
 @router.get("", response_model=List[HoldingResponse])
 async def get_holdings(
-    ledger_id: int,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """获取指定账本的所有持仓"""
-    logger.info(f"用户 {user.username} 获取账本 {ledger_id} 的持仓数据")
+    """获取用户所有持仓"""
+    logger.info(f"用户 {user.username} 获取持仓数据")
     try:
         result = await db.execute(
             select(Holding)
             .options(selectinload(Holding.trades))
-            .where(Holding.user_id == user.id, Holding.ledger_id == ledger_id)
+            .where(Holding.user_id == user.id)
             .order_by(Holding.market, Holding.code)
         )
         holdings = result.scalars().all()
@@ -46,16 +45,23 @@ async def get_holdings(
 @router.post("", response_model=HoldingResponse)
 async def create_holding(
     req: HoldingCreate,
-    ledger_id: int,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """添加单个持仓"""
-    logger.info(f"用户 {user.username} 开始添加持仓: {req.code}, 账本ID: {ledger_id}")
+    logger.info(f"用户 {user.username} 开始添加持仓: {req.code}")
     try:
+        # 检查持仓是否已存在
+        existing = await db.execute(
+            select(Holding)
+            .where(Holding.user_id == user.id, Holding.market == req.market, Holding.code == req.code)
+        )
+        if existing.scalar_one_or_none():
+            logger.warning(f"用户 {user.username} 添加持仓失败: 持仓已存在 {req.market}/{req.code}")
+            raise HTTPException(status_code=400, detail="该持仓已存在")
+
         holding = Holding(
             user_id=user.id,
-            ledger_id=ledger_id,
             market=req.market,
             code=req.code,
             name=req.name,
@@ -68,7 +74,7 @@ async def create_holding(
         for t in req.trades:
             trade = Trade(
                 user_id=user.id,
-                ledger_id=ledger_id,
+                ledger_id=0,  # 不再关联账本
                 market=holding.market,
                 code=holding.code,
                 date=t.date, qty=t.qty, price=t.price, note=t.note
@@ -80,6 +86,8 @@ async def create_holding(
         await db.refresh(holding, ["trades"])
         logger.info(f"用户 {user.username} 添加持仓成功: {req.code}")
         return holding
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"用户 {user.username} 添加持仓失败: {req.code}, 错误: {str(e)}", exc_info=True)
         await db.rollback()
@@ -89,41 +97,44 @@ async def create_holding(
 @router.put("/bulk")
 async def bulk_save_holdings(
     req: HoldingBulkUpdate,
-    ledger_id: int,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """批量保存持仓（全量覆盖，与前端逻辑一致）"""
-    logger.info(f"用户 {user.username} 开始批量保存持仓: 账本ID={ledger_id}, 数量={len(req.holdings)}")
+    """批量保存持仓（全量覆盖）"""
+    logger.info(f"用户 {user.username} 开始批量保存持仓: 数量={len(req.holdings)}")
     try:
-        # 删除旧数据
+        # 1. 查询旧持仓
         result = await db.execute(
-            select(Holding)
-            .where(Holding.user_id == user.id, Holding.ledger_id == ledger_id)
+            select(Holding).where(Holding.user_id == user.id)
         )
         old_holdings = result.scalars().all()
-        logger.debug(f"用户 {user.username} 删除 {len(old_holdings)} 条旧持仓记录")
-        
-        # 先删除关联的trades
+        logger.debug(f"用户 {user.username} 找到 {len(old_holdings)} 条旧持仓记录")
+
+        # 2. 逐个删除旧持仓的trades
         for h in old_holdings:
             t_result = await db.execute(
-                select(Trade)
-                .where(
+                select(Trade).where(
                     Trade.user_id == user.id,
-                    Trade.ledger_id == ledger_id,
                     Trade.market == h.market,
                     Trade.code == h.code
                 )
             )
-            for t in t_result.scalars().all():
+            old_trades = t_result.scalars().all()
+            for t in old_trades:
                 await db.delete(t)
-            await db.delete(h)
+                logger.debug(f"删除交易记录: {h.market}/{h.code} - {t.date}")
 
-        # 写入新数据
+        # 3. 删除旧持仓
+        for h in old_holdings:
+            await db.delete(h)
+            logger.debug(f"删除持仓: {h.market}/{h.code}")
+
+        await db.flush()
+
+        # 4. 写入新数据
         for h in req.holdings:
             holding = Holding(
                 user_id=user.id,
-                ledger_id=ledger_id,
                 market=h.market,
                 code=h.code,
                 name=h.name,
@@ -136,7 +147,7 @@ async def bulk_save_holdings(
             for t in h.trades:
                 trade = Trade(
                     user_id=user.id,
-                    ledger_id=ledger_id,
+                    ledger_id=0,  # 不再关联账本
                     market=h.market,
                     code=h.code,
                     date=t.date,
@@ -149,12 +160,12 @@ async def bulk_save_holdings(
 
         await db.commit()
         logger.debug(f"用户 {user.username} 提交数据库事务")
-        
-        # 重新查询保存后的持仓
+
+        # 5. 重新查询保存后的持仓
         result = await db.execute(
             select(Holding)
             .options(selectinload(Holding.trades))
-            .where(Holding.user_id == user.id, Holding.ledger_id == ledger_id)
+            .where(Holding.user_id == user.id)
             .order_by(Holding.market, Holding.code)
         )
         saved_holdings = result.scalars().all()
@@ -167,23 +178,21 @@ async def bulk_save_holdings(
         raise HTTPException(status_code=500, detail="批量保存持仓失败")
 
 
-@router.delete("/{ledger_id}/{market}/{code}")
+@router.delete("/{market}/{code}")
 async def delete_holding(
-    ledger_id: int,
     market: str,
     code: str,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """删除持仓"""
-    logger.info(f"用户 {user.username} 开始删除持仓: {market}/{code}, 账本ID: {ledger_id}")
+    logger.info(f"用户 {user.username} 开始删除持仓: {market}/{code}")
     try:
+        # 1. 查询持仓
         result = await db.execute(
-            select(Holding)
-            .where(
-                Holding.user_id == user.id, 
-                Holding.ledger_id == ledger_id,
-                Holding.market == market, 
+            select(Holding).where(
+                Holding.user_id == user.id,
+                Holding.market == market,
                 Holding.code == code
             )
         )
@@ -192,20 +201,21 @@ async def delete_holding(
             logger.warning(f"用户 {user.username} 删除持仓失败: 持仓不存在 {market}/{code}")
             raise HTTPException(status_code=404, detail="持仓不存在")
 
-        # 删除关联 trades
+        # 2. 查询并删除关联的trades
         t_result = await db.execute(
-            select(Trade)
-            .where(
-                Trade.user_id == user.id, 
-                Trade.ledger_id == ledger_id,
-                Trade.market == market, 
+            select(Trade).where(
+                Trade.user_id == user.id,
+                Trade.market == market,
                 Trade.code == code
             )
         )
         trades = t_result.scalars().all()
-        logger.debug(f"用户 {user.username} 删除 {len(trades)} 条关联交易记录")
+        logger.debug(f"用户 {user.username} 找到 {len(trades)} 条关联交易记录")
         for t in trades:
             await db.delete(t)
+            logger.debug(f"删除交易记录: {t.date}")
+
+        # 3. 删除持仓
         await db.delete(holding)
 
         await db.commit()
