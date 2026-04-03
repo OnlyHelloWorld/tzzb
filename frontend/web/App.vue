@@ -61,10 +61,24 @@
           <p>创建多个账本，管理不同的投资组合</p>
         </div>
         <div class="ledgers-grid">
-          <div v-for="ledger in ledgers" :key="ledger.id" class="ledger-card" @click="switchLedger(ledger)">
-            <div class="ledger-card-header" :style="{ backgroundColor: ledger.color }"></div>
+          <div v-for="summary in ledgerSummaries" :key="summary.id" class="ledger-card" @click="switchLedger(summary)">
+            <div class="ledger-card-header" :style="{ backgroundColor: summary.color }"></div>
             <div class="ledger-card-body">
-              <h3>{{ ledger.name }}</h3>
+              <h3>{{ summary.name }}</h3>
+              <div class="ledger-summary">
+                <div class="summary-item">
+                  <span class="summary-label">总市值</span>
+                  <span class="summary-value">¥ {{ fmt(summary.totalCNY) }}</span>
+                </div>
+                <div class="summary-item">
+                  <span class="summary-label">持仓</span>
+                  <span class="summary-value">{{ summary.holdingCount }} 只</span>
+                </div>
+                <div class="summary-item" :class="{ 'pnl-green': summary.pnl >= 0, 'pnl-red': summary.pnl < 0 }">
+                  <span class="summary-label">盈亏</span>
+                  <span class="summary-value">{{ summary.pnl >= 0 ? '+' : '' }}¥{{ fmt(summary.pnl) }} ({{ summary.pct >= 0 ? '+' : '' }}{{ fmt(summary.pct, 1) }}%)</span>
+                </div>
+              </div>
               <p class="ledger-card-hint">点击进入账本</p>
             </div>
           </div>
@@ -518,6 +532,7 @@ export default {
 
     // Ledger state
     const ledgers = ref([])
+    const ledgerSummaries = ref([])
     const currentLedger = ref(null)
     const showLedgerList = ref(false)
     const createLedgerModal = ref(false)
@@ -551,6 +566,45 @@ export default {
     const ioMessage = ref('')
     const loginError = ref('')
     const isLoggedIn = ref(api.isLoggedIn())
+    // 计算单个账本的汇总信息
+    const calculateLedgerSummary = async (ledger) => {
+      try {
+        const holdings = await api.loadHoldings(ledger.id)
+        if (!holdings || holdings.length === 0) {
+          return { ...ledger, totalCNY: 0, pnl: 0, pct: 0, holdingCount: 0 }
+        }
+
+        let totalCostCNY = 0
+        let totalMVCNY = 0
+
+        for (const h of holdings) {
+          const ccy = MARKET_CCY[h.market]
+          const cost = avgCost(h.trades || [])
+          const qty = totalQty(h.trades)
+          const price = prices[h.code] || cost || 0
+          const costBasis = cost * qty
+          const mv = price * qty
+          
+          totalCostCNY += toCNY(costBasis, ccy, fx)
+          totalMVCNY += toCNY(mv, ccy, fx)
+        }
+
+        const pnl = totalMVCNY - totalCostCNY
+        const pct = totalCostCNY > 0 ? pnl / totalCostCNY * 100 : 0
+
+        return {
+          ...ledger,
+          totalCNY: totalMVCNY,
+          pnl,
+          pct,
+          holdingCount: holdings.length
+        }
+      } catch (err) {
+        console.warn(`计算账本 ${ledger.name} 汇总失败:`, err)
+        return { ...ledger, totalCNY: 0, pnl: 0, pct: 0, holdingCount: 0 }
+      }
+    }
+
     // 加载数据的函数
     const loadData = async () => {
       try {
@@ -559,14 +613,18 @@ export default {
         ledgers.value = savedLedgers || []
         console.log('加载到账本数据:', savedLedgers)
         
-        // 如果有账本，自动选择第一个
-        if (ledgers.value.length > 0 && !currentLedger.value) {
-          currentLedger.value = ledgers.value[0]
+        // 加载所有账本的汇总信息
+        const summaries = []
+        for (const ledger of ledgers.value) {
+          const summary = await calculateLedgerSummary(ledger)
+          summaries.push(summary)
         }
+        ledgerSummaries.value = summaries
       } catch (err) {
         console.warn('加载账本失败:', err)
         showIOMessage('加载账本失败: ' + err.message, true)
         ledgers.value = []
+        ledgerSummaries.value = []
       }
 
       if (currentLedger.value) {
@@ -717,10 +775,8 @@ export default {
       try {
         const newLedger = await api.createLedger(newLedgerName.value.trim(), newLedgerColor.value)
         ledgers.value.push(newLedger)
-        currentLedger.value = newLedger
         createLedgerModal.value = false
         showIOMessage('账本创建成功')
-        await loadData()
       } catch (err) {
         showIOMessage('创建账本失败: ' + err.message, true)
       }
@@ -1134,7 +1190,7 @@ export default {
       // Delete confirm
       deleteConfirm,
       // Ledger management
-      ledgers, currentLedger, showLedgerList,
+      ledgers, ledgerSummaries, currentLedger, showLedgerList,
       createLedgerModal, editLedgerModal, deleteLedgerConfirm,
       newLedgerName, newLedgerColor, editingLedger, ledgerColors,
       openCreateLedger, saveNewLedger, editLedger, saveEditLedger,
@@ -1292,6 +1348,43 @@ input:focus, select:focus { outline: none; }
   margin-bottom: 8px;
   color: #1a1814;
 }
+.ledger-summary {
+  margin: 16px 0;
+  padding: 12px;
+  background: #f9f7f3;
+  border-radius: 8px;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.summary-item:not(:last-child) {
+  border-bottom: 1px solid #ede9e2;
+}
+
+.summary-label {
+  font-size: 12px;
+  color: #888;
+}
+
+.summary-value {
+  font-size: 13px;
+  font-weight: 600;
+  font-family: monospace;
+}
+
+.ledger-summary .pnl-green .summary-value {
+  color: #1a7a4a;
+}
+
+.ledger-summary .pnl-red .summary-value {
+  color: #c0392b;
+}
+
 .ledger-card-hint {
   font-size: 12px;
   color: #999;

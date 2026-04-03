@@ -37,6 +37,15 @@ async def create_ledger(
     db: AsyncSession = Depends(get_db),
 ):
     """创建新账本"""
+    # 检查账本名称是否已存在
+    result = await db.execute(
+        select(Ledger)
+        .where(Ledger.user_id == user.id, Ledger.name == req.name)
+    )
+    existing_ledger = result.scalar_one_or_none()
+    if existing_ledger:
+        raise HTTPException(status_code=400, detail="账本名称已存在")
+    
     ledger = Ledger(
         user_id=user.id,
         name=req.name,
@@ -65,8 +74,16 @@ async def update_ledger(
     if not ledger:
         raise HTTPException(status_code=404, detail="账本不存在")
 
-    if req.name is not None:
+    if req.name is not None and req.name != ledger.name:
+        # 检查新名称是否已存在
+        name_check = await db.execute(
+            select(Ledger)
+            .where(Ledger.user_id == user.id, Ledger.name == req.name)
+        )
+        if name_check.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="账本名称已存在")
         ledger.name = req.name
+    
     if req.color is not None:
         ledger.color = req.color
 
