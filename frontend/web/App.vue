@@ -84,6 +84,16 @@
           </div>
         </div>
 
+        <!-- ── Import/Export for all ledgers ── -->
+        <div class="io-section" style="margin-top: 20px;">
+          <div class="io-label">账本导入导出</div>
+          <div class="io-btns">
+            <button class="btn btn-ghost" style="font-size:11px" @click="handleExportAllLedgersCSV">导出所有账本 CSV</button>
+            <button class="btn btn-ghost" style="font-size:11px" @click="triggerAllLedgersImport">导入账本 CSV</button>
+            <input ref="allLedgersImportInput" type="file" accept=".csv" style="display:none" @change="handleAllLedgersImport" />
+          </div>
+          <div v-if="ioMessage" class="io-message" :class="ioMessageClass">{{ ioMessage }}</div>
+        </div>
 
         <div class="ledgers-grid">
           <div v-for="summary in ledgerSummaries" :key="summary.id" class="ledger-card" @click="switchLedger(summary)">
@@ -161,11 +171,10 @@
         <div class="io-section">
           <div class="io-label">导入导出</div>
           <div class="io-btns">
-            <button class="btn btn-ghost" style="font-size:11px" @click="handleExportJSON">导出 JSON</button>
             <button class="btn btn-ghost" style="font-size:11px" @click="handleExportCSV">导出 CSV</button>
             <button class="btn btn-ghost" style="font-size:11px" @click="handleExportPDF">导出 PDF</button>
-            <button class="btn btn-ghost" style="font-size:11px" @click="triggerImport">导入 JSON</button>
-            <input ref="importInput" type="file" accept=".json" style="display:none" @change="handleImport" />
+            <button class="btn btn-ghost" style="font-size:11px" @click="triggerImport">导入 CSV</button>
+            <input ref="importInput" type="file" accept=".csv" style="display:none" @change="handleImport" />
           </div>
           <div v-if="ioMessage" class="io-message" :class="ioMessageClass">{{ ioMessage }}</div>
         </div>
@@ -498,7 +507,7 @@ import Tag from './components/Tag.vue'
 import LoginPage from './components/LoginPage.vue'
 import { fetchQuotes, fetchQuote, fetchFxRates } from './lib/quoteApi.js'
 import * as api from './lib/api.js'
-import { exportJSON, importJSON, exportCSV, exportPDF } from './lib/io.js'
+import { exportCSV, exportPDF, importCSV, exportAllLedgersCSV } from './lib/io.js'
 
 // ─── Constants ──────────────────────────────────────────────────
 const SYM = { CNY: '¥', HKD: 'HK$', USD: '$' }
@@ -586,6 +595,7 @@ export default {
 
     // IO state
     const importInput = ref(null)
+    const allLedgersImportInput = ref(null)
     const ioMessage = ref('')
     const loginError = ref('')
     const isLoggedIn = ref(api.isLoggedIn())
@@ -947,15 +957,6 @@ export default {
     }
 
     // ─── Update export functions ─────────────────────────────────
-    function handleExportJSON() {
-      try {
-        exportJSON(holdings.value, { fx: { USD: fx.USD, HKD: fx.HKD }, autoRefresh: autoRefresh.value })
-        showIOMessage('JSON 导出成功')
-      } catch (err) {
-        showIOMessage('导出失败: ' + err.message, true)
-      }
-    }
-
     function handleExportCSV() {
       try {
         exportCSV(holdings.value, prices, fx)
@@ -972,6 +973,60 @@ export default {
       } catch (err) {
         showIOMessage('导出失败: ' + err.message, true)
       }
+    }
+
+    // ─── All ledgers export/import ─────────────────────────────────
+    function handleExportAllLedgersCSV() {
+      try {
+        const ledgerHoldings = {}
+        for (const ledger of ledgers.value) {
+          ledgerHoldings[ledger.id] = []
+        }
+        exportAllLedgersCSV(ledgers.value, ledgerHoldings, prices, fx)
+        showIOMessage('所有账本 CSV 导出成功')
+      } catch (err) {
+        showIOMessage('导出失败: ' + err.message, true)
+      }
+    }
+
+    function triggerAllLedgersImport() {
+      if (allLedgersImportInput.value) allLedgersImportInput.value.click()
+    }
+
+    async function handleAllLedgersImport(event) {
+      const file = event.target.files?.[0]
+      if (!file) return
+
+      try {
+        const data = await importCSV(file)
+        
+        if (data.isMultiLedger) {
+          for (const ledger of data.ledgers) {
+            const newLedger = await api.createLedger(ledger.name, ledger.color)
+            const holdingsToSave = data.ledgerHoldings[ledger.id] || []
+            if (holdingsToSave.length > 0) {
+              currentLedger.value = newLedger
+              await api.saveHoldings(holdingsToSave)
+            }
+          }
+          currentLedger.value = null
+          await loadData()
+          showIOMessage(`导入成功，共 ${data.ledgers.length} 个账本`)
+        } else {
+          if (currentLedger.value) {
+            holdings.value = data.holdings
+            await api.saveHoldings(holdings.value)
+            showIOMessage(`导入成功，共 ${data.holdings.length} 条持仓`)
+          } else {
+            showIOMessage('请先选择一个账本再导入', true)
+          }
+        }
+        refreshQuotes()
+      } catch (err) {
+        showIOMessage('导入失败: ' + err.message, true)
+      }
+
+      if (allLedgersImportInput.value) allLedgersImportInput.value.value = ''
     }
 
     // ─── Quote & FX refresh ───────────────────────────────────────
@@ -1050,33 +1105,6 @@ export default {
       setTimeout(() => { ioMessage.value = '' }, 3000)
     }
 
-    function handleExportJSON() {
-      try {
-        exportJSON(holdings.value, { fx: { USD: fx.USD, HKD: fx.HKD }, autoRefresh: autoRefresh.value })
-        showIOMessage('JSON 导出成功')
-      } catch (err) {
-        showIOMessage('导出失败: ' + err.message, true)
-      }
-    }
-
-    function handleExportCSV() {
-      try {
-        exportCSV(holdings.value, prices, fx)
-        showIOMessage('CSV 导出成功')
-      } catch (err) {
-        showIOMessage('导出失败: ' + err.message, true)
-      }
-    }
-
-    async function handleExportPDF() {
-      try {
-        await exportPDF(holdings.value, prices, fx)
-        showIOMessage('PDF 导出成功')
-      } catch (err) {
-        showIOMessage('导出失败: ' + err.message, true)
-      }
-    }
-
     function triggerImport() {
       if (importInput.value) importInput.value.click()
     }
@@ -1086,23 +1114,29 @@ export default {
       if (!file) return
 
       try {
-        const data = await importJSON(file)
-        holdings.value = data.holdings
-        if (data.settings?.fx) {
-          fx.USD = data.settings.fx.USD ?? fx.USD
-          fx.HKD = data.settings.fx.HKD ?? fx.HKD
+        const data = await importCSV(file)
+        if (data.isMultiLedger) {
+          for (const ledger of data.ledgers) {
+            const newLedger = await api.createLedger(ledger.name, ledger.color)
+            const holdingsToSave = data.ledgerHoldings[ledger.id] || []
+            if (holdingsToSave.length > 0) {
+              currentLedger.value = newLedger
+              await api.saveHoldings(holdingsToSave)
+            }
+          }
+          currentLedger.value = null
+          await loadData()
+          showIOMessage(`导入成功，共 ${data.ledgers.length} 个账本`)
+        } else {
+          holdings.value = data.holdings
+          await api.saveHoldings(holdings.value)
+          showIOMessage(`导入成功，共 ${data.holdings.length} 条持仓`)
         }
-        if (data.settings?.autoRefresh !== undefined) {
-          autoRefresh.value = data.settings.autoRefresh
-        }
-        showIOMessage(`导入成功，共 ${data.holdings.length} 条持仓`)
-        // Refresh quotes after import
         refreshQuotes()
       } catch (err) {
         showIOMessage('导入失败: ' + err.message, true)
       }
 
-      // Reset file input
       if (importInput.value) importInput.value.value = ''
     }
 
@@ -1302,8 +1336,9 @@ export default {
       // Quote
       quoteStatus, quoteError, lastQuoteTime, refreshQuotes, refreshSingleQuote,
       // IO
-      importInput, ioMessage, ioMessageClass,
-      handleExportJSON, handleExportCSV, handleExportPDF, triggerImport, handleImport,
+      importInput, allLedgersImportInput, ioMessage, ioMessageClass,
+      handleExportCSV, handleExportPDF, triggerImport, handleImport,
+      handleExportAllLedgersCSV, triggerAllLedgersImport, handleAllLedgersImport,
       // Trade actions
       updateTrade, deleteTrade, deleteHolding, confirmDeleteHolding, cancelDelete, toggleReset, cancelReset, resetCost,
       openAddTrade, saveAddTrade, saveNewHolding,
