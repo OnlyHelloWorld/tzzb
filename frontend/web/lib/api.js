@@ -145,10 +145,10 @@ export async function deleteLedger(ledgerId) {
 }
 
 // ─── 持仓 ─────────────────────────────────────────────────────
-export async function loadHoldings(ledgerId) {
-  console.log('开始加载持仓数据，账本ID:', ledgerId)
+export async function loadHoldings() {
+  console.log('开始加载持仓数据')
   try {
-    const data = await request(`/holdings?ledger_id=${ledgerId}`)
+    const data = await request('/holdings')
     console.log('加载持仓数据成功:', data)
     return data
   } catch (error) {
@@ -157,8 +157,8 @@ export async function loadHoldings(ledgerId) {
   }
 }
 
-export async function saveHoldings(holdings, ledgerId) {
-  console.log('开始保存持仓数据，持仓数量:', holdings.length, '账本ID:', ledgerId)
+export async function saveHoldings(holdings) {
+  console.log('开始保存持仓数据，持仓数量:', holdings.length)
   try {
     // 转换前端格式为后端格式
     const data = holdings.map(h => ({
@@ -174,7 +174,7 @@ export async function saveHoldings(holdings, ledgerId) {
       })),
     }))
     console.log('转换后的持仓数据:', data)
-    const result = await request(`/holdings/bulk?ledger_id=${ledgerId}`, {
+    const result = await request('/holdings/bulk', {
       method: 'PUT',
       body: JSON.stringify({ holdings: data }),
     })
@@ -186,8 +186,8 @@ export async function saveHoldings(holdings, ledgerId) {
   }
 }
 
-export async function deleteHolding(ledgerId, market, code) {
-  return request(`/holdings/${ledgerId}/${market}/${code}`, { method: 'DELETE' })
+export async function deleteHolding(market, code) {
+  return request(`/holdings/${market}/${code}`, { method: 'DELETE' })
 }
 
 // ─── 设置 ─────────────────────────────────────────────────────
