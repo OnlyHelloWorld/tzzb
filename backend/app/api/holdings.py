@@ -79,6 +79,7 @@ async def create_holding(
 
         for t in req.trades:
             trade = Trade(
+                holding_id=holding.id,
                 user_id=user.id,
                 ledger_id=req.ledger_id,
                 market=holding.market,
@@ -157,6 +158,7 @@ async def bulk_save_holdings(
 
             for t in h.trades:
                 trade = Trade(
+                    holding_id=holding.id,
                     user_id=user.id,
                     ledger_id=req.ledger_id,
                     market=h.market,

@@ -73,6 +73,7 @@ class HoldingCreate(HoldingBase):
 
 
 class HoldingResponse(HoldingBase):
+    id: int
     user_id: int
     ledger_id: int
     trades: List[TradeResponse] = []
