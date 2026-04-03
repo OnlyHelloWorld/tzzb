@@ -64,7 +64,6 @@ class Trade(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, nullable=False)
-    ledger_id = Column(Integer, nullable=False)
     market = Column(String(10), nullable=False)
     code = Column(String(20), nullable=False)
     date = Column(String(10), nullable=False)

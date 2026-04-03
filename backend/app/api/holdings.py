@@ -74,7 +74,6 @@ async def create_holding(
         for t in req.trades:
             trade = Trade(
                 user_id=user.id,
-                ledger_id=0,  # 不再关联账本
                 market=holding.market,
                 code=holding.code,
                 date=t.date, qty=t.qty, price=t.price, note=t.note
@@ -147,7 +146,6 @@ async def bulk_save_holdings(
             for t in h.trades:
                 trade = Trade(
                     user_id=user.id,
-                    ledger_id=0,  # 不再关联账本
                     market=h.market,
                     code=h.code,
                     date=t.date,
