@@ -2,7 +2,7 @@
 settings.py — 设置路由
 """
 import logging
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,15 +21,22 @@ async def get_settings(
     db: AsyncSession = Depends(get_db),
 ):
     """获取用户设置"""
-    result = await db.execute(select(UserSetting).where(UserSetting.user_id == user.id))
-    setting = result.scalar_one_or_none()
-    if not setting:
-        return SettingsResponse()
-    return SettingsResponse(
-        fx_usd=setting.fx_usd,
-        fx_hkd=setting.fx_hkd,
-        auto_refresh=setting.auto_refresh,
-    )
+    logger.info(f"用户 {user.username} 获取设置")
+    try:
+        result = await db.execute(select(UserSetting).where(UserSetting.user_id == user.id))
+        setting = result.scalar_one_or_none()
+        if not setting:
+            logger.debug(f"用户 {user.username} 暂无设置，返回默认值")
+            return SettingsResponse()
+        logger.debug(f"用户 {user.username} 获取设置成功")
+        return SettingsResponse(
+            fx_usd=setting.fx_usd,
+            fx_hkd=setting.fx_hkd,
+            auto_refresh=setting.auto_refresh,
+        )
+    except Exception as e:
+        logger.error(f"用户 {user.username} 获取设置失败: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="获取设置失败")
 
 
 @router.put("")
@@ -39,20 +46,28 @@ async def update_settings(
     db: AsyncSession = Depends(get_db),
 ):
     """更新用户设置"""
-    result = await db.execute(select(UserSetting).where(UserSetting.user_id == user.id))
-    setting = result.scalar_one_or_none()
+    logger.info(f"用户 {user.username} 开始更新设置")
+    try:
+        result = await db.execute(select(UserSetting).where(UserSetting.user_id == user.id))
+        setting = result.scalar_one_or_none()
 
-    if not setting:
-        setting = UserSetting(user_id=user.id)
-        db.add(setting)
+        is_new = False
+        if not setting:
+            setting = UserSetting(user_id=user.id)
+            db.add(setting)
+            is_new = True
 
-    if req.fx_usd is not None:
-        setting.fx_usd = req.fx_usd
-    if req.fx_hkd is not None:
-        setting.fx_hkd = req.fx_hkd
-    if req.auto_refresh is not None:
-        setting.auto_refresh = req.auto_refresh
+        if req.fx_usd is not None:
+            setting.fx_usd = req.fx_usd
+        if req.fx_hkd is not None:
+            setting.fx_hkd = req.fx_hkd
+        if req.auto_refresh is not None:
+            setting.auto_refresh = req.auto_refresh
 
-    await db.commit()
-    logger.info(f"用户 {user.username} 更新设置")
-    return {"ok": True}
+        await db.commit()
+        logger.info(f"用户 {user.username} 更新设置成功: 新建={is_new}")
+        return {"ok": True}
+    except Exception as e:
+        logger.error(f"用户 {user.username} 更新设置失败: {str(e)}", exc_info=True)
+        await db.rollback()
+        raise HTTPException(status_code=500, detail="更新设置失败")

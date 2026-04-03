@@ -8,8 +8,9 @@ from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
 from pathlib import Path
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.core.config import settings
 from app.core.database import init_db
@@ -109,6 +110,37 @@ def create_app() -> FastAPI:
         version="1.0.0",
         lifespan=lifespan,
     )
+
+    # 请求日志中间件
+    @app.middleware("http")
+    async def log_requests(request: Request, call_next):
+        logger = logging.getLogger(__name__)
+        logger.info(f"请求开始: {request.method} {request.url.path}")
+        
+        try:
+            response = await call_next(request)
+            logger.info(f"请求完成: {request.method} {request.url.path} - 状态码: {response.status_code}")
+            return response
+        except Exception as e:
+            logger.error(f"请求异常: {request.method} {request.url.path} - 错误: {str(e)}", exc_info=True)
+            raise
+
+    # 全局异常处理器
+    @app.exception_handler(Exception)
+    async def global_exception_handler(request: Request, exc: Exception):
+        logger = logging.getLogger(__name__)
+        logger.error(f"未捕获的异常: {request.method} {request.url.path}", exc_info=True)
+        
+        if isinstance(exc, HTTPException):
+            return JSONResponse(
+                status_code=exc.status_code,
+                content={"detail": exc.detail}
+            )
+        
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "服务器内部错误"}
+        )
 
     # CORS
     app.add_middleware(
