@@ -437,7 +437,7 @@
           </div>
           <div class="form-row">
             <div class="form-label">股票代码</div>
-            <input class="form-control" placeholder="如 600519" v-model="newForm.code" @blur="onCodeChange(newForm.code)" />
+            <input class="form-control" placeholder="如 600519" v-model="newForm.code" @blur="newForm.code = newForm.code.toUpperCase().trim(); onCodeChange(newForm.code)" />
           </div>
           <div class="form-row">
             <div class="form-label">股票名称{{ nameLoading ? ' (获取中…)' : '' }}</div>
@@ -701,89 +701,92 @@ export default {
     const loadData = async () => {
       isLoading.value = true
       try {
-        // 首先加载账本数据
-        const savedLedgers = await api.loadLedgers()
-        ledgers.value = savedLedgers || []
-        console.log('加载到账本数据:', savedLedgers)
-        
-        // 加载所有持仓数据（用于所有账本汇总）
         try {
-          const allHoldings = await api.loadHoldings()
-          allLedgersHoldings.value = allHoldings || []
-          console.log('加载到所有持仓数据:', allHoldings)
+          // 首先加载账本数据
+          const savedLedgers = await api.loadLedgers()
+          ledgers.value = savedLedgers || []
+          console.log('加载到账本数据:', savedLedgers)
           
-          // 为所有持仓设置价格
-          for (const h of allLedgersHoldings.value) {
-            if (!(h.code in prices)) {
-              const cost = avgCost(h.trades || [])
-              prices[h.code] = cost || 0
+          // 加载所有持仓数据（用于所有账本汇总）
+          try {
+            const allHoldings = await api.loadHoldings()
+            allLedgersHoldings.value = allHoldings || []
+            console.log('加载到所有持仓数据:', allHoldings)
+            
+            // 为所有持仓设置价格
+            for (const h of allLedgersHoldings.value) {
+              if (!(h.code in prices)) {
+                const cost = avgCost(h.trades || [])
+                prices[h.code] = cost || 0
+              }
             }
+          } catch (err) {
+            console.warn('加载所有持仓失败:', err)
+            allLedgersHoldings.value = []
           }
+          
+          // 加载所有账本的汇总信息
+          const summaries = []
+          for (const ledger of ledgers.value) {
+            const summary = await calculateLedgerSummary(ledger)
+            summaries.push(summary)
+          }
+          ledgerSummaries.value = summaries
         } catch (err) {
-          console.warn('加载所有持仓失败:', err)
+          console.warn('加载账本失败:', err)
+          showIOMessage('加载账本失败: ' + err.message, true)
+          ledgers.value = []
+          ledgerSummaries.value = []
           allLedgersHoldings.value = []
         }
-        
-        // 加载所有账本的汇总信息
-        const summaries = []
-        for (const ledger of ledgers.value) {
-          const summary = await calculateLedgerSummary(ledger)
-          summaries.push(summary)
-        }
-        ledgerSummaries.value = summaries
-      } catch (err) {
-        console.warn('加载账本失败:', err)
-        showIOMessage('加载账本失败: ' + err.message, true)
-        ledgers.value = []
-        ledgerSummaries.value = []
-        allLedgersHoldings.value = []
-      }
 
-      if (currentLedger.value) {
-        try {
-          const savedHoldings = await api.loadHoldings(currentLedger.value.id)
-          // 无论是否有数据，都更新 holdings
-          holdings.value = savedHoldings || []
-          if (savedHoldings && savedHoldings.length > 0) {
-            const maxId = Math.max(...savedHoldings.flatMap(h => (h.trades || []).map(t => t.id)), ...savedHoldings.map(h => h.id), 0)
-            _id = maxId + 1
-          } else {
-            _id = 100 // 重置 ID 计数器
+        if (currentLedger.value) {
+          try {
+            const savedHoldings = await api.loadHoldings(currentLedger.value.id)
+            // 无论是否有数据，都更新 holdings
+            holdings.value = savedHoldings || []
+            if (savedHoldings && savedHoldings.length > 0) {
+              const maxId = Math.max(...savedHoldings.flatMap(h => (h.trades || []).map(t => t.id)), ...savedHoldings.map(h => h.id), 0)
+              _id = maxId + 1
+            } else {
+              _id = 100 // 重置 ID 计数器
+            }
+            console.log('加载到持仓数据:', savedHoldings)
+          } catch (err) {
+            console.warn('加载持仓失败:', err)
+            showIOMessage('加载持仓失败: ' + err.message, true)
+            // 加载失败时保持为空数组，避免显示已删除的持仓
+            holdings.value = []
+            _id = 100
           }
-          console.log('加载到持仓数据:', savedHoldings)
-        } catch (err) {
-          console.warn('加载持仓失败:', err)
-          showIOMessage('加载持仓失败: ' + err.message, true)
-          // 加载失败时保持为空数组，避免显示已删除的持仓
+        } else {
           holdings.value = []
-          _id = 100
         }
-      } else {
-        holdings.value = []
-      }
 
-      try {
-        const savedSettings = await api.loadSettings()
-        if (savedSettings) {
-          fx.USD = savedSettings.fx_usd || fx.USD
-          fx.HKD = savedSettings.fx_hkd || fx.HKD
-          autoRefresh.value = savedSettings.auto_refresh !== false
+        try {
+          const savedSettings = await api.loadSettings()
+          if (savedSettings) {
+            fx.USD = savedSettings.fx_usd || fx.USD
+            fx.HKD = savedSettings.fx_hkd || fx.HKD
+            autoRefresh.value = savedSettings.auto_refresh !== false
+          }
+        } catch (err) {
+          console.warn('加载设置失败:', err)
+          showIOMessage('加载设置失败: ' + err.message, true)
         }
-      } catch (err) {
-        console.warn('加载设置失败:', err)
-        showIOMessage('加载设置失败: ' + err.message, true)
-      }
 
-      // 为当前账本持仓设置价格（如果还没有设置）
-      for (const h of holdings.value) {
-        if (!(h.code in prices)) {
-          const cost = avgCost(h.trades || [])
-          prices[h.code] = cost || 0
+        // 为当前账本持仓设置价格（如果还没有设置）
+        for (const h of holdings.value) {
+          if (!(h.code in prices)) {
+            const cost = avgCost(h.trades || [])
+            prices[h.code] = cost || 0
+          }
         }
-      }
 
-      refreshQuotes()
-      isLoading.value = false
+        refreshQuotes()
+      } finally {
+        isLoading.value = false
+      }
     }
 
     const handleLogin = async () => {
@@ -1433,7 +1436,9 @@ export default {
       createLedgerModal, editLedgerModal, deleteLedgerConfirm,
       newLedgerName, newLedgerColor, editingLedger, ledgerColors,
       openCreateLedger, saveNewLedger, editLedger, saveEditLedger,
-      confirmDeleteLedger, deleteSelectedLedger, switchLedger, goHome
+      confirmDeleteLedger, deleteSelectedLedger, switchLedger, goHome,
+      // Global state
+      isLoading
     }
   }
 }
