@@ -298,20 +298,18 @@
             </template>
           </div>
 
-          <!-- Price edit -->
+          <!-- Price refresh -->
           <div class="price-edit-row">
             <span class="price-label">当前价格</span>
-            <template v-if="editPrice && editPrice.code === h.code">
-              <input class="field field-sm" type="number" v-model="editPrice.val" />
-              <button class="btn btn-save" style="font-size:11px"
-                @click="prices[h.code] = +editPrice.val; editPrice = null">确认</button>
-              <button class="btn btn-ghost" style="font-size:11px" @click="editPrice = null">取消</button>
-            </template>
-            <template v-else>
-              <span class="mono" style="font-size:13px;font-weight:600">{{ SYM[h.ccy] }}{{ fmt(h.price) }}</span>
-              <button class="btn btn-ghost" style="font-size:11px"
-                @click="editPrice = { code: h.code, val: h.price }">更新价格</button>
-            </template>
+            <span class="mono" style="font-size:13px;font-weight:600">{{ SYM[h.ccy] }}{{ fmt(h.price) }}</span>
+            <button class="btn btn-ghost" style="font-size:11px"
+              @click="refreshSingleQuote(h)">
+              <svg :class="{ 'spin': h.refreshing }" width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:middle;margin-right:3px">
+                <path d="M1.5 7a5.5 5.5 0 0 1 9.3-3.95M12.5 7a5.5 5.5 0 0 1-9.3 3.95" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                <path d="M10.8.5v2.55h-2.55M3.2 13.5v-2.55h2.55" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              {{ h.refreshing ? '刷新中…' : '刷新' }}
+            </button>
           </div>
         </div>
       </div>
@@ -579,7 +577,6 @@ export default {
       addError.value = ''
       addHolding.value = true
     }
-    const editPrice = ref(null)
 
     // Quote state
     const quoteStatus = ref('idle') // idle | loading | ok | error
@@ -1168,6 +1165,21 @@ export default {
       }
     }
 
+    const refreshSingleQuote = async (holding) => {
+      try {
+        holding.refreshing = true
+        const quote = await fetchQuote(holding.market, holding.code)
+        if (quote && quote.price > 0) {
+          prices[holding.code] = quote.price
+        }
+      } catch (err) {
+        console.warn(`刷新 ${holding.name} 行情失败:`, err)
+        showIOMessage(`刷新 ${holding.name} 行情失败`, true)
+      } finally {
+        holding.refreshing = false
+      }
+    }
+
     const cancelReset = () => {
       resetTarget.value = null
       resetPrice.value = ''
@@ -1283,12 +1295,12 @@ export default {
       SYM, TABS, fxList,
       holdings, prices, fx, autoRefresh, tab, expanded, editingTrade,
       resetTarget, resetPrice, addTradeTarget, addTradeForm,
-      addHolding, newForm, editPrice, openAddHolding,
+      addHolding, newForm, openAddHolding,
       enriched, summary, filtered, ccyBreakdown,
       allLedgersHoldings, allLedgersSummary, allLedgersCcyBreakdown,
       fmt, toCNY,
       // Quote
-      quoteStatus, quoteError, lastQuoteTime, refreshQuotes,
+      quoteStatus, quoteError, lastQuoteTime, refreshQuotes, refreshSingleQuote,
       // IO
       importInput, ioMessage, ioMessageClass,
       handleExportJSON, handleExportCSV, handleExportPDF, triggerImport, handleImport,
