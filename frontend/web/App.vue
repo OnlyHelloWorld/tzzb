@@ -31,7 +31,7 @@
               <circle cx="8" cy="13" r="1.5" fill="currentColor"/>
             </svg>
           </button>
-          <div v-if="showActionsMenu" class="actions-dropdown">
+          <div v-if="showActionsMenu" class="actions-dropdown show">
             <button v-if="currentLedger" class="action-item" @click="openAddHolding">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="margin-right:8px">
                 <path d="M7 3v8M3 7h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
@@ -64,7 +64,7 @@
       </div>
       
       <!-- Ledger dropdown -->
-      <div v-if="showLedgerList" class="ledger-dropdown">
+      <div v-if="showLedgerList" class="ledger-dropdown show">
         <div v-for="ledger in ledgers" :key="ledger.id" class="ledger-item" @click="switchLedger(ledger)">
           <div class="ledger-color" :style="{ backgroundColor: ledger.color }"></div>
           <div class="ledger-info">
@@ -78,7 +78,8 @@
       </div>
     </div>
 
-    <div class="main-content">
+    <transition name="page" mode="out-in">
+      <div class="main-content" :key="currentLedger ? currentLedger.id : 'home'">
       <!-- Ledger management page -->
       <div v-if="!currentLedger" class="ledger-management">
         <!-- 所有账本汇总卡片 -->
@@ -119,36 +120,38 @@
         </div>
 
         <div class="ledgers-grid">
-          <div v-for="summary in ledgerSummaries" :key="summary.id" class="ledger-card" @click="switchLedger(summary)">
-            <div class="ledger-card-header" :style="{ backgroundColor: summary.color }"></div>
-            <div class="ledger-card-body">
-              <h3>{{ summary.name }}</h3>
-              <div class="ledger-summary">
-                <div class="summary-item">
-                  <span class="summary-label">总市值</span>
-                  <span class="summary-value">¥ {{ fmt(summary.totalCNY) }}</span>
+          <transition-group name="ledger-cards" tag="div" class="ledgers-grid">
+            <div v-for="summary in ledgerSummaries" :key="summary.id" class="ledger-card" @click="switchLedger(summary)">
+              <div class="ledger-card-header" :style="{ backgroundColor: summary.color }"></div>
+              <div class="ledger-card-body">
+                <h3>{{ summary.name }}</h3>
+                <div class="ledger-summary">
+                  <div class="summary-item">
+                    <span class="summary-label">总市值</span>
+                    <span class="summary-value">¥ {{ fmt(summary.totalCNY) }}</span>
+                  </div>
+                  <div class="summary-item">
+                    <span class="summary-label">持仓</span>
+                    <span class="summary-value">{{ summary.holdingCount }} 只</span>
+                  </div>
+                  <div class="summary-item" :class="{ 'pnl-green': summary.pnl >= 0, 'pnl-red': summary.pnl < 0 }">
+                    <span class="summary-label">盈亏</span>
+                    <span class="summary-value">{{ summary.pnl >= 0 ? '+' : '' }}¥{{ fmt(summary.pnl) }} ({{ summary.pct >= 0 ? '+' : '' }}{{ fmt(summary.pct, 1) }}%)</span>
+                  </div>
                 </div>
-                <div class="summary-item">
-                  <span class="summary-label">持仓</span>
-                  <span class="summary-value">{{ summary.holdingCount }} 只</span>
-                </div>
-                <div class="summary-item" :class="{ 'pnl-green': summary.pnl >= 0, 'pnl-red': summary.pnl < 0 }">
-                  <span class="summary-label">盈亏</span>
-                  <span class="summary-value">{{ summary.pnl >= 0 ? '+' : '' }}¥{{ fmt(summary.pnl) }} ({{ summary.pct >= 0 ? '+' : '' }}{{ fmt(summary.pct, 1) }}%)</span>
-                </div>
+                <p class="ledger-card-hint">点击进入账本</p>
               </div>
-              <p class="ledger-card-hint">点击进入账本</p>
             </div>
-          </div>
-          <div class="ledger-card ledger-card-empty" @click="openCreateLedger">
-            <div class="ledger-card-empty-content">
-              <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-                <circle cx="24" cy="24" r="22" stroke="#ddd" stroke-width="2"/>
-                <path d="M24 16v16M16 24h16" stroke="#ddd" stroke-width="2" stroke-linecap="round"/>
-              </svg>
-              <p>创建新账本</p>
+            <div key="empty" class="ledger-card ledger-card-empty" @click="openCreateLedger">
+              <div class="ledger-card-empty-content">
+                <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                  <circle cx="24" cy="24" r="22" stroke="#ddd" stroke-width="2"/>
+                  <path d="M24 16v16M16 24h16" stroke="#ddd" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <p>创建新账本</p>
+              </div>
             </div>
-          </div>
+          </transition-group>
         </div>
       </div>
       
@@ -223,8 +226,9 @@
       </div>
 
       <!-- ── Holdings ── -->
-      <div v-for="h in filtered" :key="`${h.market}-${h.code}`" class="row">
-        <div class="row-head" @click="expanded = expanded === `${h.market}-${h.code}` ? null : `${h.market}-${h.code}`">
+      <transition-group name="holdings-list" tag="div">
+        <div v-for="h in filtered" :key="`${h.market}-${h.code}`" class="row">
+          <div class="row-head" @click="expanded = expanded === `${h.market}-${h.code}` ? null : `${h.market}-${h.code}`">
           <div>
             <div class="name-row">
               <span class="stock-name">{{ h.name }}</span>
@@ -262,7 +266,7 @@
         </div>
 
         <!-- Trade zone -->
-        <div v-if="expanded === `${h.market}-${h.code}`" class="trade-zone">
+        <div v-if="expanded === `${h.market}-${h.code}`" class="trade-zone expanding">
           <div class="trade-header">
             <span class="trade-title">买入记录</span>
             <div class="trade-actions">
@@ -345,6 +349,7 @@
           </div>
         </div>
       </div>
+      </transition-group>
 
       <div v-if="filtered.length === 0" class="empty-hint">
         暂无持仓，点击右上角「添加」开始记录
@@ -352,10 +357,11 @@
 
       <button class="btn-add-pos" @click="openAddHolding">+ 添加持仓</button>
       </div>
-    </div>
+      </div>
+    </transition>
 
     <!-- ── Add Trade Modal ── -->
-    <div v-if="addTradeTarget" class="overlay" @click.self="addTradeTarget = null">
+    <div v-if="addTradeTarget" class="overlay show" @click.self="addTradeTarget = null">
       <div class="modal">
         <div class="modal-title">新增交易</div>
         <div class="form-grid">
@@ -394,7 +400,7 @@
     </div>
 
     <!-- ── Add Holding Modal ── -->
-    <div v-if="addHolding" class="overlay" @click.self="addHolding = false">
+    <div v-if="addHolding" class="overlay show" @click.self="addHolding = false">
       <div class="modal">
         <div class="modal-title">添加持仓</div>
         <div class="form-grid">
@@ -438,7 +444,7 @@
     </div>
 
     <!-- ── Delete Confirm Modal ── -->
-    <div v-if="deleteConfirm !== null" class="overlay" @click.self="cancelDelete">
+    <div v-if="deleteConfirm !== null" class="overlay show" @click.self="cancelDelete">
       <div class="modal">
         <div class="modal-title">确认删除</div>
         <div style="margin: 20px 0; font-size: 14px; line-height: 1.5; text-align: center; color: #666;">
@@ -453,7 +459,7 @@
     </div>
 
     <!-- ── Create Ledger Modal ── -->
-    <div v-if="createLedgerModal" class="overlay" @click.self="createLedgerModal = false">
+    <div v-if="createLedgerModal" class="overlay show" @click.self="createLedgerModal = false">
       <div class="modal">
         <div class="modal-title">创建新账本</div>
         <div class="form-grid">
@@ -480,7 +486,7 @@
     </div>
 
     <!-- ── Edit Ledger Modal ── -->
-    <div v-if="editLedgerModal" class="overlay" @click.self="editLedgerModal = false">
+    <div v-if="editLedgerModal" class="overlay show" @click.self="editLedgerModal = false">
       <div class="modal">
         <div class="modal-title">编辑账本</div>
         <div class="form-grid">
@@ -507,7 +513,7 @@
     </div>
 
     <!-- ── Delete Ledger Confirm Modal ── -->
-    <div v-if="deleteLedgerConfirm" class="overlay" @click.self="deleteLedgerConfirm = false">
+    <div v-if="deleteLedgerConfirm" class="overlay show" @click.self="deleteLedgerConfirm = false">
       <div class="modal">
         <div class="modal-title">确认删除账本</div>
         <div style="margin: 20px 0; font-size: 14px; line-height: 1.5; text-align: center; color: #666;">
@@ -1448,6 +1454,16 @@ input:focus, select:focus { outline: none; }
   z-index: 200;
   max-height: 400px;
   overflow-y: auto;
+  opacity: 0;
+  transform: translateY(-10px) scale(0.95);
+  transition: all 0.2s ease-out;
+  pointer-events: none;
+}
+
+.ledger-dropdown.show {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
 }
 .ledger-item {
   display: flex;
@@ -1590,6 +1606,26 @@ input:focus, select:focus { outline: none; }
   font-size: 14px;
 }
 
+/* Ledger cards transitions */
+.ledger-cards-enter-active,
+.ledger-cards-leave-active {
+  transition: all 0.4s ease;
+}
+
+.ledger-cards-enter-from {
+  opacity: 0;
+  transform: translateY(30px) scale(0.9);
+}
+
+.ledger-cards-leave-to {
+  opacity: 0;
+  transform: translateY(-30px) scale(0.9);
+}
+
+.ledger-cards-move {
+  transition: transform 0.4s ease;
+}
+
 /* Color picker */
 .color-picker {
   display: flex;
@@ -1623,6 +1659,22 @@ input:focus, select:focus { outline: none; }
 
 /* Main */
 .main-content { max-width: 780px; margin: 0 auto; padding: 20px 14px 60px; }
+
+/* Page transitions */
+.page-enter-active,
+.page-leave-active {
+  transition: all 0.4s ease;
+}
+
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(20px) scale(0.98);
+}
+
+.page-leave-to {
+  opacity: 0;
+  transform: translateY(-20px) scale(1.02);
+}
 
 /* Summary */
 .summary-card {
@@ -1697,6 +1749,26 @@ input:focus, select:focus { outline: none; }
 
 /* Row */
 .row { background: #fff; border-radius: 12px; margin-bottom: 10px; border: 1px solid #ede9e2; transition: all .2s; overflow: hidden; }
+
+/* Holdings list transitions */
+.holdings-list-enter-active,
+.holdings-list-leave-active {
+  transition: all 0.3s ease;
+}
+
+.holdings-list-enter-from {
+  opacity: 0;
+  transform: translateY(20px) scale(0.95);
+}
+
+.holdings-list-leave-to {
+  opacity: 0;
+  transform: translateY(-20px) scale(0.95);
+}
+
+.holdings-list-move {
+  transition: transform 0.3s ease;
+}
 .row:hover { box-shadow: 0 4px 16px rgba(0,0,0,.08); transform: translateY(-1px); }
 
 .row-head {
@@ -1730,7 +1802,19 @@ input:focus, select:focus { outline: none; }
 .pnl-abs { font-family: monospace; font-size: 11px; margin-top: 1px; }
 
 /* Trade zone */
-.trade-zone { border-top: 1px solid #f0ece5; padding: 12px 16px; background: #fdfcfa; }
+.trade-zone {
+  border-top: 1px solid #f0ece5;
+  background: #fdfcfa;
+  max-height: 0;
+  overflow: hidden;
+  transition: all 0.3s ease-out;
+}
+
+.trade-zone.expanding {
+  padding: 12px 16px;
+  max-height: 800px;
+  transition: all 0.3s ease-in;
+}
 .trade-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .trade-title { font-size: 12px; color: #aaa; letter-spacing: .5px; text-transform: uppercase; }
 .trade-actions { display: flex; gap: 6px; }
@@ -1800,29 +1884,27 @@ input:focus, select:focus { outline: none; }
   position: fixed; inset: 0; background: rgba(20,18,14,.45); z-index: 200;
   display: flex; align-items: center; justify-content: center; padding: 20px;
   backdrop-filter: blur(3px);
-  animation: fadeIn .2s ease-out;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.overlay.show {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .modal {
   background: #fff; border-radius: 14px; padding: 28px; width: 100%; max-width: 420px; box-shadow: 0 20px 60px rgba(0,0,0,.18);
-  animation: slideIn .3s ease-out;
   transform-origin: center;
+  opacity: 0;
+  transform: scale(0.9) translateY(-20px);
+  transition: all 0.3s ease;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: scale(0.9) translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
+.overlay.show .modal {
+  opacity: 1;
+  transform: scale(1) translateY(0);
 }
 .modal-title { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 600; margin-bottom: 20px; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
@@ -1866,6 +1948,16 @@ select.form-control { cursor: pointer; }
   min-width: 160px;
   z-index: 200;
   overflow: hidden;
+  opacity: 0;
+  transform: translateY(-10px) scale(0.95);
+  transition: all 0.2s ease-out;
+  pointer-events: none;
+}
+
+.actions-dropdown.show {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
 }
 
 .action-item {
