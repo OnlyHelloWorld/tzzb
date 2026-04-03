@@ -1,4 +1,18 @@
 <template>
+  <!-- Global loading overlay -->
+  <transition name="fade">
+    <div v-if="isLoading" class="loading-overlay">
+      <div class="loading-wave">
+        <div class="loading-bar"></div>
+        <div class="loading-bar"></div>
+        <div class="loading-bar"></div>
+        <div class="loading-bar"></div>
+        <div class="loading-bar"></div>
+      </div>
+      <div class="loading-text">加载中...</div>
+    </div>
+  </transition>
+  
   <transition name="page" mode="out-in">
     <LoginPage v-if="!isLoggedIn" key="login" @login="handleLogin" :loginError="loginError" />
     <div v-else key="app" class="app-root">
@@ -31,14 +45,14 @@
               </svg>
             </button>
             <div v-if="showDropdown" class="dropdown-menu" @click.stop>
-              <button class="dropdown-item" @click="goHome; showDropdown = false;">
+              <button class="dropdown-item" @click="goHome(); showDropdown = false;">
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="vertical-align:middle;margin-right:6px">
                   <path d="M2 6h8M6 2l4 4-4 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
                 返回主页
               </button>
               <div class="dropdown-divider"></div>
-              <button class="dropdown-item" @click="openCreateLedger; showDropdown = false;">+ 新建账本</button>
+              <button class="dropdown-item" @click="openCreateLedger(); showDropdown = false;">+ 新建账本</button>
               <div class="dropdown-divider"></div>
               <button class="dropdown-item" @click="refreshQuotes(); showDropdown = false;" :disabled="quoteStatus === 'loading'">
                 <svg :class="{ 'spin': quoteStatus === 'loading' }" width="12" height="12" viewBox="0 0 14 14" fill="none" style="vertical-align:middle;margin-right:6px">
@@ -53,7 +67,7 @@
                 </span>
               </div>
               <div class="dropdown-divider"></div>
-              <button class="dropdown-item" @click="handleLogout; showDropdown = false;" style="color: #c0392b;">退出</button>
+              <button class="dropdown-item" @click="handleLogout(); showDropdown = false;" style="color: #c0392b;">退出</button>
             </div>
           </div>
         </div>
@@ -423,7 +437,7 @@
           </div>
           <div class="form-row">
             <div class="form-label">股票代码</div>
-            <input class="form-control" placeholder="如 600519" v-model="newForm.code" @blur="onCodeChange(newForm.code)" />
+            <input class="form-control" placeholder="如 600519" v-model="newForm.code" @blur="newForm.code = newForm.code.toUpperCase().trim(); onCodeChange(newForm.code)" />
           </div>
           <div class="form-row">
             <div class="form-label">股票名称{{ nameLoading ? ' (获取中…)' : '' }}</div>
@@ -634,6 +648,9 @@ export default {
     const quoteError = ref('')
     const lastQuoteTime = ref('')
     let refreshTimer = null
+    
+    // Global loading state
+    const isLoading = ref(false)
 
     // IO state
     const importInput = ref(null)
@@ -682,89 +699,94 @@ export default {
 
     // 加载数据的函数
     const loadData = async () => {
+      isLoading.value = true
       try {
-        // 首先加载账本数据
-        const savedLedgers = await api.loadLedgers()
-        ledgers.value = savedLedgers || []
-        console.log('加载到账本数据:', savedLedgers)
-        
-        // 加载所有持仓数据（用于所有账本汇总）
         try {
-          const allHoldings = await api.loadHoldings()
-          allLedgersHoldings.value = allHoldings || []
-          console.log('加载到所有持仓数据:', allHoldings)
+          // 首先加载账本数据
+          const savedLedgers = await api.loadLedgers()
+          ledgers.value = savedLedgers || []
+          console.log('加载到账本数据:', savedLedgers)
           
-          // 为所有持仓设置价格
-          for (const h of allLedgersHoldings.value) {
-            if (!(h.code in prices)) {
-              const cost = avgCost(h.trades || [])
-              prices[h.code] = cost || 0
+          // 加载所有持仓数据（用于所有账本汇总）
+          try {
+            const allHoldings = await api.loadHoldings()
+            allLedgersHoldings.value = allHoldings || []
+            console.log('加载到所有持仓数据:', allHoldings)
+            
+            // 为所有持仓设置价格
+            for (const h of allLedgersHoldings.value) {
+              if (!(h.code in prices)) {
+                const cost = avgCost(h.trades || [])
+                prices[h.code] = cost || 0
+              }
             }
+          } catch (err) {
+            console.warn('加载所有持仓失败:', err)
+            allLedgersHoldings.value = []
           }
+          
+          // 加载所有账本的汇总信息
+          const summaries = []
+          for (const ledger of ledgers.value) {
+            const summary = await calculateLedgerSummary(ledger)
+            summaries.push(summary)
+          }
+          ledgerSummaries.value = summaries
         } catch (err) {
-          console.warn('加载所有持仓失败:', err)
+          console.warn('加载账本失败:', err)
+          showIOMessage('加载账本失败: ' + err.message, true)
+          ledgers.value = []
+          ledgerSummaries.value = []
           allLedgersHoldings.value = []
         }
-        
-        // 加载所有账本的汇总信息
-        const summaries = []
-        for (const ledger of ledgers.value) {
-          const summary = await calculateLedgerSummary(ledger)
-          summaries.push(summary)
-        }
-        ledgerSummaries.value = summaries
-      } catch (err) {
-        console.warn('加载账本失败:', err)
-        showIOMessage('加载账本失败: ' + err.message, true)
-        ledgers.value = []
-        ledgerSummaries.value = []
-        allLedgersHoldings.value = []
-      }
 
-      if (currentLedger.value) {
-        try {
-          const savedHoldings = await api.loadHoldings(currentLedger.value.id)
-          // 无论是否有数据，都更新 holdings
-          holdings.value = savedHoldings || []
-          if (savedHoldings && savedHoldings.length > 0) {
-            const maxId = Math.max(...savedHoldings.flatMap(h => (h.trades || []).map(t => t.id)), ...savedHoldings.map(h => h.id), 0)
-            _id = maxId + 1
-          } else {
-            _id = 100 // 重置 ID 计数器
+        if (currentLedger.value) {
+          try {
+            const savedHoldings = await api.loadHoldings(currentLedger.value.id)
+            // 无论是否有数据，都更新 holdings
+            holdings.value = savedHoldings || []
+            if (savedHoldings && savedHoldings.length > 0) {
+              const maxId = Math.max(...savedHoldings.flatMap(h => (h.trades || []).map(t => t.id)), ...savedHoldings.map(h => h.id), 0)
+              _id = maxId + 1
+            } else {
+              _id = 100 // 重置 ID 计数器
+            }
+            console.log('加载到持仓数据:', savedHoldings)
+          } catch (err) {
+            console.warn('加载持仓失败:', err)
+            showIOMessage('加载持仓失败: ' + err.message, true)
+            // 加载失败时保持为空数组，避免显示已删除的持仓
+            holdings.value = []
+            _id = 100
           }
-          console.log('加载到持仓数据:', savedHoldings)
-        } catch (err) {
-          console.warn('加载持仓失败:', err)
-          showIOMessage('加载持仓失败: ' + err.message, true)
-          // 加载失败时保持为空数组，避免显示已删除的持仓
+        } else {
           holdings.value = []
-          _id = 100
         }
-      } else {
-        holdings.value = []
-      }
 
-      try {
-        const savedSettings = await api.loadSettings()
-        if (savedSettings) {
-          fx.USD = savedSettings.fx_usd || fx.USD
-          fx.HKD = savedSettings.fx_hkd || fx.HKD
-          autoRefresh.value = savedSettings.auto_refresh !== false
+        try {
+          const savedSettings = await api.loadSettings()
+          if (savedSettings) {
+            fx.USD = savedSettings.fx_usd || fx.USD
+            fx.HKD = savedSettings.fx_hkd || fx.HKD
+            autoRefresh.value = savedSettings.auto_refresh !== false
+          }
+        } catch (err) {
+          console.warn('加载设置失败:', err)
+          showIOMessage('加载设置失败: ' + err.message, true)
         }
-      } catch (err) {
-        console.warn('加载设置失败:', err)
-        showIOMessage('加载设置失败: ' + err.message, true)
-      }
 
-      // 为当前账本持仓设置价格（如果还没有设置）
-      for (const h of holdings.value) {
-        if (!(h.code in prices)) {
-          const cost = avgCost(h.trades || [])
-          prices[h.code] = cost || 0
+        // 为当前账本持仓设置价格（如果还没有设置）
+        for (const h of holdings.value) {
+          if (!(h.code in prices)) {
+            const cost = avgCost(h.trades || [])
+            prices[h.code] = cost || 0
+          }
         }
-      }
 
-      refreshQuotes()
+        refreshQuotes()
+      } finally {
+        isLoading.value = false
+      }
     }
 
     const handleLogin = async () => {
@@ -992,11 +1014,13 @@ export default {
       await loadData()
     }
 
-    const goHome = () => {
+    const goHome = async () => {
       if (currentLedger.value) {
         currentLedger.value = null
         showLedgerList.value = false
         showDropdown.value = false
+        holdings.value = []
+        await loadData()
       }
     }
 
@@ -1339,11 +1363,18 @@ export default {
         return
       }
       addError.value = ''
+      // 规范化股票代码：统一大写，港股补0
+      let normalizedCode = code.toUpperCase().trim()
+      if (market === '港股' && /^\d+$/.test(normalizedCode)) {
+        while (normalizedCode.length < 5) {
+          normalizedCode = '0' + normalizedCode
+        }
+      }
       holdings.value = [...holdings.value, {
-        id: ++_id, market, code, name, sector,
+        id: ++_id, market, code: normalizedCode, name, sector,
         trades: [{ id: ++_id, date: date || today(), qty: +qty, price: +price }]
       }]
-      prices[code] = +price
+      prices[normalizedCode] = +price
       addHolding.value = false
       Object.assign(newForm, { market: 'A股', code: '', name: '', sector: '', qty: '', price: '', date: today() })
       // 立即持久化
@@ -1405,7 +1436,9 @@ export default {
       createLedgerModal, editLedgerModal, deleteLedgerConfirm,
       newLedgerName, newLedgerColor, editingLedger, ledgerColors,
       openCreateLedger, saveNewLedger, editLedger, saveEditLedger,
-      confirmDeleteLedger, deleteSelectedLedger, switchLedger, goHome
+      confirmDeleteLedger, deleteSelectedLedger, switchLedger, goHome,
+      // Global state
+      isLoading
     }
   }
 }
@@ -1742,6 +1775,69 @@ input:focus, select:focus { outline: none; }
 }
 .ledger-io-section .io-message {
   margin-top: 0;
+}
+
+/* Loading overlay */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.loading-wave {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.loading-bar {
+  width: 6px;
+  height: 40px;
+  background: linear-gradient(180deg, #b8a882 0%, #1a1814 100%);
+  border-radius: 3px;
+  animation: loadingWave 1.2s ease-in-out infinite;
+}
+
+.loading-bar:nth-child(1) { animation-delay: 0s; }
+.loading-bar:nth-child(2) { animation-delay: 0.1s; }
+.loading-bar:nth-child(3) { animation-delay: 0.2s; }
+.loading-bar:nth-child(4) { animation-delay: 0.3s; }
+.loading-bar:nth-child(5) { animation-delay: 0.4s; }
+
+@keyframes loadingWave {
+  0%, 100% {
+    transform: scaleY(0.5);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+.loading-text {
+  font-size: 14px;
+  color: #666;
+  letter-spacing: 1px;
+}
+
+/* Fade transition */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 
 /* Header actions group */
