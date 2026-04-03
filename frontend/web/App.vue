@@ -17,26 +17,42 @@
       </div>
       <div v-else class="header-right">
         <button class="btn btn-ghost" @click="goHome">← 返回主页</button>
-        <span class="ledger-badge" :style="{ backgroundColor: currentLedger.color, color: '#fff' }">
-          {{ currentLedger.name }}
-          <span class="ledger-badge-action" @click="showLedgerList = !showLedgerList">▼</span>
-        </span>
-        <button class="btn btn-ink" @click="openCreateLedger">+ 新建账本</button>
-        <!-- Quote status -->
-        <span v-if="quoteStatus === 'loading'" class="quote-status loading">加载中...</span>
-        <span v-else-if="quoteStatus === 'error' && !quoteError" class="quote-status error">行情异常</span>
-        <span v-else-if="lastQuoteTime" class="quote-status ok">{{ lastQuoteTime }}</span>
-
-        <!-- Refresh button -->
-        <button class="btn btn-ghost" style="font-size:12px;padding:6px 10px" @click="refreshQuotes" :disabled="quoteStatus === 'loading'" :class="{ 'loading': quoteStatus === 'loading' }">
-          <svg :class="{ 'spin': quoteStatus === 'loading' }" width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:middle;margin-right:3px">
-            <path d="M1.5 7a5.5 5.5 0 0 1 9.3-3.95M12.5 7a5.5 5.5 0 0 1-9.3 3.95" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-            <path d="M10.8.5v2.55h-2.55M3.2 13.5v-2.55h2.55" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          {{ quoteStatus === 'loading' ? '获取中…' : '刷新' }}
-        </button>
-        <button class="btn btn-ghost" style="font-size:12px;padding:6px 10px;color:#999" @click="handleLogout">退出</button>
-
+        
+        <div class="header-actions-group">
+          <span class="ledger-badge" :style="{ backgroundColor: currentLedger.color, color: '#fff' }">
+            {{ currentLedger.name }}
+            <span class="ledger-badge-action" @click="showLedgerList = !showLedgerList">▼</span>
+          </span>
+          
+          <div class="dropdown-container">
+            <button class="btn btn-ghost" style="padding: 6px 10px;" @click="showDropdown = !showDropdown">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:middle">
+                <circle cx="7" cy="7" r="1" fill="currentColor"/>
+                <circle cx="7" cy="4" r="1" fill="currentColor"/>
+                <circle cx="7" cy="10" r="1" fill="currentColor"/>
+              </svg>
+            </button>
+            <div v-if="showDropdown" class="dropdown-menu" @click.stop>
+              <button class="dropdown-item" @click="openCreateLedger; showDropdown = false;">+ 新建账本</button>
+              <div class="dropdown-divider"></div>
+              <button class="dropdown-item" @click="refreshQuotes(); showDropdown = false;" :disabled="quoteStatus === 'loading'">
+                <svg :class="{ 'spin': quoteStatus === 'loading' }" width="12" height="12" viewBox="0 0 14 14" fill="none" style="vertical-align:middle;margin-right:6px">
+                  <path d="M1.5 7a5.5 5.5 0 0 1 9.3-3.95M12.5 7a5.5 5.5 0 0 1-9.3 3.95" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                  <path d="M10.8.5v2.55h-2.55M3.2 13.5v-2.55h2.55" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                {{ quoteStatus === 'loading' ? '获取中…' : '刷新行情' }}
+              </button>
+              <div v-if="quoteStatus" class="quote-status-inline">
+                <span :class="['quote-status', quoteStatus]">
+                  {{ quoteStatus === 'loading' ? '加载中...' : quoteStatus === 'error' ? '行情异常' : lastQuoteTime }}
+                </span>
+              </div>
+              <div class="dropdown-divider"></div>
+              <button class="dropdown-item" @click="handleLogout; showDropdown = false;" style="color: #c0392b;">退出</button>
+            </div>
+          </div>
+        </div>
+        
         <button class="btn btn-ink" style="font-size:13px;padding:7px 14px" @click="openAddHolding">+ 添加</button>
       </div>
       
@@ -84,17 +100,25 @@
               <span v-if="item.ccy !== 'CNY'" class="ccy-conv"> ≈ ¥{{ fmt(toCNY(item.val, item.ccy, fx)) }}</span>
             </div>
           </div>
-        </div>
-
-        <!-- ── Import/Export for all ledgers ── -->
-        <div class="io-section" style="margin-top: 20px;">
-          <div class="io-label">账本导入导出</div>
-          <div class="io-btns">
-            <button class="btn btn-ghost" style="font-size:11px" @click="handleExportAllLedgersCSV">导出所有账本 CSV</button>
-            <button class="btn btn-ghost" style="font-size:11px" @click="triggerAllLedgersImport">导入账本 CSV</button>
-            <input ref="allLedgersImportInput" type="file" accept=".csv" style="display:none" @change="handleAllLedgersImport" />
+          <!-- ── Import/Export for all ledgers ── -->
+          <div class="ledger-io-section">
+            <div class="io-btns">
+              <button class="btn btn-ghost" style="font-size:11px" @click="handleExportAllLedgersCSV">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="vertical-align:middle;margin-right:4px">
+                  <path d="M6 1v6m0 0l-2.5-2.5M6 7l2.5-2.5M2 11h8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                导出所有账本 CSV
+              </button>
+              <button class="btn btn-ink" style="font-size:11px" @click="triggerAllLedgersImport">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="vertical-align:middle;margin-right:4px">
+                  <path d="M6 11V5m0 0l-2.5 2.5M6 5l2.5 2.5M2 1h8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                导入账本 CSV
+              </button>
+              <input ref="allLedgersImportInput" type="file" accept=".csv" style="display:none" @change="handleAllLedgersImport" />
+            </div>
+            <div v-if="ioMessage" class="io-message" :class="ioMessageClass">{{ ioMessage }}</div>
           </div>
-          <div v-if="ioMessage" class="io-message" :class="ioMessageClass">{{ ioMessage }}</div>
         </div>
 
         <div class="ledgers-grid">
@@ -508,7 +532,7 @@
 </template>
 
 <script>
-import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import PnLTag from './components/PnLTag.vue'
 import Tag from './components/Tag.vue'
 import LoginPage from './components/LoginPage.vue'
@@ -575,6 +599,7 @@ export default {
     const currentLedger = ref(null)
     const allLedgersHoldings = ref([])
     const showLedgerList = ref(false)
+    const showDropdown = ref(false)
     const createLedgerModal = ref(false)
     const editLedgerModal = ref(false)
     const deleteLedgerConfirm = ref(null)
@@ -1326,10 +1351,18 @@ export default {
         await loadData()
       }
       startAutoRefresh()
+      
+      // 点击外部关闭下拉菜单
+      document.addEventListener('click', (e) => {
+        if (showDropdown.value) {
+          showDropdown.value = false
+        }
+      })
     })
 
     onUnmounted(() => {
       stopAutoRefresh()
+      document.removeEventListener('click', () => {})
     })
 
     return {
@@ -1355,7 +1388,7 @@ export default {
       // Delete confirm
       deleteConfirm,
       // Ledger management
-      ledgers, ledgerSummaries, currentLedger, showLedgerList,
+      ledgers, ledgerSummaries, currentLedger, showLedgerList, showDropdown,
       createLedgerModal, editLedgerModal, deleteLedgerConfirm,
       newLedgerName, newLedgerColor, editingLedger, ledgerColors,
       openCreateLedger, saveNewLedger, editLedger, saveEditLedger,
@@ -1657,6 +1690,99 @@ input:focus, select:focus { outline: none; }
 .io-message { font-size: 12px; margin-top: 8px; font-family: monospace; animation: slideDown .3s ease-out; }
 .io-message.success { color: #1a7a4a; background: #edf7f1; padding: 8px 12px; border-radius: 6px; border: 1px solid #d4e8d4; box-shadow: 0 2px 8px rgba(26, 122, 74, .15); }
 .io-message.error { color: #c0392b; background: #fdf0ef; padding: 8px 12px; border-radius: 6px; border: 1px solid #f5c6c0; box-shadow: 0 2px 8px rgba(192, 57, 43, .15); }
+
+/* Ledger IO section inside summary card */
+.ledger-io-section {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #f0ece5;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ledger-io-section .io-btns {
+  gap: 10px;
+}
+.ledger-io-section .io-message {
+  margin-top: 0;
+}
+
+/* Header actions group */
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.header-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Dropdown menu */
+.dropdown-container {
+  position: relative;
+}
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 6px;
+  background: #fff;
+  border: 1px solid #ede9e2;
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  min-width: 180px;
+  z-index: 300;
+  animation: dropdownFadeIn 0.2s ease-out;
+}
+@keyframes dropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.dropdown-item {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 10px 16px;
+  text-align: left;
+  cursor: pointer;
+  font-size: 13px;
+  color: #1a1814;
+  transition: background-color 0.15s;
+  font-family: inherit;
+}
+.dropdown-item:first-child {
+  border-radius: 10px 10px 0 0;
+}
+.dropdown-item:last-child {
+  border-radius: 0 0 10px 10px;
+}
+.dropdown-item:hover {
+  background-color: #f9f7f3;
+}
+.dropdown-item:disabled {
+  color: #aaa;
+  cursor: not-allowed;
+}
+.dropdown-divider {
+  height: 1px;
+  background: #ede9e2;
+  margin: 4px 0;
+}
+
+.quote-status-inline {
+  padding: 8px 16px;
+}
+.quote-status-inline .quote-status {
+  font-size: 12px;
+}
 
 @keyframes slideDown {
   from {
