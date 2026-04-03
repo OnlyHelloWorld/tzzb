@@ -1,18 +1,4 @@
 <template>
-  <!-- Global loading overlay -->
-  <transition name="fade">
-    <div v-if="isLoading" class="loading-overlay">
-      <div class="loading-wave">
-        <div class="loading-bar"></div>
-        <div class="loading-bar"></div>
-        <div class="loading-bar"></div>
-        <div class="loading-bar"></div>
-        <div class="loading-bar"></div>
-      </div>
-      <div class="loading-text">加载中...</div>
-    </div>
-  </transition>
-  
   <transition name="page" mode="out-in">
     <LoginPage v-if="!isLoggedIn" key="login" @login="handleLogin" :loginError="loginError" />
     <div v-else key="app" class="app-root">
@@ -89,7 +75,18 @@
     </div>
 
     <div class="main-content">
+      <div v-if="isLoading" class="section-loading">
+        <div class="loading-wave">
+          <div class="loading-bar"></div>
+          <div class="loading-bar"></div>
+          <div class="loading-bar"></div>
+          <div class="loading-bar"></div>
+          <div class="loading-bar"></div>
+        </div>
+        <div class="loading-text">正在刷新当前区域...</div>
+      </div>
       <transition name="page" mode="out-in">
+        <template v-if="!isLoading">
         <!-- Ledger management page -->
         <div v-if="!currentLedger" key="ledger-management" class="ledger-management">
         <!-- 所有账本汇总卡片 -->
@@ -251,7 +248,13 @@
       </div>
 
       <!-- ── Holdings ── -->
-      <div v-for="h in filtered" :key="`${h.market}-${h.code}`" :class="['row', { 'row-updating': h.refreshing }]">
+      <transition-group name="holding-fly" tag="div" class="holding-list">
+      <div
+        v-for="(h, index) in filtered"
+        :key="`${h.market}-${h.code}`"
+        :style="{ '--stagger': `${index * 60}ms` }"
+        :class="['row', { 'row-updating': h.refreshing, 'row-deleting': deletingHoldings.includes(`${h.market}-${h.code}`) }]"
+      >
 
         <div class="row-head" @click="expanded = expanded === `${h.market}-${h.code}` ? null : `${h.market}-${h.code}`">
           <div>
@@ -375,13 +378,19 @@
           </div>
           </div>
         </transition>
+
+        <div v-if="deletingHoldings.includes(`${h.market}-${h.code}`)" class="delete-blessing">
+          <span v-for="char in blessingChars" :key="char" class="blessing-char">{{ char }}</span>
+        </div>
       </div>
+      </transition-group>
 
       <div v-if="filtered.length === 0" class="empty-hint">
         暂无持仓，点击上方「添加持仓」开始记录
       </div>
 
         </div>
+        </template>
       </transition>
     </div>
 
@@ -616,6 +625,8 @@ export default {
     const addTradeForm = reactive({ type: '买入', qty: '', price: '', date: '', note: '' })
     const addHolding = ref(false)
     const newForm = reactive({ market: 'A股', code: '', name: '', sector: '', qty: '100', price: '', date: today() })
+    const deletingHoldings = ref([])
+    const blessingChars = ['恭', '喜', '发', '财']
 
     // Ledger state
     const ledgers = ref([])
@@ -1268,11 +1279,18 @@ export default {
     const deleteHolding = async () => {
       if (deleteConfirm.value === null || !currentLedger.value) return
       const { market, code } = deleteConfirm.value
+      const holdingKey = `${market}-${code}`
       deleteConfirm.value = null
       
       try {
         await api.deleteHolding(market, code, currentLedger.value.id)
-        holdings.value = holdings.value.filter(h => !(h.market === market && h.code === code))
+        if (!deletingHoldings.value.includes(holdingKey)) {
+          deletingHoldings.value.push(holdingKey)
+        }
+        setTimeout(() => {
+          holdings.value = holdings.value.filter(h => !(h.market === market && h.code === code))
+          deletingHoldings.value = deletingHoldings.value.filter(key => key !== holdingKey)
+        }, 820)
         showIOMessage('持仓删除成功')
       } catch (err) {
         showIOMessage('删除失败: ' + err.message, true)
@@ -1462,7 +1480,7 @@ export default {
       addError, tradeError, nameLoading, onCodeChange,
       isLoggedIn, handleLogin, handleLogout, loginError,
       // Delete confirm
-      deleteConfirm,
+      deleteConfirm, deletingHoldings, blessingChars,
       // Ledger management
       ledgers, ledgerSummaries, currentLedger, showLedgerList, showDropdown,
       createLedgerModal, editLedgerModal, deleteLedgerConfirm,
@@ -1736,6 +1754,16 @@ input:focus, select:focus { outline: none; }
 
 /* Main */
 .main-content { max-width: 780px; margin: 0 auto; padding: 20px 14px 60px; }
+.section-loading {
+  min-height: 360px;
+  border: 1px solid #ede9e2;
+  border-radius: 14px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
 
 /* Summary */
 .summary-card {
@@ -1790,7 +1818,7 @@ input:focus, select:focus { outline: none; }
 .io-label { font-size: 11px; color: #bbb; letter-spacing: .5px; margin-bottom: 8px; }
 .io-btns { display: flex; gap: 8px; flex-wrap: wrap; }
 .io-message { font-size: 12px; margin-top: 8px; font-family: monospace; animation: slideDown .3s ease-out; }
-.io-message.success { color: #1a7a4a; background: #edf7f1; padding: 8px 12px; border-radius: 6px; border: 1px solid #d4e8d4; box-shadow: 0 2px 8px rgba(26, 122, 74, .15); }
+.io-message.success { color: #1a7a4a; background: #edf7f1; padding: 8px 12px; border-radius: 6px; border: 1px solid #d4e8d4; box-shadow: 0 2px 8px rgba(26, 122, 74, .15); animation: slideDown .3s ease-out, celebrateGlow 1.6s ease-in-out; }
 .io-message.error { color: #c0392b; background: #fdf0ef; padding: 8px 12px; border-radius: 6px; border: 1px solid #f5c6c0; box-shadow: 0 2px 8px rgba(192, 57, 43, .15); }
 
 /* Ledger IO section inside summary card */
@@ -1959,6 +1987,10 @@ input:focus, select:focus { outline: none; }
     transform: translateY(0);
   }
 }
+@keyframes celebrateGlow {
+  0%, 100% { box-shadow: 0 2px 8px rgba(26, 122, 74, .15); }
+  50% { box-shadow: 0 4px 14px rgba(212, 175, 55, .35); }
+}
 
 /* Tabs */
 .tabs-row { display: flex; gap: 4px; margin-bottom: 14px; }
@@ -1984,6 +2016,37 @@ input:focus, select:focus { outline: none; }
   overflow: hidden;
   position: relative;
 }
+.holding-list {
+  display: flex;
+  flex-direction: column;
+}
+.holding-fly-enter-active {
+  animation: holdingFlyIn .55s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: var(--stagger, 0ms);
+}
+.holding-fly-leave-active {
+  transition: all .28s ease;
+  position: absolute;
+  width: calc(100% - 2px);
+}
+.holding-fly-leave-to {
+  opacity: 0;
+  transform: translateX(24px) scale(0.97);
+}
+@keyframes holdingFlyIn {
+  0% {
+    opacity: 0;
+    transform: translateX(-28px) translateY(6px) scale(0.97);
+  }
+  70% {
+    opacity: 1;
+    transform: translateX(2px) translateY(0) scale(1.005);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) translateY(0) scale(1);
+  }
+}
 .row:hover {
   box-shadow: 0 4px 16px rgba(0,0,0,.08);
   transform: translateY(-1px);
@@ -1991,6 +2054,38 @@ input:focus, select:focus { outline: none; }
 .row-updating {
   animation: pulse 1.5s ease-in-out infinite;
 }
+.row-deleting {
+  animation: explodeOut .82s ease forwards;
+  pointer-events: none;
+}
+.delete-blessing {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: radial-gradient(circle, rgba(253, 248, 233, 0.92), rgba(255, 255, 255, 0.12));
+  pointer-events: none;
+}
+.blessing-char {
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: #fff;
+  background: linear-gradient(145deg, #d13d2c, #b5271e);
+  box-shadow: 0 4px 12px rgba(192, 57, 43, 0.32);
+  font-size: 16px;
+  font-weight: 700;
+  animation: blessingBurst .82s ease forwards;
+}
+.blessing-char:nth-child(1) { --dx: -70px; --dy: -36px; }
+.blessing-char:nth-child(2) { --dx: -20px; --dy: -64px; }
+.blessing-char:nth-child(3) { --dx: 24px; --dy: -62px; }
+.blessing-char:nth-child(4) { --dx: 76px; --dy: -34px; }
 
 @keyframes pulse {
   0% {
@@ -2002,6 +2097,17 @@ input:focus, select:focus { outline: none; }
   100% {
     box-shadow: 0 0 0 0 rgba(184, 168, 130, 0);
   }
+}
+@keyframes explodeOut {
+  0% { transform: scale(1); opacity: 1; filter: saturate(1); }
+  55% { transform: scale(1.02); opacity: .9; }
+  100% { transform: scale(.88); opacity: 0; filter: saturate(1.45); }
+}
+@keyframes blessingBurst {
+  0% { transform: translate(0, 0) scale(0.8); opacity: 0; }
+  25% { opacity: 1; }
+  70% { transform: translate(var(--dx), var(--dy)) scale(1.06); opacity: 1; }
+  100% { transform: translate(calc(var(--dx) * 1.25), calc(var(--dy) * 1.4)) scale(0.8); opacity: 0; }
 }
 
 .row-head {
