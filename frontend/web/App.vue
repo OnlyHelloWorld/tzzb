@@ -84,10 +84,17 @@
           </div>
         </div>
 
-        <div class="ledger-welcome" style="margin-top: 30px; margin-bottom: 30px;">
-          <h2 style="font-size: 20px; margin-bottom: 8px;">欢迎使用投资账本</h2>
-          <p style="font-size: 14px; color: #666; margin: 0;">创建多个账本，管理不同的投资组合</p>
+        <!-- ── Import/Export for all ledgers ── -->
+        <div class="io-section" style="margin-top: 20px;">
+          <div class="io-label">账本导入导出</div>
+          <div class="io-btns">
+            <button class="btn btn-ghost" style="font-size:11px" @click="handleExportAllLedgersCSV">导出所有账本 CSV</button>
+            <button class="btn btn-ghost" style="font-size:11px" @click="triggerAllLedgersImport">导入账本 CSV</button>
+            <input ref="allLedgersImportInput" type="file" accept=".csv" style="display:none" @change="handleAllLedgersImport" />
+          </div>
+          <div v-if="ioMessage" class="io-message" :class="ioMessageClass">{{ ioMessage }}</div>
         </div>
+
         <div class="ledgers-grid">
           <div v-for="summary in ledgerSummaries" :key="summary.id" class="ledger-card" @click="switchLedger(summary)">
             <div class="ledger-card-header" :style="{ backgroundColor: summary.color }"></div>
@@ -164,11 +171,10 @@
         <div class="io-section">
           <div class="io-label">导入导出</div>
           <div class="io-btns">
-            <button class="btn btn-ghost" style="font-size:11px" @click="handleExportJSON">导出 JSON</button>
             <button class="btn btn-ghost" style="font-size:11px" @click="handleExportCSV">导出 CSV</button>
             <button class="btn btn-ghost" style="font-size:11px" @click="handleExportPDF">导出 PDF</button>
-            <button class="btn btn-ghost" style="font-size:11px" @click="triggerImport">导入 JSON</button>
-            <input ref="importInput" type="file" accept=".json" style="display:none" @change="handleImport" />
+            <button class="btn btn-ghost" style="font-size:11px" @click="triggerImport">导入 CSV</button>
+            <input ref="importInput" type="file" accept=".csv" style="display:none" @change="handleImport" />
           </div>
           <div v-if="ioMessage" class="io-message" :class="ioMessageClass">{{ ioMessage }}</div>
         </div>
@@ -301,20 +307,18 @@
             </template>
           </div>
 
-          <!-- Price edit -->
+          <!-- Price refresh -->
           <div class="price-edit-row">
             <span class="price-label">当前价格</span>
-            <template v-if="editPrice && editPrice.code === h.code">
-              <input class="field field-sm" type="number" v-model="editPrice.val" />
-              <button class="btn btn-save" style="font-size:11px"
-                @click="prices[h.code] = +editPrice.val; editPrice = null">确认</button>
-              <button class="btn btn-ghost" style="font-size:11px" @click="editPrice = null">取消</button>
-            </template>
-            <template v-else>
-              <span class="mono" style="font-size:13px;font-weight:600">{{ SYM[h.ccy] }}{{ fmt(h.price) }}</span>
-              <button class="btn btn-ghost" style="font-size:11px"
-                @click="editPrice = { code: h.code, val: h.price }">更新价格</button>
-            </template>
+            <span class="mono" style="font-size:13px;font-weight:600">{{ SYM[h.ccy] }}{{ fmt(h.price) }}</span>
+            <button class="btn btn-ghost" style="font-size:11px"
+              @click="refreshSingleQuote(h)">
+              <svg :class="{ 'spin': h.refreshing }" width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:middle;margin-right:3px">
+                <path d="M1.5 7a5.5 5.5 0 0 1 9.3-3.95M12.5 7a5.5 5.5 0 0 1-9.3 3.95" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                <path d="M10.8.5v2.55h-2.55M3.2 13.5v-2.55h2.55" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              {{ h.refreshing ? '刷新中…' : '刷新' }}
+            </button>
           </div>
         </div>
       </div>
@@ -503,7 +507,7 @@ import Tag from './components/Tag.vue'
 import LoginPage from './components/LoginPage.vue'
 import { fetchQuotes, fetchQuote, fetchFxRates } from './lib/quoteApi.js'
 import * as api from './lib/api.js'
-import { exportJSON, importJSON, exportCSV, exportPDF } from './lib/io.js'
+import { exportCSV, exportPDF, importCSV, exportAllLedgersCSV } from './lib/io.js'
 
 // ─── Constants ──────────────────────────────────────────────────
 const SYM = { CNY: '¥', HKD: 'HK$', USD: '$' }
@@ -582,7 +586,6 @@ export default {
       addError.value = ''
       addHolding.value = true
     }
-    const editPrice = ref(null)
 
     // Quote state
     const quoteStatus = ref('idle') // idle | loading | ok | error
@@ -592,6 +595,7 @@ export default {
 
     // IO state
     const importInput = ref(null)
+    const allLedgersImportInput = ref(null)
     const ioMessage = ref('')
     const loginError = ref('')
     const isLoggedIn = ref(api.isLoggedIn())
@@ -953,15 +957,6 @@ export default {
     }
 
     // ─── Update export functions ─────────────────────────────────
-    function handleExportJSON() {
-      try {
-        exportJSON(holdings.value, { fx: { USD: fx.USD, HKD: fx.HKD }, autoRefresh: autoRefresh.value })
-        showIOMessage('JSON 导出成功')
-      } catch (err) {
-        showIOMessage('导出失败: ' + err.message, true)
-      }
-    }
-
     function handleExportCSV() {
       try {
         exportCSV(holdings.value, prices, fx)
@@ -978,6 +973,60 @@ export default {
       } catch (err) {
         showIOMessage('导出失败: ' + err.message, true)
       }
+    }
+
+    // ─── All ledgers export/import ─────────────────────────────────
+    function handleExportAllLedgersCSV() {
+      try {
+        const ledgerHoldings = {}
+        for (const ledger of ledgers.value) {
+          ledgerHoldings[ledger.id] = []
+        }
+        exportAllLedgersCSV(ledgers.value, ledgerHoldings, prices, fx)
+        showIOMessage('所有账本 CSV 导出成功')
+      } catch (err) {
+        showIOMessage('导出失败: ' + err.message, true)
+      }
+    }
+
+    function triggerAllLedgersImport() {
+      if (allLedgersImportInput.value) allLedgersImportInput.value.click()
+    }
+
+    async function handleAllLedgersImport(event) {
+      const file = event.target.files?.[0]
+      if (!file) return
+
+      try {
+        const data = await importCSV(file)
+        
+        if (data.isMultiLedger) {
+          for (const ledger of data.ledgers) {
+            const newLedger = await api.createLedger(ledger.name, ledger.color)
+            const holdingsToSave = data.ledgerHoldings[ledger.id] || []
+            if (holdingsToSave.length > 0) {
+              currentLedger.value = newLedger
+              await api.saveHoldings(holdingsToSave)
+            }
+          }
+          currentLedger.value = null
+          await loadData()
+          showIOMessage(`导入成功，共 ${data.ledgers.length} 个账本`)
+        } else {
+          if (currentLedger.value) {
+            holdings.value = data.holdings
+            await api.saveHoldings(holdings.value)
+            showIOMessage(`导入成功，共 ${data.holdings.length} 条持仓`)
+          } else {
+            showIOMessage('请先选择一个账本再导入', true)
+          }
+        }
+        refreshQuotes()
+      } catch (err) {
+        showIOMessage('导入失败: ' + err.message, true)
+      }
+
+      if (allLedgersImportInput.value) allLedgersImportInput.value.value = ''
     }
 
     // ─── Quote & FX refresh ───────────────────────────────────────
@@ -1056,33 +1105,6 @@ export default {
       setTimeout(() => { ioMessage.value = '' }, 3000)
     }
 
-    function handleExportJSON() {
-      try {
-        exportJSON(holdings.value, { fx: { USD: fx.USD, HKD: fx.HKD }, autoRefresh: autoRefresh.value })
-        showIOMessage('JSON 导出成功')
-      } catch (err) {
-        showIOMessage('导出失败: ' + err.message, true)
-      }
-    }
-
-    function handleExportCSV() {
-      try {
-        exportCSV(holdings.value, prices, fx)
-        showIOMessage('CSV 导出成功')
-      } catch (err) {
-        showIOMessage('导出失败: ' + err.message, true)
-      }
-    }
-
-    async function handleExportPDF() {
-      try {
-        await exportPDF(holdings.value, prices, fx)
-        showIOMessage('PDF 导出成功')
-      } catch (err) {
-        showIOMessage('导出失败: ' + err.message, true)
-      }
-    }
-
     function triggerImport() {
       if (importInput.value) importInput.value.click()
     }
@@ -1092,23 +1114,29 @@ export default {
       if (!file) return
 
       try {
-        const data = await importJSON(file)
-        holdings.value = data.holdings
-        if (data.settings?.fx) {
-          fx.USD = data.settings.fx.USD ?? fx.USD
-          fx.HKD = data.settings.fx.HKD ?? fx.HKD
+        const data = await importCSV(file)
+        if (data.isMultiLedger) {
+          for (const ledger of data.ledgers) {
+            const newLedger = await api.createLedger(ledger.name, ledger.color)
+            const holdingsToSave = data.ledgerHoldings[ledger.id] || []
+            if (holdingsToSave.length > 0) {
+              currentLedger.value = newLedger
+              await api.saveHoldings(holdingsToSave)
+            }
+          }
+          currentLedger.value = null
+          await loadData()
+          showIOMessage(`导入成功，共 ${data.ledgers.length} 个账本`)
+        } else {
+          holdings.value = data.holdings
+          await api.saveHoldings(holdings.value)
+          showIOMessage(`导入成功，共 ${data.holdings.length} 条持仓`)
         }
-        if (data.settings?.autoRefresh !== undefined) {
-          autoRefresh.value = data.settings.autoRefresh
-        }
-        showIOMessage(`导入成功，共 ${data.holdings.length} 条持仓`)
-        // Refresh quotes after import
         refreshQuotes()
       } catch (err) {
         showIOMessage('导入失败: ' + err.message, true)
       }
 
-      // Reset file input
       if (importInput.value) importInput.value.value = ''
     }
 
@@ -1168,6 +1196,21 @@ export default {
       } else {
         resetTarget.value = holdingId
         resetPrice.value = ''
+      }
+    }
+
+    const refreshSingleQuote = async (holding) => {
+      try {
+        holding.refreshing = true
+        const quote = await fetchQuote(holding.market, holding.code)
+        if (quote && quote.price > 0) {
+          prices[holding.code] = quote.price
+        }
+      } catch (err) {
+        console.warn(`刷新 ${holding.name} 行情失败:`, err)
+        showIOMessage(`刷新 ${holding.name} 行情失败`, true)
+      } finally {
+        holding.refreshing = false
       }
     }
 
@@ -1286,15 +1329,16 @@ export default {
       SYM, TABS, fxList,
       holdings, prices, fx, autoRefresh, tab, expanded, editingTrade,
       resetTarget, resetPrice, addTradeTarget, addTradeForm,
-      addHolding, newForm, editPrice, openAddHolding,
+      addHolding, newForm, openAddHolding,
       enriched, summary, filtered, ccyBreakdown,
       allLedgersHoldings, allLedgersSummary, allLedgersCcyBreakdown,
       fmt, toCNY,
       // Quote
-      quoteStatus, quoteError, lastQuoteTime, refreshQuotes,
+      quoteStatus, quoteError, lastQuoteTime, refreshQuotes, refreshSingleQuote,
       // IO
-      importInput, ioMessage, ioMessageClass,
-      handleExportJSON, handleExportCSV, handleExportPDF, triggerImport, handleImport,
+      importInput, allLedgersImportInput, ioMessage, ioMessageClass,
+      handleExportCSV, handleExportPDF, triggerImport, handleImport,
+      handleExportAllLedgersCSV, triggerAllLedgersImport, handleAllLedgersImport,
       // Trade actions
       updateTrade, deleteTrade, deleteHolding, confirmDeleteHolding, cancelDelete, toggleReset, cancelReset, resetCost,
       openAddTrade, saveAddTrade, saveNewHolding,
