@@ -84,10 +84,7 @@
           </div>
         </div>
 
-        <div class="ledger-welcome" style="margin-top: 30px; margin-bottom: 30px;">
-          <h2 style="font-size: 20px; margin-bottom: 8px;">欢迎使用投资账本</h2>
-          <p style="font-size: 14px; color: #666; margin: 0;">创建多个账本，管理不同的投资组合</p>
-        </div>
+
         <div class="ledgers-grid">
           <div v-for="summary in ledgerSummaries" :key="summary.id" class="ledger-card" @click="switchLedger(summary)">
             <div class="ledger-card-header" :style="{ backgroundColor: summary.color }"></div>
