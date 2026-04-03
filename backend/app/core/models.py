@@ -1,7 +1,7 @@
 """
 models.py — SQLAlchemy ORM 模型
 """
-from sqlalchemy import Column, Integer, String, Text, Float, Boolean, DateTime, ForeignKey, PrimaryKeyConstraint, ForeignKeyConstraint
+from sqlalchemy import Column, Integer, String, Text, Float, Boolean, DateTime, ForeignKey, PrimaryKeyConstraint, ForeignKeyConstraint, UniqueConstraint
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 
@@ -42,6 +42,7 @@ class Ledger(Base):
 class Holding(Base):
     __tablename__ = "holdings"
 
+    id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     ledger_id = Column(Integer, ForeignKey("ledgers.id"), nullable=False)
     market = Column(String(10), nullable=False)
@@ -51,9 +52,10 @@ class Holding(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
-    # 联合主键: user_id + ledger_id + market + code
+    # 联合唯一约束: user_id + ledger_id + market + code
     __table_args__ = (
-        PrimaryKeyConstraint('user_id', 'ledger_id', 'market', 'code', name='holdings_pkey'),
+        PrimaryKeyConstraint('id', name='holdings_pkey'),
+        UniqueConstraint('user_id', 'ledger_id', 'market', 'code', name='holdings_unique'),
     )
 
     # 关系 - 不使用级联删除
@@ -66,6 +68,7 @@ class Trade(Base):
     __tablename__ = "trades"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    holding_id = Column(Integer, ForeignKey("holdings.id"), nullable=False)
     user_id = Column(Integer, nullable=False)
     ledger_id = Column(Integer, nullable=False)
     market = Column(String(10), nullable=False)
@@ -74,12 +77,6 @@ class Trade(Base):
     qty = Column(Float, nullable=False)
     price = Column(Float, nullable=False)
     note = Column(Text, default="")
-
-    # 外键关联到 Holding 的联合主键 - 不使用级联删除
-    __table_args__ = (
-        ForeignKeyConstraint(['user_id', 'ledger_id', 'market', 'code'], 
-                          ['holdings.user_id', 'holdings.ledger_id', 'holdings.market', 'holdings.code']),
-    )
 
     # 关系
     holding = relationship("Holding", back_populates="trades")
