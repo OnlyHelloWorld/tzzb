@@ -79,25 +79,13 @@ async def bulk_save_holdings(
     db: AsyncSession = Depends(get_db),
 ):
     """批量保存持仓（全量覆盖，与前端逻辑一致）"""
-    # 删除旧数据
+    # 删除旧数据（利用级联删除自动处理trades）
     result = await db.execute(
         select(Holding)
         .where(Holding.user_id == user.id, Holding.ledger_id == ledger_id)
     )
     old_holdings = result.scalars().all()
     for h in old_holdings:
-        # 删除关联的 trades
-        t_result = await db.execute(
-            select(Trade)
-            .where(
-                Trade.user_id == user.id, 
-                Trade.ledger_id == ledger_id,
-                Trade.market == h.market, 
-                Trade.code == h.code
-            )
-        )
-        for t in t_result.scalars().all():
-            await db.delete(t)
         await db.delete(h)
 
     # 写入新数据
@@ -130,18 +118,20 @@ async def bulk_save_holdings(
             # 更新现有持仓
             holding.name = h.name
             holding.sector = h.sector
-            # 删除旧的交易记录
-            old_trades = await db.execute(
-                select(Trade)
-                .where(
-                    Trade.user_id == user.id, 
-                    Trade.ledger_id == ledger_id,
-                    Trade.market == h.market, 
-                    Trade.code == h.code
-                )
+            # 删除旧的交易记录（利用级联删除自动处理）
+            # 先删除现有持仓，再创建新的
+            await db.delete(holding)
+            await db.flush()
+            # 创建新持仓
+            holding = Holding(
+                user_id=user.id,
+                ledger_id=ledger_id,
+                market=h.market,
+                code=h.code,
+                name=h.name,
+                sector=h.sector,
             )
-            for t in old_trades.scalars().all():
-                await db.delete(t)
+            db.add(holding)
             await db.flush()
 
         for t in h.trades:
