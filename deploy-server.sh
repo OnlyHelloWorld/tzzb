@@ -50,6 +50,13 @@ fi
 
 # 数据库初始化/更新
 log_info "初始化/更新数据库..."
+
+# 清空数据库（删除SQLite文件）
+if [ -f "database.db" ]; then
+    log_info "删除现有数据库文件..."
+    rm -f database.db
+fi
+
 cat > init_db.py << 'EOF'
 """
 数据库初始化脚本 - 确保表结构与模型一致
