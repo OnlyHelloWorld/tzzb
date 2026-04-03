@@ -569,7 +569,7 @@ export default {
     // 计算单个账本的汇总信息
     const calculateLedgerSummary = async (ledger) => {
       try {
-        const holdings = await api.loadHoldings(ledger.id)
+        const holdings = await api.loadHoldings()
         if (!holdings || holdings.length === 0) {
           return { ...ledger, totalCNY: 0, pnl: 0, pct: 0, holdingCount: 0 }
         }
@@ -629,7 +629,7 @@ export default {
 
       if (currentLedger.value) {
         try {
-          const savedHoldings = await api.loadHoldings(currentLedger.value.id)
+          const savedHoldings = await api.loadHoldings()
           // 无论是否有数据，都更新 holdings
           holdings.value = savedHoldings || []
           if (savedHoldings && savedHoldings.length > 0) {
@@ -741,7 +741,7 @@ export default {
       saveDebounce = setTimeout(async () => {
         try {
           // 保存持仓并更新本地数据（包含新的 ID）
-          const savedHoldings = await api.saveHoldings(holdings.value, currentLedger.value.id)
+          const savedHoldings = await api.saveHoldings(holdings.value)
           if (savedHoldings && savedHoldings.length > 0) {
             holdings.value = savedHoldings
             const maxId = Math.max(...savedHoldings.flatMap(h => (h.trades || []).map(t => t.id)), ...savedHoldings.map(h => h.id), 0)
@@ -1010,7 +1010,7 @@ export default {
       )
       editingTrade.value = null
       if (currentLedger.value) {
-        api.saveHoldings(holdings.value, currentLedger.value.id)
+        api.saveHoldings(holdings.value)
       }
     }
 
@@ -1022,7 +1022,7 @@ export default {
         return trades.length > 0 ? { ...h, trades } : h
       })
       if (currentLedger.value) {
-        api.saveHoldings(holdings.value, currentLedger.value.id)
+        api.saveHoldings(holdings.value)
       }
     }
 
@@ -1036,7 +1036,7 @@ export default {
       deleteConfirm.value = null
       
       try {
-        await api.deleteHolding(currentLedger.value.id, market, code)
+        await api.deleteHolding(market, code)
         holdings.value = holdings.value.filter(h => !(h.market === market && h.code === code))
         showIOMessage('持仓删除成功')
       } catch (err) {
@@ -1062,7 +1062,7 @@ export default {
       resetTarget.value = null
       resetPrice.value = ''
       if (currentLedger.value) {
-        api.saveHoldings(holdings.value, currentLedger.value.id)
+        api.saveHoldings(holdings.value)
       }
     }
     const resetCost = (holding) => {
@@ -1078,7 +1078,7 @@ export default {
       resetTarget.value = null
       resetPrice.value = ''
       if (currentLedger.value) {
-        api.saveHoldings(holdings.value, currentLedger.value.id)
+        api.saveHoldings(holdings.value)
       }
     }
 
@@ -1109,7 +1109,7 @@ export default {
       addTradeTarget.value = null
       Object.assign(addTradeForm, { type: '买入', qty: '', price: '', date: '', note: '' })
       if (currentLedger.value) {
-        api.saveHoldings(holdings.value, currentLedger.value.id)
+        api.saveHoldings(holdings.value)
       }
     }
     const addError = ref('')
@@ -1150,7 +1150,7 @@ export default {
       Object.assign(newForm, { market: 'A股', code: '', name: '', sector: '', qty: '', price: '', date: today() })
       // 立即持久化
       if (currentLedger.value) {
-        api.saveHoldings(holdings.value, currentLedger.value.id).then(() => {
+        api.saveHoldings(holdings.value).then(() => {
           ioMessage.value = '✅ 已保存到本地'
           setTimeout(() => { if (ioMessage.value === '✅ 已保存到本地') ioMessage.value = '' }, 3000)
         })

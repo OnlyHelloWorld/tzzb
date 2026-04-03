@@ -1,5 +1,5 @@
 /**
- * api.js — 后端 API 请求层（替代 IndexedDB 的 db.js）
+ * api.js — 后端 API 请求层
  */
 
 const BASE_URL = import.meta.env.VITE_API_URL || '/api'
@@ -22,7 +22,6 @@ async function request(url, options = {}) {
     headers: { ...headers(), ...options.headers },
   })
   if (res.status === 401) {
-    // token 过期，跳转登录
     localStorage.removeItem('investment-token')
     localStorage.removeItem('investment-auth')
     window.location.reload()
@@ -60,7 +59,6 @@ export function isLoggedIn() {
   return !!token
 }
 
-// 发送验证码
 export async function sendCode(email, type = 'register') {
   return request('/auth/send-code', {
     method: 'POST',
@@ -68,7 +66,6 @@ export async function sendCode(email, type = 'register') {
   })
 }
 
-// 注册
 export async function register(email, code, username, password) {
   const data = await request('/auth/register', {
     method: 'POST',
@@ -79,7 +76,6 @@ export async function register(email, code, username, password) {
   return data
 }
 
-// 重置密码
 export async function resetPassword(email, code, newPassword) {
   return request('/auth/reset-password', {
     method: 'POST',
@@ -145,10 +141,11 @@ export async function deleteLedger(ledgerId) {
 }
 
 // ─── 持仓 ─────────────────────────────────────────────────────
-export async function loadHoldings(ledgerId) {
-  console.log('开始加载持仓数据，账本ID:', ledgerId)
+// 注意：持仓不再关联账本，所有持仓属于用户级别
+export async function loadHoldings() {
+  console.log('开始加载持仓数据')
   try {
-    const data = await request(`/holdings?ledger_id=${ledgerId}`)
+    const data = await request('/holdings')
     console.log('加载持仓数据成功:', data)
     return data
   } catch (error) {
@@ -157,10 +154,9 @@ export async function loadHoldings(ledgerId) {
   }
 }
 
-export async function saveHoldings(holdings, ledgerId) {
-  console.log('开始保存持仓数据，持仓数量:', holdings.length, '账本ID:', ledgerId)
+export async function saveHoldings(holdings) {
+  console.log('开始保存持仓数据，持仓数量:', holdings.length)
   try {
-    // 转换前端格式为后端格式
     const data = holdings.map(h => ({
       market: h.market,
       code: h.code,
@@ -174,7 +170,7 @@ export async function saveHoldings(holdings, ledgerId) {
       })),
     }))
     console.log('转换后的持仓数据:', data)
-    const result = await request(`/holdings/bulk?ledger_id=${ledgerId}`, {
+    const result = await request('/holdings/bulk', {
       method: 'PUT',
       body: JSON.stringify({ holdings: data }),
     })
@@ -186,8 +182,8 @@ export async function saveHoldings(holdings, ledgerId) {
   }
 }
 
-export async function deleteHolding(ledgerId, market, code) {
-  return request(`/holdings/${ledgerId}/${market}/${code}`, { method: 'DELETE' })
+export async function deleteHolding(market, code) {
+  return request(`/holdings/${market}/${code}`, { method: 'DELETE' })
 }
 
 // ─── 设置 ─────────────────────────────────────────────────────
