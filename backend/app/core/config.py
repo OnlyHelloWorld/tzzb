@@ -43,16 +43,25 @@ class Settings:
     PORT: int = int(os.getenv("PORT", "8000"))
 
     # CORS
-    CORS_ORIGINS: list = [
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://localhost:5175",
-        "http://localhost:4173",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:5174",
-        "http://127.0.0.1:5175",
-        "http://127.0.0.1:4173",
-    ]
+    @property
+    def CORS_ORIGINS(self) -> list:
+        default_origins = [
+            "http://localhost:5173",
+            "http://localhost:5174",
+            "http://localhost:5175",
+            "http://localhost:4173",
+            "http://127.0.0.1:5173",
+            "http://127.0.0.1:5174",
+            "http://127.0.0.1:5175",
+            "http://127.0.0.1:4173",
+        ]
+        # 从环境变量读取额外的 CORS 源
+        extra_origins = os.getenv("CORS_EXTRA_ORIGINS", "")
+        if extra_origins:
+            default_origins.extend(
+                [origin.strip() for origin in extra_origins.split(",") if origin.strip()]
+            )
+        return default_origins
 
     # 日志
     LOG_DIR: str = os.getenv("LOG_DIR", str(BASE_DIR / "logs"))
