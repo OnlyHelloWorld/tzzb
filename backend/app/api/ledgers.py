@@ -126,7 +126,7 @@ async def delete_ledger(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """删除账本"""
+    """删除账本（同时删除该账本中的所有数据）"""
     logger.info(f"用户 {user.username} 开始删除账本: ID={ledger_id}")
     try:
         # 1. 查询账本
@@ -141,10 +141,36 @@ async def delete_ledger(
 
         ledger_name = ledger.name
 
-        # 注意：由于holdings表不再关联ledger_id，删除账本不会影响持仓数据
-        # 如果需要删除关联的持仓，需要在前端或其他地方手动处理
+        # 2. 先删除该账本的所有交易记录
+        t_result = await db.execute(
+            select(Trade)
+            .where(Trade.user_id == user.id, Trade.ledger_id == ledger_id)
+        )
+        trades = t_result.scalars().all()
+        for trade in trades:
+            await db.delete(trade)
+        logger.debug(f"删除 {len(trades)} 条交易记录")
 
-        # 2. 删除账本
+        # 3. 删除该账本的所有持仓
+        h_result = await db.execute(
+            select(Holding)
+            .join(Trade)
+            .where(
+                Trade.user_id == user.id,
+                Trade.ledger_id == ledger_id,
+                Holding.user_id == user.id,
+                Holding.market == Trade.market,
+                Holding.code == Trade.code
+            )
+        )
+        holdings = h_result.scalars().all()
+        # 去重
+        unique_holdings = { (h.market, h.code): h for h in holdings }.values()
+        for holding in unique_holdings:
+            await db.delete(holding)
+        logger.debug(f"删除 {len(unique_holdings)} 个持仓")
+
+        # 4. 删除账本
         await db.delete(ledger)
         await db.commit()
         logger.info(f"用户 {user.username} 删除账本成功: {ledger_name}")
