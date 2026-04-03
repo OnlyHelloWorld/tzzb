@@ -57,7 +57,7 @@
       <!-- Ledger management page -->
       <div v-if="!currentLedger" class="ledger-management">
         <!-- 所有账本汇总卡片 -->
-        <div class="summary-card" v-if="allLedgersSummary.totalCNY > 0 || allLedgersHoldings.length > 0">
+        <div class="summary-card" v-if="ledgers.length > 0">
           <div class="summary-label">所有账本总市值（人民币）</div>
           <div class="summary-row">
             <div class="big-num">¥ {{ fmt(allLedgersSummary.totalCNY) }}</div>
