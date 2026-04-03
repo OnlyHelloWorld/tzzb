@@ -52,9 +52,10 @@ fi
 log_info "初始化/更新数据库..."
 
 # 清空数据库（删除SQLite文件）
-if [ -f "database.db" ]; then
+db_file="app/tzzb.db"
+if [ -f "$db_file" ]; then
     log_info "删除现有数据库文件..."
-    rm -f database.db
+    rm -f "$db_file"
 fi
 
 cat > init_db.py << 'EOF'
