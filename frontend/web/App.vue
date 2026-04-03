@@ -1402,6 +1402,8 @@ export default {
         id: ++_id, market, code: normalizedCode, name, sector,
         trades: [{ id: ++_id, date: date || today(), qty: +qty, price: +price }]
       }]
+      // 新增后切换到对应市场标签，避免用户在其他标签下看不到新持仓
+      tab.value = market
       prices[normalizedCode] = +price
       addHolding.value = false
       Object.assign(newForm, { market: 'A股', code: '', name: '', sector: '', qty: '', price: '', date: today() })
