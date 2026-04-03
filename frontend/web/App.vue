@@ -631,6 +631,15 @@ export default {
     const newLedgerColor = ref('#1a1814')
     const editingLedger = ref({ id: null, name: '', color: '#1a1814' })
     
+    // 更新页面标题的函数
+    const updatePageTitle = () => {
+      if (currentLedger.value) {
+        document.title = `投资账本_${currentLedger.value.name}`
+      } else {
+        document.title = '投资账本_首页'
+      }
+    }
+    
     // Available ledger colors
     const ledgerColors = [
       '#1a1814', '#1a7a4a', '#c0392b', '#1a6fa8', '#8e44ad',
@@ -706,6 +715,15 @@ export default {
           const savedLedgers = await api.loadLedgers()
           ledgers.value = savedLedgers || []
           console.log('加载到账本数据:', savedLedgers)
+          
+          // 从localStorage恢复currentLedger
+          const savedCurrentLedgerId = localStorage.getItem('investment-current-ledger-id')
+          if (savedCurrentLedgerId && ledgers.value.length > 0) {
+            const savedLedger = ledgers.value.find(l => l.id === parseInt(savedCurrentLedgerId))
+            if (savedLedger) {
+              currentLedger.value = savedLedger
+            }
+          }
           
           // 加载所有持仓数据（用于所有账本汇总）
           try {
@@ -1023,6 +1041,16 @@ export default {
         await loadData()
       }
     }
+    
+    // 监听currentLedger变化，保存到localStorage并更新页面标题
+    watch(currentLedger, (newLedger) => {
+      if (newLedger) {
+        localStorage.setItem('investment-current-ledger-id', newLedger.id.toString())
+      } else {
+        localStorage.removeItem('investment-current-ledger-id')
+      }
+      updatePageTitle()
+    }, { deep: true })
 
     // ─── Update export functions ─────────────────────────────────
     function handleExportCSV() {
@@ -1397,6 +1425,8 @@ export default {
     onMounted(async () => {
       if (isLoggedIn.value) {
         await loadData()
+        // 数据加载完成后更新页面标题
+        updatePageTitle()
       }
       startAutoRefresh()
       
