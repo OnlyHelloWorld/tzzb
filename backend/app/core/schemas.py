@@ -68,11 +68,13 @@ class HoldingBase(BaseModel):
 
 
 class HoldingCreate(HoldingBase):
+    ledger_id: int
     trades: List[TradeCreate] = []
 
 
 class HoldingResponse(HoldingBase):
     user_id: int
+    ledger_id: int
     trades: List[TradeResponse] = []
 
     class Config:
@@ -81,6 +83,7 @@ class HoldingResponse(HoldingBase):
 
 class HoldingBulkUpdate(BaseModel):
     """批量保存持仓（前端全量覆盖）"""
+    ledger_id: int
     holdings: List[HoldingCreate]
 
 
