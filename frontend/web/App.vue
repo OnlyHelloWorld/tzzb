@@ -56,6 +56,25 @@
     <div class="main-content">
       <!-- Ledger management page -->
       <div v-if="!currentLedger" class="ledger-management">
+        <!-- 所有账本汇总卡片 -->
+        <div class="summary-card" v-if="allLedgersSummary.totalCNY > 0 || allLedgersHoldings.length > 0">
+          <div class="summary-label">所有账本总市值（人民币）</div>
+          <div class="summary-row">
+            <div class="big-num">¥ {{ fmt(allLedgersSummary.totalCNY) }}</div>
+            <div class="summary-pnl">
+              <PnLTag :val="allLedgersSummary.pnl" :pct="allLedgersSummary.pct" :size="14" />
+              <span class="pnl-abs">{{ allLedgersSummary.pnl >= 0 ? '+' : '' }}¥{{ fmt(allLedgersSummary.pnl) }}</span>
+            </div>
+          </div>
+          <div class="ccy-row">
+            <div v-for="item in allLedgersCcyBreakdown" :key="item.ccy" class="ccy-chip">
+              <Tag :market="item.label" /> &thinsp;
+              <span>{{ SYM[item.ccy] }}{{ fmt(item.val) }}</span>
+              <span v-if="item.ccy !== 'CNY'" class="ccy-conv"> ≈ ¥{{ fmt(toCNY(item.val, item.ccy, fx)) }}</span>
+            </div>
+          </div>
+        </div>
+
         <div class="ledger-welcome">
           <h2>欢迎使用投资账本</h2>
           <p>创建多个账本，管理不同的投资组合</p>
@@ -534,6 +553,7 @@ export default {
     const ledgers = ref([])
     const ledgerSummaries = ref([])
     const currentLedger = ref(null)
+    const allLedgersHoldings = ref([])
     const showLedgerList = ref(false)
     const createLedgerModal = ref(false)
     const editLedgerModal = ref(false)
@@ -613,6 +633,24 @@ export default {
         ledgers.value = savedLedgers || []
         console.log('加载到账本数据:', savedLedgers)
         
+        // 加载所有持仓数据（用于所有账本汇总）
+        try {
+          const allHoldings = await api.loadHoldings()
+          allLedgersHoldings.value = allHoldings || []
+          console.log('加载到所有持仓数据:', allHoldings)
+          
+          // 为所有持仓设置价格
+          for (const h of allLedgersHoldings.value) {
+            if (!(h.code in prices)) {
+              const cost = avgCost(h.trades || [])
+              prices[h.code] = cost || 0
+            }
+          }
+        } catch (err) {
+          console.warn('加载所有持仓失败:', err)
+          allLedgersHoldings.value = []
+        }
+        
         // 加载所有账本的汇总信息
         const summaries = []
         for (const ledger of ledgers.value) {
@@ -625,6 +663,7 @@ export default {
         showIOMessage('加载账本失败: ' + err.message, true)
         ledgers.value = []
         ledgerSummaries.value = []
+        allLedgersHoldings.value = []
       }
 
       if (currentLedger.value) {
@@ -662,6 +701,7 @@ export default {
         showIOMessage('加载设置失败: ' + err.message, true)
       }
 
+      // 为当前账本持仓设置价格（如果还没有设置）
       for (const h of holdings.value) {
         if (!(h.code in prices)) {
           const cost = avgCost(h.trades || [])
@@ -725,6 +765,41 @@ export default {
       { label: 'A股', ccy: 'CNY', val: summary.value.byCcy.CNY },
       { label: '港股', ccy: 'HKD', val: summary.value.byCcy.HKD },
       { label: '美股', ccy: 'USD', val: summary.value.byCcy.USD },
+    ])
+
+    // 所有账本的持仓enriched数据
+    const allLedgersEnriched = computed(() => allLedgersHoldings.value.map(h => {
+      const ccy = MARKET_CCY[h.market]
+      const price = prices[h.code] || 0
+      const qty = totalQty(h.trades)
+      const cost = avgCost(h.trades)
+      const mv = price * qty
+      const costBasis = cost * qty
+      const pnl = mv - costBasis
+      const pct = costBasis > 0 ? pnl / costBasis * 100 : 0
+      return { ...h, ccy, price, qty, cost, mv, costBasis, pnl, pct }
+    }))
+
+    // 所有账本的汇总信息
+    const allLedgersSummary = computed(() => {
+      const byCcy = { CNY: 0, HKD: 0, USD: 0 }
+      const byCcyCost = { CNY: 0, HKD: 0, USD: 0 }
+      allLedgersEnriched.value.forEach(h => {
+        byCcy[h.ccy] += h.mv
+        byCcyCost[h.ccy] += h.costBasis
+      })
+      const totalCNY = toCNY(byCcy.CNY, 'CNY', fx) + toCNY(byCcy.HKD, 'HKD', fx) + toCNY(byCcy.USD, 'USD', fx)
+      const totalCostCNY = toCNY(byCcyCost.CNY, 'CNY', fx) + toCNY(byCcyCost.HKD, 'HKD', fx) + toCNY(byCcyCost.USD, 'USD', fx)
+      const pnl = totalCNY - totalCostCNY
+      const pct = totalCostCNY > 0 ? pnl / totalCostCNY * 100 : 0
+      return { byCcy, totalCNY, pnl, pct }
+    })
+
+    // 所有账本的货币分类
+    const allLedgersCcyBreakdown = computed(() => [
+      { label: 'A股', ccy: 'CNY', val: allLedgersSummary.value.byCcy.CNY },
+      { label: '港股', ccy: 'HKD', val: allLedgersSummary.value.byCcy.HKD },
+      { label: '美股', ccy: 'USD', val: allLedgersSummary.value.byCcy.USD },
     ])
 
     const fxList = [
@@ -1175,6 +1250,7 @@ export default {
       resetTarget, resetPrice, addTradeTarget, addTradeForm,
       addHolding, newForm, editPrice, openAddHolding,
       enriched, summary, filtered, ccyBreakdown,
+      allLedgersHoldings, allLedgersSummary, allLedgersCcyBreakdown,
       fmt, toCNY,
       // Quote
       quoteStatus, quoteError, lastQuoteTime, refreshQuotes,
