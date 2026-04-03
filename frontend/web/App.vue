@@ -644,7 +644,7 @@ export default {
     // 计算单个账本的汇总信息
     const calculateLedgerSummary = async (ledger) => {
       try {
-        const holdings = await api.loadHoldings()
+        const holdings = await api.loadHoldings(ledger.id)
         if (!holdings || holdings.length === 0) {
           return { ...ledger, totalCNY: 0, pnl: 0, pct: 0, holdingCount: 0 }
         }
@@ -723,7 +723,7 @@ export default {
 
       if (currentLedger.value) {
         try {
-          const savedHoldings = await api.loadHoldings()
+          const savedHoldings = await api.loadHoldings(currentLedger.value.id)
           // 无论是否有数据，都更新 holdings
           holdings.value = savedHoldings || []
           if (savedHoldings && savedHoldings.length > 0) {
@@ -871,11 +871,13 @@ export default {
       saveDebounce = setTimeout(async () => {
         try {
           // 保存持仓并更新本地数据（包含新的 ID）
-          const savedHoldings = await api.saveHoldings(holdings.value)
-          if (savedHoldings && savedHoldings.length > 0) {
-            holdings.value = savedHoldings
-            const maxId = Math.max(...savedHoldings.flatMap(h => (h.trades || []).map(t => t.id)), ...savedHoldings.map(h => h.id), 0)
-            _id = maxId + 1
+          if (currentLedger.value) {
+            const savedHoldings = await api.saveHoldings(holdings.value, currentLedger.value.id)
+            if (savedHoldings && savedHoldings.length > 0) {
+              holdings.value = savedHoldings
+              const maxId = Math.max(...savedHoldings.flatMap(h => (h.trades || []).map(t => t.id)), ...savedHoldings.map(h => h.id), 0)
+              _id = maxId + 1
+            }
           }
           await api.saveSettings({ fx_usd: fx.USD, fx_hkd: fx.HKD, auto_refresh: autoRefresh.value })
         } catch (err) {
@@ -963,14 +965,17 @@ export default {
       if (!deleteLedgerConfirm.value) return
 
       try {
-        await api.deleteLedger(deleteLedgerConfirm.value.id)
-        ledgers.value = ledgers.value.filter(l => l.id !== deleteLedgerConfirm.value.id)
+        const deletedId = deleteLedgerConfirm.value.id
+        await api.deleteLedger(deletedId)
+        ledgers.value = ledgers.value.filter(l => l.id !== deletedId)
         
         // 从 ledgerSummaries 中删除对应的账本
-        ledgerSummaries.value = ledgerSummaries.value.filter(s => s.id !== deleteLedgerConfirm.value.id)
+        ledgerSummaries.value = ledgerSummaries.value.filter(s => s.id !== deletedId)
         
-        if (currentLedger.value && currentLedger.value.id === deleteLedgerConfirm.value.id) {
-          currentLedger.value = ledgers.value.length > 0 ? ledgers.value[0] : null
+        // 如果删除的是当前账本，返回账本列表页面
+        if (currentLedger.value && currentLedger.value.id === deletedId) {
+          currentLedger.value = null
+          holdings.value = []
           await loadData()
         }
         deleteLedgerConfirm.value = null
@@ -981,20 +986,17 @@ export default {
     }
 
     const switchLedger = async (ledger) => {
-      const wasInLedgerManagement = !currentLedger.value
       currentLedger.value = ledger
       showLedgerList.value = false
-      
-      // 如果之前在账本管理页面，现在进入具体账本，需要加载数据
-      if (wasInLedgerManagement) {
-        await loadData()
-      }
-      // 如果已经在具体账本中切换，不需要重新加载数据（所有账本共享同一组持仓）
+      showDropdown.value = false
+      await loadData()
     }
 
     const goHome = () => {
       if (currentLedger.value) {
         currentLedger.value = null
+        showLedgerList.value = false
+        showDropdown.value = false
       }
     }
 
@@ -1047,8 +1049,7 @@ export default {
             const newLedger = await api.createLedger(ledger.name, ledger.color)
             const holdingsToSave = data.ledgerHoldings[ledger.id] || []
             if (holdingsToSave.length > 0) {
-              currentLedger.value = newLedger
-              await api.saveHoldings(holdingsToSave)
+              await api.saveHoldings(holdingsToSave, newLedger.id)
             }
           }
           currentLedger.value = null
@@ -1057,7 +1058,7 @@ export default {
         } else {
           if (currentLedger.value) {
             holdings.value = data.holdings
-            await api.saveHoldings(holdings.value)
+            await api.saveHoldings(holdings.value, currentLedger.value.id)
             showIOMessage(`导入成功，共 ${data.holdings.length} 条持仓`)
           } else {
             showIOMessage('请先选择一个账本再导入', true)
@@ -1162,8 +1163,7 @@ export default {
             const newLedger = await api.createLedger(ledger.name, ledger.color)
             const holdingsToSave = data.ledgerHoldings[ledger.id] || []
             if (holdingsToSave.length > 0) {
-              currentLedger.value = newLedger
-              await api.saveHoldings(holdingsToSave)
+              await api.saveHoldings(holdingsToSave, newLedger.id)
             }
           }
           currentLedger.value = null
@@ -1171,7 +1171,7 @@ export default {
           showIOMessage(`导入成功，共 ${data.ledgers.length} 个账本`)
         } else {
           holdings.value = data.holdings
-          await api.saveHoldings(holdings.value)
+          await api.saveHoldings(holdings.value, currentLedger?.value?.id)
           showIOMessage(`导入成功，共 ${data.holdings.length} 条持仓`)
         }
         refreshQuotes()
@@ -1193,7 +1193,7 @@ export default {
       )
       editingTrade.value = null
       if (currentLedger.value) {
-        api.saveHoldings(holdings.value)
+        api.saveHoldings(holdings.value, currentLedger.value.id)
       }
     }
 
@@ -1205,7 +1205,7 @@ export default {
         return trades.length > 0 ? { ...h, trades } : h
       })
       if (currentLedger.value) {
-        api.saveHoldings(holdings.value)
+        api.saveHoldings(holdings.value, currentLedger.value.id)
       }
     }
 
@@ -1219,7 +1219,7 @@ export default {
       deleteConfirm.value = null
       
       try {
-        await api.deleteHolding(market, code)
+        await api.deleteHolding(market, code, currentLedger.value.id)
         holdings.value = holdings.value.filter(h => !(h.market === market && h.code === code))
         showIOMessage('持仓删除成功')
       } catch (err) {
@@ -1260,7 +1260,7 @@ export default {
       resetTarget.value = null
       resetPrice.value = ''
       if (currentLedger.value) {
-        api.saveHoldings(holdings.value)
+        api.saveHoldings(holdings.value, currentLedger.value.id)
       }
     }
     const resetCost = (holding) => {
@@ -1276,7 +1276,7 @@ export default {
       resetTarget.value = null
       resetPrice.value = ''
       if (currentLedger.value) {
-        api.saveHoldings(holdings.value)
+        api.saveHoldings(holdings.value, currentLedger.value.id)
       }
     }
 
@@ -1307,7 +1307,7 @@ export default {
       addTradeTarget.value = null
       Object.assign(addTradeForm, { type: '买入', qty: '', price: '', date: '', note: '' })
       if (currentLedger.value) {
-        api.saveHoldings(holdings.value)
+        api.saveHoldings(holdings.value, currentLedger.value.id)
       }
     }
     const addError = ref('')
@@ -1348,7 +1348,7 @@ export default {
       Object.assign(newForm, { market: 'A股', code: '', name: '', sector: '', qty: '', price: '', date: today() })
       // 立即持久化
       if (currentLedger.value) {
-        api.saveHoldings(holdings.value).then(() => {
+        api.saveHoldings(holdings.value, currentLedger.value.id).then(() => {
           ioMessage.value = '✅ 已保存到本地'
           setTimeout(() => { if (ioMessage.value === '✅ 已保存到本地') ioMessage.value = '' }, 3000)
         })

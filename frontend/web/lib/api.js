@@ -141,11 +141,11 @@ export async function deleteLedger(ledgerId) {
 }
 
 // ─── 持仓 ─────────────────────────────────────────────────────
-// 注意：持仓不再关联账本，所有持仓属于用户级别
-export async function loadHoldings() {
-  console.log('开始加载持仓数据')
+export async function loadHoldings(ledgerId = null) {
+  console.log('开始加载持仓数据, ledgerId:', ledgerId)
   try {
-    const data = await request('/holdings')
+    const url = ledgerId ? `/holdings?ledger_id=${ledgerId}` : '/holdings'
+    const data = await request(url)
     console.log('加载持仓数据成功:', data)
     return data
   } catch (error) {
@@ -154,14 +154,15 @@ export async function loadHoldings() {
   }
 }
 
-export async function saveHoldings(holdings) {
-  console.log('开始保存持仓数据，持仓数量:', holdings.length)
+export async function saveHoldings(holdings, ledgerId) {
+  console.log('开始保存持仓数据，持仓数量:', holdings.length, 'ledgerId:', ledgerId)
   try {
     const data = holdings.map(h => ({
       market: h.market,
       code: h.code,
       name: h.name,
       sector: h.sector || '',
+      ledger_id: ledgerId,
       trades: (h.trades || []).map(t => ({
         date: t.date,
         qty: t.qty,
@@ -172,7 +173,7 @@ export async function saveHoldings(holdings) {
     console.log('转换后的持仓数据:', data)
     const result = await request('/holdings/bulk', {
       method: 'PUT',
-      body: JSON.stringify({ holdings: data }),
+      body: JSON.stringify({ ledger_id: ledgerId, holdings: data }),
     })
     console.log('保存持仓数据成功:', result)
     return result.holdings || []
@@ -182,8 +183,11 @@ export async function saveHoldings(holdings) {
   }
 }
 
-export async function deleteHolding(market, code) {
-  return request(`/holdings/${market}/${code}`, { method: 'DELETE' })
+export async function deleteHolding(market, code, ledgerId) {
+  const url = ledgerId 
+    ? `/holdings/${market}/${code}?ledger_id=${ledgerId}` 
+    : `/holdings/${market}/${code}`
+  return request(url, { method: 'DELETE' })
 }
 
 // ─── 设置 ─────────────────────────────────────────────────────

@@ -22,18 +22,18 @@ router = APIRouter(prefix="/holdings", tags=["持仓"])
 
 @router.get("", response_model=List[HoldingResponse])
 async def get_holdings(
+    ledger_id: int = None,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """获取用户所有持仓"""
-    logger.info(f"用户 {user.username} 获取持仓数据")
+    """获取用户所有持仓，可按账本筛选"""
+    logger.info(f"用户 {user.username} 获取持仓数据, ledger_id={ledger_id}")
     try:
-        result = await db.execute(
-            select(Holding)
-            .options(selectinload(Holding.trades))
-            .where(Holding.user_id == user.id)
-            .order_by(Holding.market, Holding.code)
-        )
+        query = select(Holding).options(selectinload(Holding.trades)).where(Holding.user_id == user.id)
+        if ledger_id:
+            query = query.where(Holding.ledger_id == ledger_id)
+        query = query.order_by(Holding.market, Holding.code)
+        result = await db.execute(query)
         holdings = result.scalars().all()
         logger.info(f"用户 {user.username} 获取到 {len(holdings)} 条持仓记录")
         return holdings
@@ -49,12 +49,17 @@ async def create_holding(
     db: AsyncSession = Depends(get_db),
 ):
     """添加单个持仓"""
-    logger.info(f"用户 {user.username} 开始添加持仓: {req.code}")
+    logger.info(f"用户 {user.username} 开始添加持仓: {req.code}, ledger_id={req.ledger_id}")
     try:
-        # 检查持仓是否已存在
+        # 检查持仓是否已存在（同一账本下）
         existing = await db.execute(
             select(Holding)
-            .where(Holding.user_id == user.id, Holding.market == req.market, Holding.code == req.code)
+            .where(
+                Holding.user_id == user.id,
+                Holding.ledger_id == req.ledger_id,
+                Holding.market == req.market,
+                Holding.code == req.code
+            )
         )
         if existing.scalar_one_or_none():
             logger.warning(f"用户 {user.username} 添加持仓失败: 持仓已存在 {req.market}/{req.code}")
@@ -62,6 +67,7 @@ async def create_holding(
 
         holding = Holding(
             user_id=user.id,
+            ledger_id=req.ledger_id,
             market=req.market,
             code=req.code,
             name=req.name,
@@ -74,7 +80,7 @@ async def create_holding(
         for t in req.trades:
             trade = Trade(
                 user_id=user.id,
-                ledger_id=0,  # 不再关联账本
+                ledger_id=req.ledger_id,
                 market=holding.market,
                 code=holding.code,
                 date=t.date, qty=t.qty, price=t.price, note=t.note
@@ -101,11 +107,14 @@ async def bulk_save_holdings(
     db: AsyncSession = Depends(get_db),
 ):
     """批量保存持仓（全量覆盖）"""
-    logger.info(f"用户 {user.username} 开始批量保存持仓: 数量={len(req.holdings)}")
+    logger.info(f"用户 {user.username} 开始批量保存持仓: 数量={len(req.holdings)}, ledger_id={req.ledger_id}")
     try:
-        # 1. 查询旧持仓
+        # 1. 查询该账本的旧持仓
         result = await db.execute(
-            select(Holding).where(Holding.user_id == user.id)
+            select(Holding).where(
+                Holding.user_id == user.id,
+                Holding.ledger_id == req.ledger_id
+            )
         )
         old_holdings = result.scalars().all()
         logger.debug(f"用户 {user.username} 找到 {len(old_holdings)} 条旧持仓记录")
@@ -115,6 +124,7 @@ async def bulk_save_holdings(
             t_result = await db.execute(
                 select(Trade).where(
                     Trade.user_id == user.id,
+                    Trade.ledger_id == req.ledger_id,
                     Trade.market == h.market,
                     Trade.code == h.code
                 )
@@ -135,6 +145,7 @@ async def bulk_save_holdings(
         for h in req.holdings:
             holding = Holding(
                 user_id=user.id,
+                ledger_id=req.ledger_id,
                 market=h.market,
                 code=h.code,
                 name=h.name,
@@ -147,7 +158,7 @@ async def bulk_save_holdings(
             for t in h.trades:
                 trade = Trade(
                     user_id=user.id,
-                    ledger_id=0,  # 不再关联账本
+                    ledger_id=req.ledger_id,
                     market=h.market,
                     code=h.code,
                     date=t.date,
@@ -165,7 +176,10 @@ async def bulk_save_holdings(
         result = await db.execute(
             select(Holding)
             .options(selectinload(Holding.trades))
-            .where(Holding.user_id == user.id)
+            .where(
+                Holding.user_id == user.id,
+                Holding.ledger_id == req.ledger_id
+            )
             .order_by(Holding.market, Holding.code)
         )
         saved_holdings = result.scalars().all()
@@ -182,33 +196,36 @@ async def bulk_save_holdings(
 async def delete_holding(
     market: str,
     code: str,
+    ledger_id: int = None,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """删除持仓"""
-    logger.info(f"用户 {user.username} 开始删除持仓: {market}/{code}")
+    logger.info(f"用户 {user.username} 开始删除持仓: {market}/{code}, ledger_id={ledger_id}")
     try:
-        # 1. 查询持仓
-        result = await db.execute(
-            select(Holding).where(
-                Holding.user_id == user.id,
-                Holding.market == market,
-                Holding.code == code
-            )
+        # 1. 查询持仓（可按账本筛选）
+        query = select(Holding).where(
+            Holding.user_id == user.id,
+            Holding.market == market,
+            Holding.code == code
         )
+        if ledger_id:
+            query = query.where(Holding.ledger_id == ledger_id)
+        result = await db.execute(query)
         holding = result.scalar_one_or_none()
         if not holding:
             logger.warning(f"用户 {user.username} 删除持仓失败: 持仓不存在 {market}/{code}")
             raise HTTPException(status_code=404, detail="持仓不存在")
 
         # 2. 查询并删除关联的trades
-        t_result = await db.execute(
-            select(Trade).where(
-                Trade.user_id == user.id,
-                Trade.market == market,
-                Trade.code == code
-            )
+        t_query = select(Trade).where(
+            Trade.user_id == user.id,
+            Trade.market == market,
+            Trade.code == code
         )
+        if ledger_id:
+            t_query = t_query.where(Trade.ledger_id == ledger_id)
+        t_result = await db.execute(t_query)
         trades = t_result.scalars().all()
         logger.debug(f"用户 {user.username} 找到 {len(trades)} 条关联交易记录")
         for t in trades:
