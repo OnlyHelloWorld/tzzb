@@ -152,23 +152,18 @@ async def delete_ledger(
         logger.debug(f"删除 {len(trades)} 条交易记录")
 
         # 3. 删除该账本的所有持仓
+        # 不能依赖 Trade 联表查询（上一步已删除交易），否则会遗漏持仓并导致账本删除失败
         h_result = await db.execute(
             select(Holding)
-            .join(Trade)
             .where(
-                Trade.user_id == user.id,
-                Trade.ledger_id == ledger_id,
                 Holding.user_id == user.id,
-                Holding.market == Trade.market,
-                Holding.code == Trade.code
+                Holding.ledger_id == ledger_id
             )
         )
         holdings = h_result.scalars().all()
-        # 去重
-        unique_holdings = { (h.market, h.code): h for h in holdings }.values()
-        for holding in unique_holdings:
+        for holding in holdings:
             await db.delete(holding)
-        logger.debug(f"删除 {len(unique_holdings)} 个持仓")
+        logger.debug(f"删除 {len(holdings)} 个持仓")
 
         # 4. 删除账本
         await db.delete(ledger)
