@@ -3,7 +3,7 @@
   <div v-else class="app-root">
     <!-- ── Header ── -->
     <div class="header">
-      <div class="header-left">
+      <div class="header-left" :style="{ cursor: currentLedger ? 'pointer' : 'default' }" @click="goHome">
         <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
           <rect width="28" height="28" rx="7" fill="#1a1814"/>
           <path d="M7 9h14M7 14h10M7 19h12" stroke="#f9f7f3" stroke-width="1.8" stroke-linecap="round"/>
@@ -15,6 +15,7 @@
         <button class="btn btn-ink" @click="openCreateLedger">+ 新建账本</button>
       </div>
       <div v-else class="header-right">
+        <button class="btn btn-ghost" @click="goHome">← 返回主页</button>
         <span class="ledger-badge" :style="{ backgroundColor: currentLedger.color, color: '#fff' }">
           {{ currentLedger.name }}
           <span class="ledger-badge-action" @click="showLedgerList = !showLedgerList">▼</span>
@@ -58,9 +59,17 @@
       <div v-if="!currentLedger" class="ledger-management">
         <!-- 所有账本汇总卡片 -->
         <div class="summary-card" v-if="ledgers.length > 0">
-          <div class="summary-label">所有账本总市值（人民币）</div>
+          <div class="summary-row" style="justify-content: space-between; align-items: center;">
+            <div>
+              <div class="summary-label">所有账本总市值（人民币）</div>
+              <div class="big-num" style="font-size: 28px;">¥ {{ fmt(allLedgersSummary.totalCNY) }}</div>
+            </div>
+            <div style="text-align: right; margin-left: 20px;">
+              <div class="summary-label">账本数量</div>
+              <div style="font-size: 32px; font-weight: 600; color: #1a1814;">{{ ledgers.length }}</div>
+            </div>
+          </div>
           <div class="summary-row">
-            <div class="big-num">¥ {{ fmt(allLedgersSummary.totalCNY) }}</div>
             <div class="summary-pnl">
               <PnLTag :val="allLedgersSummary.pnl" :pct="allLedgersSummary.pct" :size="14" />
               <span class="pnl-abs">{{ allLedgersSummary.pnl >= 0 ? '+' : '' }}¥{{ fmt(allLedgersSummary.pnl) }}</span>
@@ -75,9 +84,9 @@
           </div>
         </div>
 
-        <div class="ledger-welcome">
-          <h2>欢迎使用投资账本</h2>
-          <p>创建多个账本，管理不同的投资组合</p>
+        <div class="ledger-welcome" style="margin-top: 30px; margin-bottom: 30px;">
+          <h2 style="font-size: 20px; margin-bottom: 8px;">欢迎使用投资账本</h2>
+          <p style="font-size: 14px; color: #666; margin: 0;">创建多个账本，管理不同的投资组合</p>
         </div>
         <div class="ledgers-grid">
           <div v-for="summary in ledgerSummaries" :key="summary.id" class="ledger-card" @click="switchLedger(summary)">
@@ -937,6 +946,12 @@ export default {
       // 如果已经在具体账本中切换，不需要重新加载数据（所有账本共享同一组持仓）
     }
 
+    const goHome = () => {
+      if (currentLedger.value) {
+        currentLedger.value = null
+      }
+    }
+
     // ─── Update export functions ─────────────────────────────────
     function handleExportJSON() {
       try {
@@ -1293,7 +1308,7 @@ export default {
       createLedgerModal, editLedgerModal, deleteLedgerConfirm,
       newLedgerName, newLedgerColor, editingLedger, ledgerColors,
       openCreateLedger, saveNewLedger, editLedger, saveEditLedger,
-      confirmDeleteLedger, deleteSelectedLedger, switchLedger
+      confirmDeleteLedger, deleteSelectedLedger, switchLedger, goHome
     }
   }
 }
