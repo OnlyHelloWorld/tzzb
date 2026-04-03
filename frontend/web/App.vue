@@ -66,15 +66,25 @@
           <div class="ledger-info">
             <div class="ledger-name">{{ ledger.name }}</div>
           </div>
-          <div class="ledger-actions">
-            <button class="btn btn-ghost btn-sm" @click.stop="editLedger(ledger)">编辑</button>
-            <button class="btn btn-warn btn-sm" @click.stop="confirmDeleteLedger(ledger)">删除</button>
+          <div class="ledger-actions" @click.stop>
+            <button class="btn btn-ghost btn-sm ledger-menu-trigger" @click.stop="toggleLedgerListMenu(ledger.id)">⋯</button>
+            <div v-if="activeLedgerListMenuId === ledger.id" class="ledger-item-menu">
+              <button class="ledger-item-menu-btn" @click.stop="editLedger(ledger)">编辑账本</button>
+              <button class="ledger-item-menu-btn warn" @click.stop="confirmDeleteLedger(ledger)">删除账本</button>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
     <div class="main-content">
+      <div v-if="showBlessingEffect || isLoading" :class="['blessing-overlay', { 'blessing-overlay-loop': isLoading }]">
+        <span
+          v-for="(char, index) in blessingChars"
+          :key="`${isLoading ? 'loading' : blessingEffectKey}-${index}`"
+          :class="['blessing-char', isLoading ? 'blessing-char-loop' : 'blessing-char-pop']"
+        >{{ char }}</span>
+      </div>
       <div v-if="isLoading" class="section-loading">
         <div class="loading-wave">
           <div class="loading-bar"></div>
@@ -139,6 +149,13 @@
           <div v-for="summary in ledgerSummaries" :key="summary.id" class="ledger-card" @click="switchLedger(summary)">
             <div class="ledger-card-header" :style="{ backgroundColor: summary.color }"></div>
             <div class="ledger-card-body">
+              <div class="ledger-card-actions" @click.stop>
+                <button class="btn btn-ghost btn-sm ledger-menu-trigger" @click.stop="toggleLedgerCardMenu(summary.id)">⋯</button>
+                <div v-if="activeLedgerCardMenuId === summary.id" class="ledger-item-menu ledger-card-menu">
+                  <button class="ledger-item-menu-btn" @click.stop="editLedger(summary)">编辑账本</button>
+                  <button class="ledger-item-menu-btn warn" @click.stop="confirmDeleteLedger(summary)">删除账本</button>
+                </div>
+              </div>
               <h3>{{ summary.name }}</h3>
               <div class="ledger-summary">
                 <div class="summary-item">
@@ -627,6 +644,11 @@ export default {
     const newForm = reactive({ market: 'A股', code: '', name: '', sector: '', qty: '100', price: '', date: today() })
     const deletingHoldings = ref([])
     const blessingChars = ['恭', '喜', '发', '财']
+    const showBlessingEffect = ref(false)
+    const blessingEffectKey = ref(0)
+    const blessingEffectDuration = 1800
+    const holdingDeleteEffectDuration = 1500
+    let blessingEffectTimer = null
 
     // Ledger state
     const ledgers = ref([])
@@ -635,6 +657,8 @@ export default {
     const allLedgersHoldings = ref([])
     const showLedgerList = ref(false)
     const showDropdown = ref(false)
+    const activeLedgerListMenuId = ref(null)
+    const activeLedgerCardMenuId = ref(null)
     const createLedgerModal = ref(false)
     const editLedgerModal = ref(false)
     const deleteLedgerConfirm = ref(null)
@@ -661,6 +685,28 @@ export default {
       Object.assign(newForm, { market: 'A股', code: '', name: '', sector: '', qty: '100', price: '', date: today() })
       addError.value = ''
       addHolding.value = true
+    }
+
+    const triggerBlessingEffect = () => {
+      if (blessingEffectTimer) {
+        clearTimeout(blessingEffectTimer)
+      }
+      blessingEffectKey.value += 1
+      showBlessingEffect.value = true
+      blessingEffectTimer = setTimeout(() => {
+        showBlessingEffect.value = false
+        blessingEffectTimer = null
+      }, blessingEffectDuration)
+    }
+
+    const toggleLedgerListMenu = (ledgerId) => {
+      activeLedgerCardMenuId.value = null
+      activeLedgerListMenuId.value = activeLedgerListMenuId.value === ledgerId ? null : ledgerId
+    }
+
+    const toggleLedgerCardMenu = (ledgerId) => {
+      activeLedgerListMenuId.value = null
+      activeLedgerCardMenuId.value = activeLedgerCardMenuId.value === ledgerId ? null : ledgerId
     }
 
     // Quote state
@@ -964,6 +1010,9 @@ export default {
         ledgerSummaries.value.push(summary)
         
         createLedgerModal.value = false
+        activeLedgerCardMenuId.value = null
+        activeLedgerListMenuId.value = null
+        triggerBlessingEffect()
         showIOMessage('账本创建成功')
       } catch (err) {
         showIOMessage('创建账本失败: ' + err.message, true)
@@ -1002,6 +1051,9 @@ export default {
           currentLedger.value = updatedLedger
         }
         editLedgerModal.value = false
+        activeLedgerCardMenuId.value = null
+        activeLedgerListMenuId.value = null
+        triggerBlessingEffect()
         showIOMessage('账本更新成功')
       } catch (err) {
         showIOMessage('更新账本失败: ' + err.message, true)
@@ -1029,7 +1081,11 @@ export default {
           holdings.value = []
           await loadData()
         }
+        showLedgerList.value = false
+        activeLedgerCardMenuId.value = null
+        activeLedgerListMenuId.value = null
         deleteLedgerConfirm.value = null
+        triggerBlessingEffect()
         showIOMessage('账本删除成功')
       } catch (err) {
         showIOMessage('删除账本失败: ' + err.message, true)
@@ -1040,6 +1096,8 @@ export default {
       currentLedger.value = ledger
       showLedgerList.value = false
       showDropdown.value = false
+      activeLedgerListMenuId.value = null
+      activeLedgerCardMenuId.value = null
       await loadData()
     }
 
@@ -1048,6 +1106,8 @@ export default {
         currentLedger.value = null
         showLedgerList.value = false
         showDropdown.value = false
+        activeLedgerListMenuId.value = null
+        activeLedgerCardMenuId.value = null
         holdings.value = []
         await loadData()
       }
@@ -1290,7 +1350,7 @@ export default {
         setTimeout(() => {
           holdings.value = holdings.value.filter(h => !(h.market === market && h.code === code))
           deletingHoldings.value = deletingHoldings.value.filter(key => key !== holdingKey)
-        }, 820)
+        }, holdingDeleteEffectDuration)
         showIOMessage('持仓删除成功')
       } catch (err) {
         showIOMessage('删除失败: ' + err.message, true)
@@ -1424,6 +1484,7 @@ export default {
       tab.value = market
       prices[normalizedCode] = +price
       addHolding.value = false
+      triggerBlessingEffect()
       Object.assign(newForm, { market: 'A股', code: '', name: '', sector: '', qty: '', price: '', date: today() })
       // 立即持久化
       if (currentLedger.value) {
@@ -1439,6 +1500,8 @@ export default {
       if (showDropdown.value) {
         showDropdown.value = false
       }
+      activeLedgerListMenuId.value = null
+      activeLedgerCardMenuId.value = null
     }
 
     // ─── Lifecycle ───────────────────────────────────────────────
@@ -1457,6 +1520,9 @@ export default {
     onUnmounted(() => {
       stopAutoRefresh()
       document.removeEventListener('click', handleDocumentClick)
+      if (blessingEffectTimer) {
+        clearTimeout(blessingEffectTimer)
+      }
     })
 
     return {
@@ -1480,9 +1546,10 @@ export default {
       addError, tradeError, nameLoading, onCodeChange,
       isLoggedIn, handleLogin, handleLogout, loginError,
       // Delete confirm
-      deleteConfirm, deletingHoldings, blessingChars,
+      deleteConfirm, deletingHoldings, blessingChars, showBlessingEffect, blessingEffectKey,
       // Ledger management
       ledgers, ledgerSummaries, currentLedger, showLedgerList, showDropdown,
+      activeLedgerListMenuId, activeLedgerCardMenuId, toggleLedgerListMenu, toggleLedgerCardMenu,
       createLedgerModal, editLedgerModal, deleteLedgerConfirm,
       newLedgerName, newLedgerColor, editingLedger, ledgerColors,
       openCreateLedger, saveNewLedger, editLedger, saveEditLedger,
@@ -1601,10 +1668,45 @@ input:focus, select:focus { outline: none; }
 .ledger-actions {
   display: flex;
   gap: 6px;
+  position: relative;
 }
 .btn-sm {
   font-size: 11px;
   padding: 4px 8px;
+}
+.ledger-menu-trigger {
+  min-width: 28px;
+  padding: 2px 8px;
+  font-size: 18px;
+  line-height: 1;
+}
+.ledger-item-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  min-width: 110px;
+  background: #fff;
+  border: 1px solid #ede9e2;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.12);
+  z-index: 15;
+  padding: 6px;
+}
+.ledger-item-menu-btn {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 7px 8px;
+  text-align: left;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #1a1814;
+}
+.ledger-item-menu-btn:hover {
+  background: #f7f4ef;
+}
+.ledger-item-menu-btn.warn {
+  color: #c0392b;
 }
 
 /* Ledger management */
@@ -1655,6 +1757,16 @@ input:focus, select:focus { outline: none; }
 .ledger-card-body {
   padding: 18px 14px;
   text-align: center;
+  position: relative;
+}
+.ledger-card-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+.ledger-card-menu {
+  right: 0;
+  top: 30px;
 }
 .ledger-card h3 {
   font-size: 14px;
@@ -1753,7 +1865,31 @@ input:focus, select:focus { outline: none; }
 .spin { animation: spin 1s linear infinite; }
 
 /* Main */
-.main-content { max-width: 780px; margin: 0 auto; padding: 20px 14px 60px; }
+.main-content { max-width: 780px; margin: 0 auto; padding: 20px 14px 60px; position: relative; }
+.blessing-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  pointer-events: none;
+  z-index: 1800;
+  background: radial-gradient(circle, rgba(255, 248, 224, 0.24), rgba(255, 255, 255, 0));
+}
+.blessing-overlay-loop {
+  background: radial-gradient(circle, rgba(255, 248, 224, 0.36), rgba(255, 255, 255, 0.05));
+}
+.blessing-char-pop {
+  animation: blessingPop 1.8s ease forwards;
+}
+.blessing-char-loop {
+  animation: blessingLoop 1.6s ease-in-out infinite;
+}
+.blessing-char-loop:nth-child(1) { animation-delay: 0s; }
+.blessing-char-loop:nth-child(2) { animation-delay: .2s; }
+.blessing-char-loop:nth-child(3) { animation-delay: .4s; }
+.blessing-char-loop:nth-child(4) { animation-delay: .6s; }
 .section-loading {
   min-height: 360px;
   border: 1px solid #ede9e2;
@@ -2055,7 +2191,7 @@ input:focus, select:focus { outline: none; }
   animation: pulse 1.5s ease-in-out infinite;
 }
 .row-deleting {
-  animation: explodeOut .82s ease forwards;
+  animation: explodeOut 1.5s ease forwards;
   pointer-events: none;
 }
 .delete-blessing {
@@ -2080,7 +2216,7 @@ input:focus, select:focus { outline: none; }
   box-shadow: 0 4px 12px rgba(192, 57, 43, 0.32);
   font-size: 16px;
   font-weight: 700;
-  animation: blessingBurst .82s ease forwards;
+  animation: blessingBurst 1.5s ease forwards;
 }
 .blessing-char:nth-child(1) { --dx: -70px; --dy: -36px; }
 .blessing-char:nth-child(2) { --dx: -20px; --dy: -64px; }
@@ -2108,6 +2244,16 @@ input:focus, select:focus { outline: none; }
   25% { opacity: 1; }
   70% { transform: translate(var(--dx), var(--dy)) scale(1.06); opacity: 1; }
   100% { transform: translate(calc(var(--dx) * 1.25), calc(var(--dy) * 1.4)) scale(0.8); opacity: 0; }
+}
+@keyframes blessingPop {
+  0% { transform: translate(0, 0) scale(0.72); opacity: 0; }
+  22% { opacity: 1; }
+  70% { transform: translate(var(--dx), calc(var(--dy) * 1.1)) scale(1.1); opacity: 1; }
+  100% { transform: translate(calc(var(--dx) * 1.35), calc(var(--dy) * 1.5)) scale(0.76); opacity: 0; }
+}
+@keyframes blessingLoop {
+  0%, 100% { transform: translate(calc(var(--dx) * .15), calc(var(--dy) * .15)) scale(0.95); opacity: 0.65; }
+  50% { transform: translate(calc(var(--dx) * .35), calc(var(--dy) * .35)) scale(1.08); opacity: 1; }
 }
 
 .row-head {
