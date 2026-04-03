@@ -1380,8 +1380,8 @@ export default {
       // 立即持久化
       if (currentLedger.value) {
         api.saveHoldings(holdings.value, currentLedger.value.id).then(() => {
-          ioMessage.value = '✅ 已保存到本地'
-          setTimeout(() => { if (ioMessage.value === '✅ 已保存到本地') ioMessage.value = '' }, 3000)
+          ioMessage.value = '✅ 保存成功'
+          setTimeout(() => { if (ioMessage.value === '✅ 保存成功') ioMessage.value = '' }, 3000)
         })
       }
     }
