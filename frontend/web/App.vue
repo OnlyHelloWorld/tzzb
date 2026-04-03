@@ -1072,7 +1072,10 @@ export default {
     }
     
     // 监听currentLedger变化，保存到localStorage并更新页面标题
-    watch(currentLedger, (newLedger) => {
+    watch(currentLedger, (newLedger, oldLedger) => {
+      if (newLedger?.id !== oldLedger?.id) {
+        clearPendingHoldingDeleteTimers()
+      }
       if (newLedger) {
         localStorage.setItem('investment-current-ledger-id', newLedger.id.toString())
       } else {
@@ -1294,21 +1297,42 @@ export default {
       deleteConfirm.value = holdingId
     }
 
+    const pendingHoldingDeleteTimers = new Map()
+
+    const clearPendingHoldingDeleteTimers = () => {
+      for (const timerId of pendingHoldingDeleteTimers.values()) {
+        clearTimeout(timerId)
+      }
+      pendingHoldingDeleteTimers.clear()
+      deletingHoldings.value = []
+    }
+
     const deleteHolding = async () => {
       if (deleteConfirm.value === null || !currentLedger.value) return
       const { market, code } = deleteConfirm.value
       const holdingKey = `${market}-${code}`
+      const originalLedgerId = currentLedger.value.id
       deleteConfirm.value = null
       
       try {
-        await api.deleteHolding(market, code, currentLedger.value.id)
+        await api.deleteHolding(market, code, originalLedgerId)
         if (!deletingHoldings.value.includes(holdingKey)) {
           deletingHoldings.value.push(holdingKey)
         }
-        setTimeout(() => {
+        const existingTimer = pendingHoldingDeleteTimers.get(holdingKey)
+        if (existingTimer) {
+          clearTimeout(existingTimer)
+        }
+        const timerId = setTimeout(() => {
+          pendingHoldingDeleteTimers.delete(holdingKey)
+          if (!currentLedger.value || currentLedger.value.id !== originalLedgerId) {
+            deletingHoldings.value = deletingHoldings.value.filter(key => key !== holdingKey)
+            return
+          }
           holdings.value = holdings.value.filter(h => !(h.market === market && h.code === code))
           deletingHoldings.value = deletingHoldings.value.filter(key => key !== holdingKey)
         }, 820)
+        pendingHoldingDeleteTimers.set(holdingKey, timerId)
         showIOMessage('持仓删除成功')
       } catch (err) {
         showIOMessage('删除失败: ' + err.message, true)
