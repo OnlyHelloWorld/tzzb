@@ -850,6 +850,11 @@ export default {
       try {
         const newLedger = await api.createLedger(newLedgerName.value.trim(), newLedgerColor.value)
         ledgers.value.push(newLedger)
+        
+        // 计算新账本的汇总信息并添加到 ledgerSummaries
+        const summary = await calculateLedgerSummary(newLedger)
+        ledgerSummaries.value.push(summary)
+        
         createLedgerModal.value = false
         showIOMessage('账本创建成功')
       } catch (err) {
@@ -876,6 +881,14 @@ export default {
         const index = ledgers.value.findIndex(l => l.id === updatedLedger.id)
         if (index !== -1) {
           ledgers.value[index] = updatedLedger
+          
+          // 更新 ledgerSummaries 中对应的账本信息
+          const summaryIndex = ledgerSummaries.value.findIndex(s => s.id === updatedLedger.id)
+          if (summaryIndex !== -1) {
+            // 重新计算汇总信息
+            const summary = await calculateLedgerSummary(updatedLedger)
+            ledgerSummaries.value[summaryIndex] = summary
+          }
         }
         if (currentLedger.value && currentLedger.value.id === updatedLedger.id) {
           currentLedger.value = updatedLedger
@@ -897,6 +910,10 @@ export default {
       try {
         await api.deleteLedger(deleteLedgerConfirm.value.id)
         ledgers.value = ledgers.value.filter(l => l.id !== deleteLedgerConfirm.value.id)
+        
+        // 从 ledgerSummaries 中删除对应的账本
+        ledgerSummaries.value = ledgerSummaries.value.filter(s => s.id !== deleteLedgerConfirm.value.id)
+        
         if (currentLedger.value && currentLedger.value.id === deleteLedgerConfirm.value.id) {
           currentLedger.value = ledgers.value.length > 0 ? ledgers.value[0] : null
           await loadData()
