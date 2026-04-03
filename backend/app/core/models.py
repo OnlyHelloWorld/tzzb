@@ -77,8 +77,8 @@ class Trade(Base):
 
     # 外键关联到 Holding 的联合主键 - 不使用级联删除
     __table_args__ = (
-        ForeignKeyConstraint(['user_id', 'market', 'code'], 
-                          ['holdings.user_id', 'holdings.market', 'holdings.code']),
+        ForeignKeyConstraint(['user_id', 'ledger_id', 'market', 'code'], 
+                          ['holdings.user_id', 'holdings.ledger_id', 'holdings.market', 'holdings.code']),
     )
 
     # 关系
