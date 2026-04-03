@@ -75,6 +75,9 @@
     </div>
 
     <div class="main-content">
+      <div v-if="showBlessingEffect" class="blessing-overlay">
+        <span v-for="(char, index) in blessingChars" :key="`${blessingEffectKey}-${index}`" class="blessing-char blessing-char-pop">{{ char }}</span>
+      </div>
       <div v-if="isLoading" class="section-loading">
         <div class="loading-wave">
           <div class="loading-bar"></div>
@@ -627,6 +630,9 @@ export default {
     const newForm = reactive({ market: 'A股', code: '', name: '', sector: '', qty: '100', price: '', date: today() })
     const deletingHoldings = ref([])
     const blessingChars = ['恭', '喜', '发', '财']
+    const showBlessingEffect = ref(false)
+    const blessingEffectKey = ref(0)
+    let blessingEffectTimer = null
 
     // Ledger state
     const ledgers = ref([])
@@ -661,6 +667,18 @@ export default {
       Object.assign(newForm, { market: 'A股', code: '', name: '', sector: '', qty: '100', price: '', date: today() })
       addError.value = ''
       addHolding.value = true
+    }
+
+    const triggerBlessingEffect = () => {
+      if (blessingEffectTimer) {
+        clearTimeout(blessingEffectTimer)
+      }
+      blessingEffectKey.value += 1
+      showBlessingEffect.value = true
+      blessingEffectTimer = setTimeout(() => {
+        showBlessingEffect.value = false
+        blessingEffectTimer = null
+      }, 920)
     }
 
     // Quote state
@@ -964,6 +982,7 @@ export default {
         ledgerSummaries.value.push(summary)
         
         createLedgerModal.value = false
+        triggerBlessingEffect()
         showIOMessage('账本创建成功')
       } catch (err) {
         showIOMessage('创建账本失败: ' + err.message, true)
@@ -1424,6 +1443,7 @@ export default {
       tab.value = market
       prices[normalizedCode] = +price
       addHolding.value = false
+      triggerBlessingEffect()
       Object.assign(newForm, { market: 'A股', code: '', name: '', sector: '', qty: '', price: '', date: today() })
       // 立即持久化
       if (currentLedger.value) {
@@ -1457,6 +1477,9 @@ export default {
     onUnmounted(() => {
       stopAutoRefresh()
       document.removeEventListener('click', handleDocumentClick)
+      if (blessingEffectTimer) {
+        clearTimeout(blessingEffectTimer)
+      }
     })
 
     return {
@@ -1480,7 +1503,7 @@ export default {
       addError, tradeError, nameLoading, onCodeChange,
       isLoggedIn, handleLogin, handleLogout, loginError,
       // Delete confirm
-      deleteConfirm, deletingHoldings, blessingChars,
+      deleteConfirm, deletingHoldings, blessingChars, showBlessingEffect, blessingEffectKey,
       // Ledger management
       ledgers, ledgerSummaries, currentLedger, showLedgerList, showDropdown,
       createLedgerModal, editLedgerModal, deleteLedgerConfirm,
@@ -1753,7 +1776,21 @@ input:focus, select:focus { outline: none; }
 .spin { animation: spin 1s linear infinite; }
 
 /* Main */
-.main-content { max-width: 780px; margin: 0 auto; padding: 20px 14px 60px; }
+.main-content { max-width: 780px; margin: 0 auto; padding: 20px 14px 60px; position: relative; }
+.blessing-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  pointer-events: none;
+  z-index: 1800;
+  background: radial-gradient(circle, rgba(255, 248, 224, 0.24), rgba(255, 255, 255, 0));
+}
+.blessing-char-pop {
+  animation: blessingPop .9s ease forwards;
+}
 .section-loading {
   min-height: 360px;
   border: 1px solid #ede9e2;
@@ -2108,6 +2145,12 @@ input:focus, select:focus { outline: none; }
   25% { opacity: 1; }
   70% { transform: translate(var(--dx), var(--dy)) scale(1.06); opacity: 1; }
   100% { transform: translate(calc(var(--dx) * 1.25), calc(var(--dy) * 1.4)) scale(0.8); opacity: 0; }
+}
+@keyframes blessingPop {
+  0% { transform: translate(0, 0) scale(0.72); opacity: 0; }
+  22% { opacity: 1; }
+  70% { transform: translate(var(--dx), calc(var(--dy) * 1.1)) scale(1.1); opacity: 1; }
+  100% { transform: translate(calc(var(--dx) * 1.35), calc(var(--dy) * 1.5)) scale(0.76); opacity: 0; }
 }
 
 .row-head {
