@@ -1,6 +1,7 @@
 <template>
-  <LoginPage v-if="!isLoggedIn" @login="handleLogin" :loginError="loginError" />
-  <div v-else class="app-root">
+  <transition name="page" mode="out-in">
+    <LoginPage v-if="!isLoggedIn" key="login" @login="handleLogin" :loginError="loginError" />
+    <div v-else key="app" class="app-root">
     <!-- ── Header ── -->
     <div class="header">
       <div class="header-left" :style="{ cursor: currentLedger ? 'pointer' : 'default' }" @click="goHome">
@@ -27,7 +28,7 @@
         <span v-else-if="lastQuoteTime" class="quote-status ok">{{ lastQuoteTime }}</span>
 
         <!-- Refresh button -->
-        <button class="btn btn-ghost" style="font-size:12px;padding:6px 10px" @click="refreshQuotes" :disabled="quoteStatus === 'loading'">
+        <button class="btn btn-ghost" style="font-size:12px;padding:6px 10px" @click="refreshQuotes" :disabled="quoteStatus === 'loading'" :class="{ 'loading': quoteStatus === 'loading' }">
           <svg :class="{ 'spin': quoteStatus === 'loading' }" width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:middle;margin-right:3px">
             <path d="M1.5 7a5.5 5.5 0 0 1 9.3-3.95M12.5 7a5.5 5.5 0 0 1-9.3 3.95" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
             <path d="M10.8.5v2.55h-2.55M3.2 13.5v-2.55h2.55" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
@@ -55,8 +56,9 @@
     </div>
 
     <div class="main-content">
-      <!-- Ledger management page -->
-      <div v-if="!currentLedger" class="ledger-management">
+      <transition name="page" mode="out-in">
+        <!-- Ledger management page -->
+        <div v-if="!currentLedger" key="ledger-management" class="ledger-management">
         <!-- 所有账本汇总卡片 -->
         <div class="summary-card" v-if="ledgers.length > 0">
           <div class="summary-row" style="justify-content: space-between; align-items: center;">
@@ -129,10 +131,10 @@
         </div>
       </div>
       
-      <!-- Holding management (existing content) -->
-      <div v-else>
+        <!-- Holding management (existing content) -->
+        <div v-else key="holding-management">
 
-      <!-- ── Summary ── -->
+        <!-- ── Summary ── -->
       <div class="summary-card">
         <div class="summary-label">总市值（人民币）</div>
         <div class="summary-row">
@@ -200,7 +202,8 @@
       </div>
 
       <!-- ── Holdings ── -->
-      <div v-for="h in filtered" :key="`${h.market}-${h.code}`" class="row">
+      <div v-for="h in filtered" :key="`${h.market}-${h.code}`" :class="['row', { 'row-updating': h.refreshing }]">
+
         <div class="row-head" @click="expanded = expanded === `${h.market}-${h.code}` ? null : `${h.market}-${h.code}`">
           <div>
             <div class="name-row">
@@ -239,7 +242,8 @@
         </div>
 
         <!-- Trade zone -->
-        <div v-if="expanded === `${h.market}-${h.code}`" class="trade-zone">
+        <transition name="expand" mode="out-in">
+          <div v-if="expanded === `${h.market}-${h.code}`" key="trade-zone" class="trade-zone">
           <div class="trade-header">
             <span class="trade-title">买入记录</span>
             <div class="trade-actions">
@@ -320,15 +324,17 @@
               {{ h.refreshing ? '刷新中…' : '刷新' }}
             </button>
           </div>
-        </div>
+          </div>
+        </transition>
       </div>
 
       <div v-if="filtered.length === 0" class="empty-hint">
         暂无持仓，点击右上角「添加」开始记录
       </div>
 
-      <button class="btn-add-pos" @click="openAddHolding">+ 添加持仓</button>
-      </div>
+        <button class="btn-add-pos" @click="openAddHolding">+ 添加持仓</button>
+        </div>
+      </transition>
     </div>
 
     <!-- ── Add Trade Modal ── -->
@@ -498,6 +504,7 @@
       </div>
     </div>
   </div>
+  </transition>
 </template>
 
 <script>
@@ -1494,6 +1501,11 @@ input:focus, select:focus { outline: none; }
   transform: translateY(-2px);
   box-shadow: 0 4px 16px rgba(0,0,0,0.15);
 }
+.ledger-card:active {
+  transform: scale(0.98);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
 .ledger-card-header {
   height: 4px;
 }
@@ -1659,7 +1671,7 @@ input:focus, select:focus { outline: none; }
 
 /* Tabs */
 .tabs-row { display: flex; gap: 4px; margin-bottom: 14px; }
-.tab { background: none; border: none; cursor: pointer; font-size: 13px; padding: 6px 14px; border-radius: 20px; color: #888; transition: all .2s; font-family: inherit; position: relative; overflow: hidden; }
+.tab { background: none; border: none; cursor: pointer; font-size: 13px; padding: 6px 14px; border-radius: 20px; color: #888; transition: all .2s cubic-bezier(0.4, 0, 0.2, 1); font-family: inherit; position: relative; overflow: hidden; }
 .tab.on { background: #1a1814; color: #f9f7f3; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,.15); }
 .tab:not(.on):hover { background: rgba(26,24,20,.07); color: #1a1814; transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,.1); }
 .tab:active { transform: translateY(0); box-shadow: none; }
@@ -1672,8 +1684,34 @@ input:focus, select:focus { outline: none; }
 }
 
 /* Row */
-.row { background: #fff; border-radius: 12px; margin-bottom: 10px; border: 1px solid #ede9e2; transition: all .2s; overflow: hidden; }
-.row:hover { box-shadow: 0 4px 16px rgba(0,0,0,.08); transform: translateY(-1px); }
+.row {
+  background: #fff;
+  border-radius: 12px;
+  margin-bottom: 10px;
+  border: 1px solid #ede9e2;
+  transition: all .2s;
+  overflow: hidden;
+  position: relative;
+}
+.row:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,.08);
+  transform: translateY(-1px);
+}
+.row-updating {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(184, 168, 130, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(184, 168, 130, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(184, 168, 130, 0);
+  }
+}
 
 .row-head {
   display: grid; padding: 14px 16px; cursor: pointer; user-select: none;
@@ -1751,6 +1789,8 @@ input:focus, select:focus { outline: none; }
 .btn-ink:active { transform: translateY(0); box-shadow: none; }
 .btn-ghost { background: transparent; border: 1px solid #d4cfc6; color: #666; } .btn-ghost:hover { border-color: #aaa; color: #333; transform: translateY(-1px); }
 .btn-ghost:active { transform: translateY(0); }
+.btn-ghost.loading { color: #b8a882; border-color: #d4cfc6; cursor: not-allowed; }
+.btn-ghost.loading:hover { transform: none; box-shadow: none; }
 .btn-warn { background: transparent; border: 1px solid #f0c0bb; color: #c0392b; } .btn-warn:hover { background: #fdf0ef; transform: translateY(-1px); }
 .btn-warn:active { transform: translateY(0); }
 .btn-save { background: #1a7a4a; color: #fff; } .btn-save:hover { background: #15643d; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(26, 122, 74, .2); }
@@ -1799,6 +1839,38 @@ input:focus, select:focus { outline: none; }
     opacity: 1;
     transform: scale(1) translateY(0);
   }
+}
+
+/* Page transition */
+.page-enter-active,
+.page-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.page-enter-from {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+
+.page-leave-to {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+/* Expand transition */
+.expand-enter-active,
+.expand-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  max-height: 500px;
+  overflow: hidden;
+}
+
+.expand-enter-from,
+.expand-leave-to {
+  opacity: 0;
+  max-height: 0;
+  transform: translateY(-10px);
+  overflow: hidden;
 }
 .modal-title { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 600; margin-bottom: 20px; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
