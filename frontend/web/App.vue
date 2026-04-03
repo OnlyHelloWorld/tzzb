@@ -925,10 +925,16 @@ export default {
       }
     }
 
-    const switchLedger = (ledger) => {
+    const switchLedger = async (ledger) => {
+      const wasInLedgerManagement = !currentLedger.value
       currentLedger.value = ledger
       showLedgerList.value = false
-      loadData()
+      
+      // 如果之前在账本管理页面，现在进入具体账本，需要加载数据
+      if (wasInLedgerManagement) {
+        await loadData()
+      }
+      // 如果已经在具体账本中切换，不需要重新加载数据（所有账本共享同一组持仓）
     }
 
     // ─── Update export functions ─────────────────────────────────
