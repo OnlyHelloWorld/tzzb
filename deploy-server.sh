@@ -98,7 +98,15 @@ MYSQL_PWD_OPT=()
 if [ -n "${DB_PASSWORD}" ]; then
     MYSQL_PWD_OPT=(-p"${DB_PASSWORD}")
 fi
-mysql -h"${DB_HOST}" -P"${DB_PORT}" -u"${DB_USER}" "${MYSQL_PWD_OPT[@]}" \
+
+MYSQL_HOST="${DB_HOST:-127.0.0.1}"
+MYSQL_PORT="${DB_PORT:-3306}"
+MYSQL_USER="${DB_USER:-root}"
+if [ -z "${MYSQL_HOST}" ]; then MYSQL_HOST="127.0.0.1"; fi
+if [ -z "${MYSQL_PORT}" ]; then MYSQL_PORT="3306"; fi
+if [ -z "${MYSQL_USER}" ]; then MYSQL_USER="root"; fi
+
+mysql --host="${MYSQL_HOST}" --port="${MYSQL_PORT}" --user="${MYSQL_USER}" "${MYSQL_PWD_OPT[@]}" \
   -e "DROP DATABASE IF EXISTS \`${DB_NAME}\`; CREATE DATABASE \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
 cat > init_db.py << 'EOF'
