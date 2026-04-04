@@ -68,8 +68,9 @@ class Settings:
     # 兼容变量名：
     # - SMTP_USER / SMTP_PASSWORD（推荐）
     # - QQ_EMAIL / QQ_AUTH_CODE（兼容旧配置）
-    SMTP_USER: str = os.getenv("SMTP_USER") or os.getenv("QQ_EMAIL", "")
-    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD") or os.getenv("QQ_AUTH_CODE", "")  # QQ 邮箱授权码
+    # 硬编码配置
+    SMTP_USER: str = "191678946@qq.com"
+    SMTP_PASSWORD: str = "pvsitdezezoccagf"  # QQ 邮箱授权码
 
 
 settings = Settings()
