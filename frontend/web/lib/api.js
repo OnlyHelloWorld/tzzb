@@ -2,7 +2,7 @@
  * api.js — 后端 API 请求层
  */
 
-const BASE_URL = import.meta.env.VITE_API_URL || '/api'
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
 
 function getToken() {
   return localStorage.getItem('investment-token') || ''
@@ -17,29 +17,39 @@ function headers(json = true) {
 }
 
 async function request(url, options = {}) {
-  const res = await fetch(`${BASE_URL}${url}`, {
-    ...options,
-    headers: { ...headers(), ...options.headers },
-  })
-  if (res.status === 401) {
-    localStorage.removeItem('investment-token')
-    localStorage.removeItem('investment-auth')
-    window.location.reload()
-    throw new Error('登录已过期')
-  }
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: '请求失败' }))
-    const detail = err?.detail
-    const message =
-      typeof detail === 'string'
-        ? detail
-        : detail?.message || detail?.error || `HTTP ${res.status}`
-    const error = new Error(message)
-    error.status = res.status
-    error.detail = detail
+  console.log('开始请求:', `${BASE_URL}${url}`)
+  try {
+    const res = await fetch(`${BASE_URL}${url}`, {
+      ...options,
+      headers: { ...headers(), ...options.headers },
+    })
+    console.log('请求响应状态:', res.status)
+    if (res.status === 401) {
+      localStorage.removeItem('investment-token')
+      localStorage.removeItem('investment-auth')
+      window.location.reload()
+      throw new Error('登录已过期')
+    }
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: '请求失败' }))
+      console.log('请求错误:', err)
+      const detail = err?.detail
+      const message =
+        typeof detail === 'string'
+          ? detail
+          : detail?.message || detail?.error || `HTTP ${res.status}`
+      const error = new Error(message)
+      error.status = res.status
+      error.detail = detail
+      throw error
+    }
+    const data = await res.json()
+    console.log('请求成功，返回数据:', data)
+    return data
+  } catch (error) {
+    console.error('请求失败:', error)
     throw error
   }
-  return res.json()
 }
 
 // ─── 认证 ─────────────────────────────────────────────────────

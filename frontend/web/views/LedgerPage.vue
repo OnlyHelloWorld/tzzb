@@ -1074,30 +1074,46 @@ export default {
     
     // 页面加载时
     onMounted(async () => {
-      // 加载账本数据
-      await store.loadData()
-      
-      // 找到当前账本
-      const ledger = store.ledgers.find(l => l.id.toString() === props.id)
-      if (ledger) {
-        store.setCurrentLedger(ledger)
-        // 加载当前账本的持仓
-        try {
-          const savedHoldings = await api.loadHoldings(ledger.id)
-          store.holdings = savedHoldings || []
-          if (savedHoldings && savedHoldings.length > 0) {
-            const maxId = Math.max(...savedHoldings.flatMap(h => (h.trades || []).map(t => t.id)), ...savedHoldings.map(h => h.id), 0)
-            _id = maxId + 1
-          } else {
-            _id = 100
+      try {
+        // 先设置 isLoading 为 true，避免页面闪烁
+        store.isLoading = true
+        
+        // 第一次加载账本数据，获取所有账本列表
+        await store.loadData()
+        
+        // 找到当前账本
+        const ledger = store.ledgers.find(l => l.id.toString() === props.id)
+        if (ledger) {
+          // 先设置当前账本
+          store.setCurrentLedger(ledger)
+          // 第二次加载数据，此时会加载当前账本的持仓
+          await store.loadData()
+          
+          // 加载当前账本的持仓
+          try {
+            const savedHoldings = await api.loadHoldings(ledger.id)
+            store.holdings = savedHoldings || []
+            if (savedHoldings && savedHoldings.length > 0) {
+              const maxId = Math.max(...savedHoldings.flatMap(h => (h.trades || []).map(t => t.id)), ...savedHoldings.map(h => h.id), 0)
+              _id = maxId + 1
+            } else {
+              _id = 100
+            }
+          } catch (err) {
+            console.warn('加载持仓失败:', err)
+            store.holdings = []
           }
-        } catch (err) {
-          console.warn('加载持仓失败:', err)
-          store.holdings = []
+        } else {
+          // 账本不存在，回到首页
+          goHome()
         }
-      } else {
-        // 账本不存在，回到首页
+      } catch (err) {
+        console.error('页面加载失败:', err)
+        store.showMessage('页面加载失败: ' + err.message, true)
         goHome()
+      } finally {
+        // 最后设置 isLoading 为 false，确保此时 store.currentLedger 已经被设置
+        store.isLoading = false
       }
     })
     
@@ -1142,6 +1158,7 @@ export default {
       summary,
       ccyBreakdown,
       fmt,
+      toCNY,
       SYM,
       triggerBlessingEffect,
       openAddHolding,

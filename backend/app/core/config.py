@@ -13,7 +13,7 @@ load_dotenv(dotenv_path=BASE_DIR / ".env")
 
 class Settings:
     # 数据库
-    DB_DRIVER: str = "mysql"
+    DB_DRIVER: str = os.getenv("DB_DRIVER", "mysql")
     DB_HOST: str = os.getenv("DB_HOST", "localhost")
     DB_PORT: int = int(os.getenv("DB_PORT", "3306"))
     DB_USER: str = os.getenv("DB_USER", "root")
@@ -22,10 +22,13 @@ class Settings:
 
     @property
     def DATABASE_URL(self) -> str:
-        return (
-            f"mysql+aiomysql://{self.DB_USER}:{self.DB_PASSWORD}"
-            f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}?charset=utf8mb4"
-        )
+        if self.DB_DRIVER == "sqlite":
+            return f"sqlite+aiosqlite:///{BASE_DIR / self.DB_NAME}.db"
+        else:
+            return (
+                f"mysql+aiomysql://{self.DB_USER}:{self.DB_PASSWORD}"
+                f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}?charset=utf8mb4"
+            )
 
     # JWT
     JWT_SECRET: str = os.getenv("JWT_SECRET", "change-me-in-production")

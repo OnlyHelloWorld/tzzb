@@ -2,15 +2,22 @@
   <div class="app-container">
     <router-view v-slot="{ Component }">
       <transition name="page" mode="out-in">
-        <component :is="Component" />
+        <component :is="Component" @login="handleLogin" />
       </transition>
     </router-view>
   </div>
 </template>
 
 <script>
+import router from './router/index.js'
+
 export default {
-  name: 'App'
+  name: 'App',
+  methods: {
+    handleLogin() {
+      router.push('/home')
+    }
+  }
 }
 </script>
 
