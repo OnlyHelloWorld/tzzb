@@ -34,7 +34,7 @@ async def get_ledgers(
         return ledgers
     except Exception as e:
         logger.error(f"用户 {user.username} 获取账本列表失败: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail="获取账本列表失败")
+        raise HTTPException(status_code=500, detail={"message": "获取账本列表失败", "error": str(e)})
 
 
 @router.post("", response_model=LedgerResponse)
@@ -71,7 +71,7 @@ async def create_ledger(
     except Exception as e:
         logger.error(f"用户 {user.username} 创建账本失败: {req.name}, 错误: {str(e)}", exc_info=True)
         await db.rollback()
-        raise HTTPException(status_code=500, detail="创建账本失败")
+        raise HTTPException(status_code=500, detail={"message": "创建账本失败", "error": str(e)})
 
 
 @router.put("/{ledger_id}", response_model=LedgerResponse)
@@ -117,7 +117,7 @@ async def update_ledger(
     except Exception as e:
         logger.error(f"用户 {user.username} 更新账本失败: ID={ledger_id}, 错误: {str(e)}", exc_info=True)
         await db.rollback()
-        raise HTTPException(status_code=500, detail="更新账本失败")
+        raise HTTPException(status_code=500, detail={"message": "更新账本失败", "error": str(e)})
 
 
 @router.delete("/{ledger_id}")
@@ -175,4 +175,4 @@ async def delete_ledger(
     except Exception as e:
         logger.error(f"用户 {user.username} 删除账本失败: ID={ledger_id}, 错误: {str(e)}", exc_info=True)
         await db.rollback()
-        raise HTTPException(status_code=500, detail="删除账本失败")
+        raise HTTPException(status_code=500, detail={"message": "删除账本失败", "error": str(e)})

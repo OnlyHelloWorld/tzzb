@@ -9,20 +9,16 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 # 加载.env文件
-print(f"Loading .env from: {BASE_DIR / '.env'}")
-print(f"File exists: {(BASE_DIR / '.env').exists()}")
 load_dotenv(dotenv_path=BASE_DIR / ".env")
-print(f"SMTP_USER: {os.getenv('SMTP_USER')}")
-print(f"SMTP_PASSWORD: {os.getenv('SMTP_PASSWORD')}")
 
 class Settings:
     # 数据库
-    DB_DRIVER: str = "sqlite"  # mysql | sqlite
+    DB_DRIVER: str = os.getenv("DB_DRIVER", "mysql")  # mysql | sqlite
     DB_HOST: str = os.getenv("DB_HOST", "localhost")
     DB_PORT: int = int(os.getenv("DB_PORT", "3306"))
     DB_USER: str = os.getenv("DB_USER", "root")
     DB_PASSWORD: str = os.getenv("DB_PASSWORD", "")
-    DB_NAME: str = "tzzb"
+    DB_NAME: str = os.getenv("DB_NAME", "tzzb")
 
     @property
     def DATABASE_URL(self) -> str:

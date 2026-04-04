@@ -36,7 +36,7 @@ async def get_settings(
         )
     except Exception as e:
         logger.error(f"用户 {user.username} 获取设置失败: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail="获取设置失败")
+        raise HTTPException(status_code=500, detail={"message": "获取设置失败", "error": str(e)})
 
 
 @router.put("")
@@ -70,4 +70,4 @@ async def update_settings(
     except Exception as e:
         logger.error(f"用户 {user.username} 更新设置失败: {str(e)}", exc_info=True)
         await db.rollback()
-        raise HTTPException(status_code=500, detail="更新设置失败")
+        raise HTTPException(status_code=500, detail={"message": "更新设置失败", "error": str(e)})

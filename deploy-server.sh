@@ -37,7 +37,12 @@ pip install -r requirements.txt
 if [ ! -f ".env" ]; then
     log_info "创建 .env 文件..."
     cat > .env << EOF
-DB_DRIVER=sqlite
+DB_DRIVER=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=11110000aaa!
+DB_NAME=tzzb
 JWT_SECRET=$(openssl rand -hex 32)
 HOST=127.0.0.1
 PORT=8000
@@ -51,12 +56,50 @@ fi
 # 数据库初始化/更新
 log_info "初始化/更新数据库..."
 
-# 清空数据库（删除SQLite文件）
-db_file="app/tzzb.db"
-if [ -f "$db_file" ]; then
-    log_info "删除现有数据库文件..."
-    rm -f "$db_file"
+log_info "检查并安装 MySQL..."
+if ! command -v mysql >/dev/null 2>&1; then
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update
+    apt-get install -y mysql-server
 fi
+systemctl enable mysql
+systemctl restart mysql
+
+set -a
+source .env
+set +a
+
+if [ "${DB_DRIVER}" != "mysql" ]; then
+    log_error "当前部署脚本仅支持 MySQL，检测到 DB_DRIVER=${DB_DRIVER}"
+    exit 1
+fi
+
+log_info "重建 MySQL 数据库 ${DB_NAME}..."
+if mysql --protocol=socket -uroot -e "SELECT 1;" >/dev/null 2>&1; then
+    log_info "通过 socket 连接 MySQL root，设置 root 密码..."
+    mysql --protocol=socket -uroot <<EOF
+CREATE USER IF NOT EXISTS 'root'@'127.0.0.1' IDENTIFIED BY '${DB_PASSWORD}';
+ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${DB_PASSWORD}';
+ALTER USER 'root'@'127.0.0.1' IDENTIFIED WITH mysql_native_password BY '${DB_PASSWORD}';
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'127.0.0.1' WITH GRANT OPTION;
+FLUSH PRIVILEGES;
+EOF
+else
+    log_info "通过密码连接 MySQL root，更新 root 密码..."
+    mysql -h127.0.0.1 -uroot -p"${DB_PASSWORD}" <<EOF
+ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${DB_PASSWORD}';
+ALTER USER 'root'@'127.0.0.1' IDENTIFIED WITH mysql_native_password BY '${DB_PASSWORD}';
+FLUSH PRIVILEGES;
+EOF
+fi
+
+MYSQL_PWD_OPT=()
+if [ -n "${DB_PASSWORD}" ]; then
+    MYSQL_PWD_OPT=(-p"${DB_PASSWORD}")
+fi
+mysql -h"${DB_HOST}" -P"${DB_PORT}" -u"${DB_USER}" "${MYSQL_PWD_OPT[@]}" \
+  -e "DROP DATABASE IF EXISTS \`${DB_NAME}\`; CREATE DATABASE \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
 cat > init_db.py << 'EOF'
 """

@@ -29,7 +29,15 @@ async function request(url, options = {}) {
   }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: '请求失败' }))
-    throw new Error(err.detail || `HTTP ${res.status}`)
+    const detail = err?.detail
+    const message =
+      typeof detail === 'string'
+        ? detail
+        : detail?.message || detail?.error || `HTTP ${res.status}`
+    const error = new Error(message)
+    error.status = res.status
+    error.detail = detail
+    throw error
   }
   return res.json()
 }
