@@ -65,8 +65,11 @@ class Settings:
     # SMTP 邮件（QQ 邮箱）
     SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.qq.com")
     SMTP_PORT: int = int(os.getenv("SMTP_PORT", "465"))
-    SMTP_USER: str = os.getenv("SMTP_USER", "")
-    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")  # QQ 邮箱授权码
+    # 兼容变量名：
+    # - SMTP_USER / SMTP_PASSWORD（推荐）
+    # - QQ_EMAIL / QQ_AUTH_CODE（兼容旧配置）
+    SMTP_USER: str = os.getenv("SMTP_USER") or os.getenv("QQ_EMAIL", "")
+    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD") or os.getenv("QQ_AUTH_CODE", "")  # QQ 邮箱授权码
 
 
 settings = Settings()

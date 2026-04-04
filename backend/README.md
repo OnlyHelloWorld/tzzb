@@ -51,6 +51,9 @@ SMTP_HOST=smtp.qq.com
 SMTP_PORT=465
 SMTP_USER=
 SMTP_PASSWORD=                    # QQ 邮箱授权码
+# 兼容旧变量名（二选一即可；优先读取 SMTP_*）
+# QQ_EMAIL=
+# QQ_AUTH_CODE=
 
 # 日志
 LOG_DIR=logs
