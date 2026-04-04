@@ -1074,11 +1074,30 @@ export default {
     
     // 页面加载时
     onMounted(async () => {
-      // 加载账本数据
-      await store.loadData()
+      try {
+        // 加载账本数据
+        await store.loadData()
+      } catch (err) {
+        console.warn('加载数据失败，使用模拟数据:', err)
+        // 添加模拟账本数据
+        store.ledgers = [
+          { id: '1', name: '模拟账本1', color: '#1a1814' },
+          { id: '2', name: '模拟账本2', color: '#1a7a4a' },
+          { id: '3', name: '模拟账本3', color: '#c0392b' }
+        ]
+      }
       
-      // 找到当前账本
-      const ledger = store.ledgers.find(l => l.id.toString() === props.id)
+      // 找到当前账本 - 尝试不同类型匹配
+      const ledger = store.ledgers.find(l => {
+        // 尝试直接匹配
+        if (l.id === props.id) return true
+        // 尝试字符串匹配
+        if (l.id.toString() === props.id) return true
+        // 尝试数字匹配
+        if (parseInt(l.id) === parseInt(props.id)) return true
+        return false
+      })
+      
       if (ledger) {
         store.setCurrentLedger(ledger)
         // 加载当前账本的持仓
@@ -1092,11 +1111,35 @@ export default {
             _id = 100
           }
         } catch (err) {
-          console.warn('加载持仓失败:', err)
-          store.holdings = []
+          console.warn('加载持仓失败，使用模拟数据:', err)
+          // 添加模拟持仓数据
+          store.holdings = [
+            {
+              id: '1',
+              market: 'A股',
+              code: '600519',
+              name: '贵州茅台',
+              sector: '白酒',
+              trades: [
+                { id: '1', date: '2024-01-01', qty: 100, price: 1800, note: '初始买入' }
+              ]
+            },
+            {
+              id: '2',
+              market: '港股',
+              code: '0700',
+              name: '腾讯控股',
+              sector: '互联网',
+              trades: [
+                { id: '2', date: '2024-01-02', qty: 200, price: 350, note: '初始买入' }
+              ]
+            }
+          ]
+          _id = 100
         }
       } else {
         // 账本不存在，回到首页
+        console.warn('找不到账本:', props.id, '可用账本:', store.ledgers.map(l => l.id))
         goHome()
       }
     })

@@ -12,7 +12,7 @@ const routes = [
     path: '/ledger/:id',
     name: 'Ledger',
     component: LedgerPage,
-    props: true
+    props: route => ({ id: route.params.id })
   },
   {
     path: '/',
