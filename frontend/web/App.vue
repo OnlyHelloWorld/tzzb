@@ -122,7 +122,7 @@
                 transform="rotate(-90 60 60)"
               />
             </svg>
-            <div class="ledger-donut-center">
+            <div class="ledger-donut-meta">
               <div class="summary-label">账本数量</div>
               <div class="ledger-donut-count">{{ ledgers.length }}</div>
             </div>
@@ -398,8 +398,12 @@
                   @click="editingTrade = { holdingMarket: h.market, holdingCode: h.code, tradeId: t.id, date: t.date, qty: t.qty, price: t.price }">
                   修改
                 </button>
-                <button v-if="h.trades.length > 1" class="btn btn-warn" style="font-size:11px"
-                  @click="deleteTrade({ market: h.market, code: h.code }, t.id)">删除</button>
+                <div v-if="h.trades.length > 1" class="trade-more-wrap" @click.stop>
+                  <button class="btn btn-ghost trade-more-btn" @click.stop="toggleTradeActionMenu(`${h.market}-${h.code}-${t.id}`)">⋯</button>
+                  <div v-if="openTradeActionMenuKey === `${h.market}-${h.code}-${t.id}`" class="trade-more-menu">
+                    <button class="trade-more-item trade-more-item-danger" @click.stop="deleteTrade({ market: h.market, code: h.code }, t.id); closeTradeActionMenu()">删除记录</button>
+                  </div>
+                </div>
               </div>
             </template>
           </div>
@@ -699,6 +703,7 @@ export default {
     const showBlessingEffect = ref(false)
     const blessingEffectKey = ref(0)
     const openLedgerActionMenuId = ref(null)
+    const openTradeActionMenuKey = ref(null)
     let blessingEffectTimer = null
     const buttonClickTimestamps = new WeakMap()
 
@@ -769,6 +774,12 @@ export default {
     const closeLedgerActionMenu = () => {
       openLedgerActionMenuId.value = null
     }
+    const toggleTradeActionMenu = (tradeKey) => {
+      openTradeActionMenuKey.value = openTradeActionMenuKey.value === tradeKey ? null : tradeKey
+    }
+    const closeTradeActionMenu = () => {
+      openTradeActionMenuKey.value = null
+    }
 
     const appThemeStyle = computed(() => {
       const theme = currentLedger.value?.color || '#1a1814'
@@ -833,6 +844,7 @@ export default {
     // 加载数据的函数
     const loadData = async () => {
       isLoading.value = true
+      suspendAutoSave.value = true
       try {
         try {
           // 首先加载账本数据
@@ -927,6 +939,7 @@ export default {
 
         refreshQuotes()
       } finally {
+        suspendAutoSave.value = false
         isLoading.value = false
       }
     }
@@ -973,12 +986,22 @@ export default {
         showIOMessage('复制失败，请手动复制', true)
       }
     }
+    const refreshLedgerOverviewData = async () => {
+      const allHoldings = await api.loadHoldings()
+      allLedgersHoldings.value = allHoldings || []
+      const summaries = []
+      for (const ledger of ledgers.value) {
+        summaries.push(await calculateLedgerSummary(ledger))
+      }
+      ledgerSummaries.value = summaries
+    }
 
     const persistHoldingsAndSync = async (successMessage = '', rollbackHoldings = null) => {
       if (!currentLedger.value) return
       try {
         const savedHoldings = await api.saveHoldings(holdings.value, currentLedger.value.id)
         holdings.value = savedHoldings || []
+        await refreshLedgerOverviewData()
         if (successMessage) showIOMessage(successMessage)
       } catch (err) {
         if (rollbackHoldings) {
@@ -1086,8 +1109,9 @@ export default {
 
     // ─── Data persistence (watch) ────────────────────────────────
     let saveDebounce = null
+    const suspendAutoSave = ref(false)
     const debounceSave = () => {
-      if (!currentLedger.value) return
+      if (!currentLedger.value || suspendAutoSave.value) return
       
       clearTimeout(saveDebounce)
       saveDebounce = setTimeout(async () => {
@@ -1217,10 +1241,12 @@ export default {
     }
 
     const switchLedger = async (ledger) => {
+      suspendAutoSave.value = true
       currentLedger.value = ledger
       showLedgerList.value = false
       showDropdown.value = false
       closeLedgerActionMenu()
+      closeTradeActionMenu()
       await loadData()
     }
 
@@ -1230,6 +1256,7 @@ export default {
         showLedgerList.value = false
         showDropdown.value = false
         closeLedgerActionMenu()
+        closeTradeActionMenu()
         holdings.value = []
         await loadData()
       }
@@ -1474,6 +1501,7 @@ export default {
       
       try {
         await api.deleteHolding(market, code, currentLedger.value.id)
+        await refreshLedgerOverviewData()
         if (!deletingHoldings.value.includes(holdingKey)) {
           deletingHoldings.value.push(holdingKey)
         }
@@ -1634,6 +1662,9 @@ export default {
       if (openLedgerActionMenuId.value !== null) {
         closeLedgerActionMenu()
       }
+      if (openTradeActionMenuKey.value !== null) {
+        closeTradeActionMenu()
+      }
     }
     const handleButtonDebounce = (event) => {
       const target = event.target?.closest?.('button')
@@ -1724,6 +1755,7 @@ export default {
       // Delete confirm
       deleteConfirm, deletingHoldings, blessingChars, showBlessingEffect, blessingEffectKey,
       openLedgerActionMenuId, toggleLedgerActionMenu, closeLedgerActionMenu,
+      openTradeActionMenuKey, toggleTradeActionMenu, closeTradeActionMenu,
       // Ledger management
       ledgers, ledgerSummaries, currentLedger, showLedgerList, showDropdown,
       createLedgerModal, editLedgerModal, deleteLedgerConfirm,
@@ -2095,18 +2127,16 @@ input:focus, select:focus { outline: none; }
 .icon-btn { border: none; background: transparent; color: #63594a; width: 34px; height: 34px; border-radius: 50%; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
 .icon-btn:hover { background: rgba(26,24,20,.08); }
 .all-ledgers-summary-card {
-  position: relative;
-  padding-right: 128px;
+  padding-right: 22px;
 }
 .ledger-donut-wrap {
-  position: absolute;
-  top: 16px;
-  right: 18px;
-  width: 88px;
-  height: 88px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
 }
 .ledger-donut { width: 88px; height: 88px; }
-.ledger-donut-center { position: absolute; inset: 0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.ledger-donut-meta { display:flex; flex-direction:column; align-items:flex-start; justify-content:center; }
 .ledger-donut-count { font-size: 22px; font-weight: 700; color: #1a1814; line-height: 1; }
 .summary-label { font-size: 11px; color: #aaa; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
 .summary-row { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
@@ -2502,6 +2532,30 @@ input:focus, select:focus { outline: none; }
 .trade-price { font-size: 13px; width: 90px; }
 .trade-note { font-size: 11px; color: #aaa; margin-right: 4px; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .trade-btns { display: flex; gap: 5px; margin-left: auto; align-items: center; }
+.trade-more-wrap { position: relative; }
+.trade-more-btn { min-width: 28px; padding: 2px 6px; }
+.trade-more-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  background: #fff;
+  border: 1px solid #e8e0d4;
+  border-radius: 8px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, .12);
+  z-index: 30;
+  min-width: 98px;
+}
+.trade-more-item {
+  width: 100%;
+  padding: 7px 10px;
+  text-align: left;
+  font-size: 12px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+.trade-more-item:hover { background: #f8f5ef; }
+.trade-more-item-danger { color: #c0392b; }
 
 /* Confirm box */
 .confirm-box {
