@@ -33,10 +33,16 @@ jobs:
 
       - name: Deploy to Google Cloud
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          QQ_EMAIL: ${{ secrets.QQ_EMAIL }}
+          QQ_AUTH_CODE: ${{ secrets.QQ_AUTH_CODE }}
         with:
           host: ${{ secrets.GCP_HOST }}
           username: ${{ secrets.GCP_USER }}
           password: ${{ secrets.GCP_PASSWORD }}
+          envs: SMTP_USER,SMTP_PASSWORD,QQ_EMAIL,QQ_AUTH_CODE
           script: |
             set -e
             # 创建项目目录

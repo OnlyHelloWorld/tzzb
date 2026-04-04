@@ -26,6 +26,17 @@ mkdir -p ${WEB_DIR}
 log_step "2/7 配置后端..."
 cd ${PROJECT_DIR}/backend
 
+upsert_env_var() {
+    local key="$1"
+    local value="$2"
+    local env_file="$3"
+    if grep -q "^${key}=" "${env_file}"; then
+        sed -i "s|^${key}=.*|${key}=${value}|" "${env_file}"
+    else
+        echo "${key}=${value}" >> "${env_file}"
+    fi
+}
+
 if [ ! -d "venv" ]; then
     log_info "创建 Python 虚拟环境..."
     python3.12 -m venv venv
@@ -50,6 +61,18 @@ SMTP_PORT=465
 SMTP_USER=
 SMTP_PASSWORD=
 EOF
+fi
+
+# 优先使用 SMTP_*，兼容 QQ_* 旧变量
+SMTP_USER_VAL="${SMTP_USER:-${QQ_EMAIL:-}}"
+SMTP_PASSWORD_VAL="${SMTP_PASSWORD:-${QQ_AUTH_CODE:-}}"
+
+if [ -n "${SMTP_USER_VAL}" ]; then
+    upsert_env_var "SMTP_USER" "${SMTP_USER_VAL}" ".env"
+fi
+
+if [ -n "${SMTP_PASSWORD_VAL}" ]; then
+    upsert_env_var "SMTP_PASSWORD" "${SMTP_PASSWORD_VAL}" ".env"
 fi
 
 set -a
