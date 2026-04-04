@@ -832,7 +832,6 @@ export default {
     // 加载数据的函数
     const loadData = async () => {
       isLoading.value = true
-      suspendAutoSave.value = true
       try {
         try {
           // 首先加载账本数据
@@ -918,7 +917,6 @@ export default {
 
         refreshQuotes()
       } finally {
-        suspendAutoSave.value = false
         isLoading.value = false
       }
     }
@@ -975,6 +973,19 @@ export default {
       }
       ledgerSummaries.value = summaries
     }
+
+    // 保存设置
+    const saveSettings = async () => {
+      try {
+        await api.saveSettings({ fx_usd: fx.USD, fx_hkd: fx.HKD, auto_refresh: autoRefresh.value })
+      } catch (err) {
+        console.warn('保存设置失败:', err)
+      }
+    }
+
+    // 监听设置变更并保存
+    watch(fx, saveSettings, { deep: true })
+    watch(autoRefresh, saveSettings)
 
     const persistHoldingsAndSync = async (successMessage = '', rollbackHoldings = null) => {
       if (!currentLedger.value) return
@@ -1069,45 +1080,8 @@ export default {
       { label: 'HKD/CNY', key: 'HKD' },
     ]
 
-    // ─── Data persistence (watch) ────────────────────────────────
-    let saveDebounce = null
-    const suspendAutoSave = ref(false)
-    const clearPendingAutoSave = () => {
-      if (saveDebounce) {
-        clearTimeout(saveDebounce)
-        saveDebounce = null
-      }
-    }
-    const debounceSave = () => {
-      if (!currentLedger.value || suspendAutoSave.value) return
-      const ledgerIdAtSchedule = currentLedger.value.id
-      clearPendingAutoSave()
-      saveDebounce = setTimeout(async () => {
-        try {
-          if (!currentLedger.value || currentLedger.value.id !== ledgerIdAtSchedule) {
-            return
-          }
-          // 保存持仓并更新本地数据（包含新的 ID）
-          if (ledgerIdAtSchedule) {
-            const savedHoldings = await api.saveHoldings(holdings.value, ledgerIdAtSchedule)
-            if (savedHoldings && savedHoldings.length > 0) {
-              holdings.value = savedHoldings
-              const maxId = Math.max(...savedHoldings.flatMap(h => (h.trades || []).map(t => t.id)), ...savedHoldings.map(h => h.id), 0)
-              _id = maxId + 1
-            }
-          }
-          await api.saveSettings({ fx_usd: fx.USD, fx_hkd: fx.HKD, auto_refresh: autoRefresh.value })
-        } catch (err) {
-          console.warn('保存失败:', err)
-          showIOMessage('保存失败: ' + err.message, true)
-        showErrorDetailModal('操作失败', err)
-        }
-      }, 1200)
-    }
-
-    watch(holdings, debounceSave, { deep: true })
-    watch(() => ({ USD: fx.USD, HKD: fx.HKD }), debounceSave, { deep: true })
-    watch(autoRefresh, debounceSave)
+    // ─── Data persistence ─────────────────────────────────────────
+    // 移除自动保存机制，每次变更明确调用保存函数
 
     // ─── Ledger management ────────────────────────────────────────
     const openCreateLedger = () => {
@@ -1208,9 +1182,7 @@ export default {
 
     const switchLedger = async (ledger) => {
       if (!ledger || (currentLedger.value && currentLedger.value.id === ledger.id)) return
-      clearPendingAutoSave()
       window.history.pushState(null, '', `${LEDGER_PATH_PREFIX}${ledger.id}`)
-      suspendAutoSave.value = true
       currentLedger.value = ledger
       showLedgerList.value = false
       showDropdown.value = false
@@ -1221,7 +1193,6 @@ export default {
 
     const goHome = async () => {
       if (currentLedger.value) {
-        clearPendingAutoSave()
         window.history.pushState(null, '', '#/home')
         currentLedger.value = null
         showLedgerList.value = false
@@ -1626,13 +1597,22 @@ export default {
       }]
       // 新增后切换到对应市场标签，避免用户在其他标签下看不到新持仓
       tab.value = market
-      prices[normalizedCode] = +price
       addHolding.value = false
       triggerBlessingEffect()
       Object.assign(newForm, { market: 'A股', code: '', name: '', sector: '', qty: '', price: '', date: today() })
       // 立即持久化
       if (currentLedger.value) {
         await persistHoldingsAndSync('✅ 保存成功', snapshot)
+      }
+      // 持久化完成后尝试获取新持仓的行情价格
+      try {
+        const quote = await fetchQuote(market, normalizedCode)
+        if (quote && quote.price > 0) {
+          prices[normalizedCode] = quote.price
+        }
+      } catch (e) {
+        // 如果获取行情失败，不做处理，使用成本价已经在其他地方处理
+        console.warn('获取新持仓行情失败:', e)
       }
     }
 
@@ -1686,6 +1666,7 @@ export default {
           const target = ledgers.value.find((item) => item.id === ledgerId)
           if (target) {
             currentLedger.value = target
+            await loadData()
           }
         }
       } else if (hash === '#/home') {
@@ -1708,8 +1689,17 @@ export default {
     // ─── Lifecycle ───────────────────────────────────────────────
     onMounted(async () => {
       if (isLoggedIn.value) {
-        await loadData()
+        // 首先加载账本列表
+        try {
+          const savedLedgers = await api.loadLedgers()
+          ledgers.value = savedLedgers || []
+        } catch (err) {
+          console.warn('加载账本列表失败:', err)
+        }
+        // 然后恢复状态
         await restoreStateByHash()
+        // 最后加载完整数据
+        await loadData()
         // 数据加载完成后更新页面标题
         updatePageTitle()
       }
