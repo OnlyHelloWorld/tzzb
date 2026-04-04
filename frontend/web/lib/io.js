@@ -6,7 +6,6 @@
  */
 
 import jsPDF from 'jspdf'
-import autoTable from 'jspdf-autotable'
 
 // ─── 工具函数 ───────────────────────────────────────────────────
 function downloadBlob(blob, filename) {
@@ -27,6 +26,7 @@ function downloadText(text, filename, mimeType = 'text/csv') {
 
 const SYM = { CNY: '¥', HKD: 'HK$', USD: '$' }
 const MARKET_CCY = { 'A股': 'CNY', '港股': 'HKD', '美股': 'USD' }
+const PDF_FONT_FAMILY = '"Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "Heiti SC", sans-serif'
 
 function toHoldingRow(h, prices, fx) {
   const ccy = MARKET_CCY[h.market] || 'CNY'
@@ -328,60 +328,21 @@ export async function exportPDF(holdings = [], prices = {}, fx = { USD: 7.28, HK
     totalPnL += item.data.pnlCNY
   })
 
-  doc.setFillColor(26, 24, 20)
-  doc.rect(0, 0, 210, 34, 'F')
-  doc.setTextColor(249, 247, 243)
-  doc.setFontSize(18)
-  doc.text('投资账本 - 持仓报告', 14, 15)
-  doc.setFontSize(10)
-  doc.text(`导出时间 ${now.toLocaleString('zh-CN')}`, 14, 23)
-  doc.text(`持仓数量 ${holdings.length}`, 14, 29)
-
-  doc.setTextColor(26, 24, 20)
-  doc.setDrawColor(228, 223, 214)
-  doc.setFillColor(249, 247, 243)
-  doc.roundedRect(14, 40, 88, 18, 2, 2, 'FD')
-  doc.roundedRect(108, 40, 88, 18, 2, 2, 'FD')
-  doc.setFontSize(10)
-  doc.text('总市值 (CNY)', 18, 47)
-  doc.text('总盈亏 (CNY)', 112, 47)
-  doc.setFontSize(12)
-  doc.text(`${SYM.CNY}${totalMV.toFixed(2)}`, 18, 54)
-  doc.setTextColor(totalPnL >= 0 ? 26 : 192, totalPnL >= 0 ? 122 : 57, totalPnL >= 0 ? 74 : 43)
-  doc.text(`${totalPnL >= 0 ? '+' : ''}${SYM.CNY}${totalPnL.toFixed(2)}`, 112, 54)
-
-  autoTable(doc, {
-    startY: 64,
-    head: [['市场', '代码', '名称', '持仓', '成本均价', '现价', '市值(CNY)', '盈亏(CNY)', '盈亏%']],
-    body: rows.map(({ h, data }) => ([
-      h.market,
-      h.code,
-      h.name || '',
-      data.qty.toFixed(0),
+  const page = renderPdfPage({
+    title: '投资账本 - 持仓报告',
+    subtitle: `导出时间 ${now.toLocaleString('zh-CN')} ｜ 持仓数量 ${holdings.length}`,
+    summary: [`总市值(CNY): ${SYM.CNY}${totalMV.toFixed(2)}`, `总盈亏(CNY): ${totalPnL >= 0 ? '+' : ''}${SYM.CNY}${totalPnL.toFixed(2)}`],
+    headers: ['市场', '代码', '名称', '持仓', '成本均价', '现价', '市值(CNY)', '盈亏(CNY)', '盈亏%'],
+    rows: rows.map(({ h, data }) => ([
+      h.market, h.code, h.name || '', data.qty.toFixed(0),
       `${SYM[data.ccy]}${data.avgCost.toFixed(2)}`,
       `${SYM[data.ccy]}${data.price.toFixed(2)}`,
       `${SYM.CNY}${data.mvCNY.toFixed(2)}`,
       `${data.pnlCNY >= 0 ? '+' : ''}${SYM.CNY}${data.pnlCNY.toFixed(2)}`,
       `${data.pnlPct.toFixed(2)}%`,
     ])),
-    theme: 'striped',
-    headStyles: { fillColor: [26, 24, 20], textColor: [249, 247, 243], fontSize: 10 },
-    bodyStyles: { fontSize: 9, textColor: [40, 40, 40] },
-    alternateRowStyles: { fillColor: [249, 247, 243] },
-    columnStyles: {
-      3: { halign: 'right' },
-      4: { halign: 'right' },
-      5: { halign: 'right' },
-      6: { halign: 'right' },
-      7: { halign: 'right' },
-      8: { halign: 'right' },
-    },
-    didParseCell: (hook) => {
-      if (hook.section === 'body' && hook.column.index === 7) {
-        hook.cell.styles.textColor = hook.cell.text[0]?.startsWith('+') ? [26, 122, 74] : [192, 57, 43]
-      }
-    },
   })
+  doc.addImage(page, 'PNG', 0, 0, 210, 297)
 
   const date = now.toISOString().slice(0, 10)
   doc.save(`tzzb-${date}.pdf`)
@@ -413,39 +374,70 @@ export async function exportAllLedgersPDF(ledgers = [], ledgerHoldings = {}, pri
 
   const doc = new jsPDF('l', 'mm', 'a4')
   const now = new Date()
-  doc.setFillColor(26, 24, 20)
-  doc.rect(0, 0, 297, 26, 'F')
-  doc.setTextColor(249, 247, 243)
-  doc.setFontSize(16)
-  doc.text('投资账本 - 所有账本汇总报告', 14, 12)
-  doc.setFontSize(10)
-  doc.text(`导出时间 ${now.toLocaleString('zh-CN')}`, 14, 19)
-
-  autoTable(doc, {
-    startY: 32,
-    head: [['账本', '市场', '代码', '名称', '持仓', '成本均价', '市值(CNY)', '盈亏(CNY)', '盈亏%']],
-    body: merged,
-    theme: 'grid',
-    styles: { fontSize: 8.5, cellPadding: 2 },
-    headStyles: { fillColor: [26, 24, 20], textColor: [249, 247, 243] },
-    columnStyles: {
-      0: { cellWidth: 30 },
-      1: { cellWidth: 16 },
-      2: { cellWidth: 18 },
-      3: { cellWidth: 46 },
-      4: { halign: 'right', cellWidth: 14 },
-      5: { halign: 'right', cellWidth: 24 },
-      6: { halign: 'right', cellWidth: 26 },
-      7: { halign: 'right', cellWidth: 26 },
-      8: { halign: 'right', cellWidth: 16 },
-    },
-    didParseCell: (hook) => {
-      if (hook.section === 'body' && hook.column.index === 7) {
-        const text = hook.cell.text[0] || ''
-        if (text !== '-') hook.cell.styles.textColor = text.startsWith('+') ? [26, 122, 74] : [192, 57, 43]
-      }
-    },
+  const page = renderPdfPage({
+    title: '投资账本 - 所有账本汇总报告',
+    subtitle: `导出时间 ${now.toLocaleString('zh-CN')}`,
+    headers: ['账本', '市场', '代码', '名称', '持仓', '成本均价', '市值(CNY)', '盈亏(CNY)', '盈亏%'],
+    rows: merged,
+    landscape: true,
   })
+  doc.addImage(page, 'PNG', 0, 0, 297, 210)
 
   doc.save(`all-ledgers-${now.toISOString().slice(0, 10)}.pdf`)
+}
+
+function renderPdfPage({ title, subtitle, summary = [], headers = [], rows = [], landscape = false }) {
+  const canvas = document.createElement('canvas')
+  canvas.width = landscape ? 1754 : 1240
+  canvas.height = landscape ? 1240 : 1754
+  const ctx = canvas.getContext('2d')
+
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
+  ctx.fillStyle = '#1a1814'
+  ctx.font = `700 ${landscape ? 38 : 42}px ${PDF_FONT_FAMILY}`
+  ctx.fillText(title, 60, 80)
+  ctx.font = `400 ${landscape ? 22 : 24}px ${PDF_FONT_FAMILY}`
+  ctx.fillStyle = '#666'
+  ctx.fillText(subtitle, 60, 120)
+
+  let y = 170
+  summary.forEach((line) => {
+    ctx.fillStyle = '#1a1814'
+    ctx.font = `600 26px ${PDF_FONT_FAMILY}`
+    ctx.fillText(line, 60, y)
+    y += 42
+  })
+  y += 10
+
+  const rowHeight = 38
+  const tableWidth = canvas.width - 120
+  const colWidth = tableWidth / Math.max(headers.length, 1)
+  ctx.fillStyle = '#1a1814'
+  ctx.fillRect(60, y, tableWidth, rowHeight)
+  ctx.fillStyle = '#f9f7f3'
+  ctx.font = `600 20px ${PDF_FONT_FAMILY}`
+  headers.forEach((header, index) => {
+    ctx.fillText(header, 66 + index * colWidth, y + 25)
+  })
+  y += rowHeight
+
+  ctx.font = `400 18px ${PDF_FONT_FAMILY}`
+  rows.forEach((row, rowIndex) => {
+    if (y + rowHeight > canvas.height - 60) return
+    if (rowIndex % 2 === 0) {
+      ctx.fillStyle = '#f9f7f3'
+      ctx.fillRect(60, y, tableWidth, rowHeight)
+    }
+    row.forEach((cell, index) => {
+      const text = String(cell ?? '')
+      const truncated = text.length > 18 ? `${text.slice(0, 17)}…` : text
+      ctx.fillStyle = '#2a2a2a'
+      if (index === 7 && text.startsWith('+')) ctx.fillStyle = '#1a7a4a'
+      if (index === 7 && text.startsWith('-')) ctx.fillStyle = '#c0392b'
+      ctx.fillText(truncated, 66 + index * colWidth, y + 25)
+    })
+    y += rowHeight
+  })
+  return canvas.toDataURL('image/png')
 }

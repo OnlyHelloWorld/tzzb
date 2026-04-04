@@ -1,7 +1,7 @@
 <template>
   <transition name="page" mode="out-in">
     <LoginPage v-if="!isLoggedIn" key="login" @login="handleLogin" :loginError="loginError" />
-    <div v-else key="app" :class="['app-root', `density-${listDensity}`]" :style="appThemeStyle">
+    <div v-else key="app" class="app-root density-cozy" :style="appThemeStyle">
     <!-- ── Header ── -->
     <div class="header">
       <div class="header-left" :style="{ cursor: currentLedger ? 'pointer' : 'default' }" @click="currentLedger && goHome()">
@@ -107,24 +107,10 @@
         <div v-if="!currentLedger" key="ledger-management" class="ledger-management">
         <!-- 所有账本汇总卡片 -->
         <div class="summary-card all-ledgers-summary-card">
-          <div class="ledger-donut-wrap">
-            <svg class="ledger-donut" viewBox="0 0 120 120">
-              <circle cx="60" cy="60" r="42" fill="none" stroke="#ece7de" stroke-width="14"/>
-              <circle
-                v-for="segment in ledgerDistribution"
-                :key="segment.id"
-                cx="60" cy="60" r="42" fill="none"
-                :stroke="segment.color"
-                stroke-width="14"
-                :stroke-dasharray="segment.dashArray"
-                :stroke-dashoffset="segment.dashOffset"
-                stroke-linecap="butt"
-                transform="rotate(-90 60 60)"
-              />
-            </svg>
-            <div class="ledger-donut-meta">
+          <div class="summary-row">
+            <div>
               <div class="summary-label">账本数量</div>
-              <div class="ledger-donut-count">{{ ledgers.length }}</div>
+              <div class="big-num" style="font-size: 22px;">{{ ledgers.length }}</div>
             </div>
           </div>
           <div class="summary-row">
@@ -149,28 +135,20 @@
           <!-- ── Import/Export for all ledgers ── -->
           <div class="ledger-io-section">
             <div class="io-btns">
-              <button class="btn btn-ghost" style="font-size:11px" @click="handleExportAllLedgersCSV">
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="vertical-align:middle;margin-right:4px">
-                  <path d="M6 1v6m0 0l-2.5-2.5M6 7l2.5-2.5M2 11h8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-                导出所有账本 CSV
-              </button>
-              <button class="btn btn-ghost" style="font-size:11px" @click="handleExportAllLedgersPDF">导出所有账本 PDF</button>
-              <button class="btn btn-ink" style="font-size:11px" @click="triggerAllLedgersImport">
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="vertical-align:middle;margin-right:4px">
-                  <path d="M6 11V5m0 0l-2.5 2.5M6 5l2.5 2.5M2 1h8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-                导入账本 CSV
-              </button>
+              <div class="io-dropdown" @click.stop>
+                <button class="btn btn-ink" style="font-size:11px" @click="showAllLedgerIOMenu = !showAllLedgerIOMenu">
+                  导入/导出所有账本
+                </button>
+                <div v-if="showAllLedgerIOMenu" class="io-dropdown-menu">
+                  <button class="dropdown-item" @click="handleExportAllLedgersCSV(); showAllLedgerIOMenu = false;">导出所有账本 CSV</button>
+                  <button class="dropdown-item" @click="handleExportAllLedgersPDF(); showAllLedgerIOMenu = false;">导出所有账本 PDF</button>
+                  <button class="dropdown-item" @click="triggerAllLedgersImport(); showAllLedgerIOMenu = false;">导入账本 CSV</button>
+                </div>
+              </div>
               <input ref="allLedgersImportInput" type="file" accept=".csv" style="display:none" @change="handleAllLedgersImport" />
             </div>
             <div v-if="ioMessage" class="io-message" :class="ioMessageClass">{{ ioMessage }}</div>
           </div>
-        </div>
-        <div class="list-density-switch">
-          <span class="density-label">列表密度</span>
-          <button class="btn btn-ghost" :class="{ on: listDensity === 'compact' }" @click="setListDensity('compact')">紧凑</button>
-          <button class="btn btn-ghost" :class="{ on: listDensity === 'cozy' }" @click="setListDensity('cozy')">宽松</button>
         </div>
 
         <div class="ledgers-grid">
@@ -266,9 +244,14 @@
         <div class="io-section">
           <div class="io-label">导入导出</div>
           <div class="io-btns">
-            <button class="btn btn-ghost" style="font-size:11px" @click="handleExportCSV">导出 CSV</button>
-            <button class="btn btn-ghost" style="font-size:11px" @click="handleExportPDF">导出 PDF</button>
-            <button class="btn btn-ghost" style="font-size:11px" @click="triggerImport">导入 CSV</button>
+            <div class="io-dropdown" @click.stop>
+              <button class="btn btn-ghost" style="font-size:11px" @click="showHoldingIOMenu = !showHoldingIOMenu">导入/导出</button>
+              <div v-if="showHoldingIOMenu" class="io-dropdown-menu">
+                <button class="dropdown-item" @click="handleExportCSV(); showHoldingIOMenu = false;">导出 CSV</button>
+                <button class="dropdown-item" @click="handleExportPDF(); showHoldingIOMenu = false;">导出 PDF</button>
+                <button class="dropdown-item" @click="triggerImport(); showHoldingIOMenu = false;">导入 CSV</button>
+              </div>
+            </div>
             <input ref="importInput" type="file" accept=".csv" style="display:none" @change="handleImport" />
           </div>
           <div v-if="ioMessage" class="io-message" :class="ioMessageClass">{{ ioMessage }}</div>
@@ -284,10 +267,6 @@
       <!-- ── Tabs ── -->
       <div class="tabs-row">
         <button v-for="t in TABS" :key="t" :class="['tab', { on: tab === t }]" @click="tab = t">{{ t }}</button>
-        <div class="tabs-density">
-          <button class="btn btn-ghost" :class="{ on: listDensity === 'compact' }" @click="setListDensity('compact')">紧凑</button>
-          <button class="btn btn-ghost" :class="{ on: listDensity === 'cozy' }" @click="setListDensity('cozy')">宽松</button>
-        </div>
         <span class="tabs-count">{{ filtered.length }} 只</span>
       </div>
 
@@ -809,7 +788,8 @@ export default {
     const importInput = ref(null)
     const allLedgersImportInput = ref(null)
     const ioMessage = ref('')
-    const listDensity = ref(localStorage.getItem('investment-list-density') || 'cozy')
+    const showHoldingIOMenu = ref(false)
+    const showAllLedgerIOMenu = ref(false)
     const errorModal = ref({ visible: false, message: '', detail: '', expanded: false })
     const loginError = ref('')
     const isLoggedIn = ref(api.isLoggedIn())
@@ -972,10 +952,6 @@ export default {
       isLoggedIn.value = false
     }
     const ioMessageClass = ref('')
-    const setListDensity = (mode) => {
-      listDensity.value = mode === 'compact' ? 'compact' : 'cozy'
-      localStorage.setItem('investment-list-density', listDensity.value)
-    }
     const formatErrorDetail = (err) => {
       const detail = err?.detail
       if (typeof detail === 'string') return detail
@@ -1099,24 +1075,6 @@ export default {
       { label: '港股', ccy: 'HKD', val: allLedgersSummary.value.byCcy.HKD },
       { label: '美股', ccy: 'USD', val: allLedgersSummary.value.byCcy.USD },
     ])
-    const ledgerDistribution = computed(() => {
-      const total = ledgerSummaries.value.reduce((sum, item) => sum + Math.max(0, item.totalCNY || 0), 0)
-      const c = 2 * Math.PI * 42
-      let offset = 0
-      return ledgerSummaries.value.map((item) => {
-        const ratio = total > 0 ? Math.max(0, item.totalCNY || 0) / total : 1 / Math.max(ledgerSummaries.value.length, 1)
-        const length = c * ratio
-        const segment = {
-          id: item.id,
-          color: item.color || '#1a1814',
-          dashArray: `${length} ${c - length}`,
-          dashOffset: -offset,
-        }
-        offset += length
-        return segment
-      })
-    })
-
     const fxList = [
       { label: 'USD/CNY', key: 'USD' },
       { label: 'HKD/CNY', key: 'HKD' },
@@ -1146,7 +1104,7 @@ export default {
           showIOMessage('保存失败: ' + err.message, true)
         showErrorDetailModal('操作失败', err)
         }
-      }, 500)
+      }, 1200)
     }
 
     watch(holdings, debounceSave, { deep: true })
@@ -1688,6 +1646,12 @@ export default {
       if (showDropdown.value) {
         showDropdown.value = false
       }
+      if (showHoldingIOMenu.value) {
+        showHoldingIOMenu.value = false
+      }
+      if (showAllLedgerIOMenu.value) {
+        showAllLedgerIOMenu.value = false
+      }
       if (openLedgerActionMenuId.value !== null) {
         closeLedgerActionMenu()
       }
@@ -1766,7 +1730,7 @@ export default {
       addHolding, newForm, openAddHolding,
       enriched, summary, filtered, ccyBreakdown,
       allLedgersHoldings, allLedgersSummary, allLedgersCcyBreakdown,
-      ledgerDistribution, appThemeStyle,
+      appThemeStyle,
       fmt, toCNY,
       // Quote
       quoteStatus, quoteError, lastQuoteTime, refreshQuotes, refreshSingleQuote,
@@ -1775,7 +1739,7 @@ export default {
       errorModal, closeErrorModal, copyErrorDetail,
       handleExportCSV, handleExportPDF, triggerImport, handleImport,
       handleExportAllLedgersCSV, handleExportAllLedgersPDF, triggerAllLedgersImport, handleAllLedgersImport,
-      listDensity, setListDensity,
+      showHoldingIOMenu, showAllLedgerIOMenu,
       // Trade actions
       updateTrade, deleteTrade, deleteHolding, confirmDeleteHolding, cancelDelete, toggleReset, cancelReset, resetCost,
       openAddTrade, saveAddTrade, saveNewHolding,
@@ -2213,6 +2177,20 @@ input:focus, select:focus { outline: none; }
 .io-section { margin-top: 14px; padding-top: 12px; border-top: 1px solid #f0ece5; }
 .io-label { font-size: 11px; color: #bbb; letter-spacing: .5px; margin-bottom: 8px; }
 .io-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.io-dropdown { position: relative; }
+.io-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  background: #fff;
+  border: 1px solid #ece7de;
+  border-radius: 8px;
+  box-shadow: 0 8px 18px rgba(26, 24, 20, .12);
+  min-width: 170px;
+  padding: 4px;
+}
+.io-dropdown-menu .dropdown-item { width: 100%; text-align: left; }
 .io-message { font-size: 12px; margin-top: 8px; font-family: monospace; animation: slideDown .3s ease-out; }
 .io-message.success { color: #1a7a4a; background: #edf7f1; padding: 8px 12px; border-radius: 6px; border: 1px solid #d4e8d4; box-shadow: 0 2px 8px rgba(26, 122, 74, .15); animation: slideDown .3s ease-out, celebrateGlow 2.8s ease-in-out; }
 .io-message.error { color: #c0392b; background: #fdf0ef; padding: 8px 12px; border-radius: 6px; border: 1px solid #f5c6c0; box-shadow: 0 2px 8px rgba(192, 57, 43, .15); }
