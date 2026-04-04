@@ -106,31 +106,31 @@
         <!-- Ledger management page -->
         <div v-if="!currentLedger" key="ledger-management" class="ledger-management">
         <!-- 所有账本汇总卡片 -->
-        <div class="summary-card" v-if="ledgers.length > 0">
-          <div class="summary-row" style="justify-content: space-between; align-items: center;">
+        <div class="summary-card all-ledgers-summary-card">
+          <div class="ledger-donut-wrap">
+            <svg class="ledger-donut" viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="42" fill="none" stroke="#ece7de" stroke-width="14"/>
+              <circle
+                v-for="segment in ledgerDistribution"
+                :key="segment.id"
+                cx="60" cy="60" r="42" fill="none"
+                :stroke="segment.color"
+                stroke-width="14"
+                :stroke-dasharray="segment.dashArray"
+                :stroke-dashoffset="segment.dashOffset"
+                stroke-linecap="butt"
+                transform="rotate(-90 60 60)"
+              />
+            </svg>
+            <div class="ledger-donut-center">
+              <div class="summary-label">账本数量</div>
+              <div class="ledger-donut-count">{{ ledgers.length }}</div>
+            </div>
+          </div>
+          <div class="summary-row">
             <div>
               <div class="summary-label">所有账本总市值（人民币）</div>
               <div class="big-num" style="font-size: 28px;">¥ {{ fmt(allLedgersSummary.totalCNY) }}</div>
-            </div>
-            <div class="ledger-donut-wrap">
-              <svg class="ledger-donut" viewBox="0 0 120 120">
-                <circle cx="60" cy="60" r="42" fill="none" stroke="#ece7de" stroke-width="14"/>
-                <circle
-                  v-for="segment in ledgerDistribution"
-                  :key="segment.id"
-                  cx="60" cy="60" r="42" fill="none"
-                  :stroke="segment.color"
-                  stroke-width="14"
-                  :stroke-dasharray="segment.dashArray"
-                  :stroke-dashoffset="segment.dashOffset"
-                  stroke-linecap="butt"
-                  transform="rotate(-90 60 60)"
-                />
-              </svg>
-              <div class="ledger-donut-center">
-                <div class="summary-label">账本数量</div>
-                <div class="ledger-donut-count">{{ ledgers.length }}</div>
-              </div>
             </div>
           </div>
           <div class="summary-row">
@@ -2094,10 +2094,20 @@ input:focus, select:focus { outline: none; }
 }
 .icon-btn { border: none; background: transparent; color: #63594a; width: 34px; height: 34px; border-radius: 50%; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
 .icon-btn:hover { background: rgba(26,24,20,.08); }
-.ledger-donut-wrap { position: relative; width: 120px; height: 120px; margin-left: 20px; }
-.ledger-donut { width: 120px; height: 120px; }
+.all-ledgers-summary-card {
+  position: relative;
+  padding-right: 128px;
+}
+.ledger-donut-wrap {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  width: 88px;
+  height: 88px;
+}
+.ledger-donut { width: 88px; height: 88px; }
 .ledger-donut-center { position: absolute; inset: 0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
-.ledger-donut-count { font-size: 28px; font-weight: 700; color: #1a1814; line-height: 1; }
+.ledger-donut-count { font-size: 22px; font-weight: 700; color: #1a1814; line-height: 1; }
 .summary-label { font-size: 11px; color: #aaa; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
 .summary-row { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
 .big-num { font-family: 'Playfair Display', Georgia, serif; font-size: clamp(28px, 7vw, 46px); font-weight: 600; line-height: 1; letter-spacing: -1px; }
