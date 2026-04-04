@@ -1074,29 +1074,38 @@ export default {
     
     // 加载账本和持仓数据
     const loadLedgerData = async (ledgerId) => {
-      // 加载账本数据
-      await store.loadData()
-      
-      // 找到当前账本
-      const ledger = store.ledgers.find(l => l.id.toString() === ledgerId)
-      if (ledger) {
-        store.setCurrentLedger(ledger)
-        // 加载当前账本的持仓
-        try {
-          const savedHoldings = await api.loadHoldings(ledger.id)
-          store.holdings = savedHoldings || []
-          if (savedHoldings && savedHoldings.length > 0) {
-            const maxId = Math.max(...savedHoldings.flatMap(h => (h.trades || []).map(t => t.id)), ...savedHoldings.map(h => h.id), 0)
-            _id = maxId + 1
-          } else {
-            _id = 100
+      // 先加载账本列表
+      try {
+        const savedLedgers = await api.loadLedgers()
+        store.ledgers = savedLedgers || []
+        
+        // 找到当前账本
+        const ledger = store.ledgers.find(l => l.id.toString() === ledgerId)
+        if (ledger) {
+          store.setCurrentLedger(ledger)
+          // 加载当前账本的持仓
+          try {
+            const savedHoldings = await api.loadHoldings(ledger.id)
+            store.holdings = savedHoldings || []
+            if (savedHoldings && savedHoldings.length > 0) {
+              const maxId = Math.max(...savedHoldings.flatMap(h => (h.trades || []).map(t => t.id)), ...savedHoldings.map(h => h.id), 0)
+              _id = maxId + 1
+            } else {
+              _id = 100
+            }
+          } catch (err) {
+            console.warn('加载持仓失败:', err)
+            store.holdings = []
           }
-        } catch (err) {
-          console.warn('加载持仓失败:', err)
-          store.holdings = []
+          
+          // 加载其他数据
+          await store.loadData()
+        } else {
+          // 账本不存在，回到首页
+          goHome()
         }
-      } else {
-        // 账本不存在，回到首页
+      } catch (err) {
+        console.warn('加载账本失败:', err)
         goHome()
       }
     }
