@@ -56,6 +56,16 @@ set -a
 source .env
 set +a
 
+if [ -z "${DB_NAME}" ]; then
+    log_warn "检测到 DB_NAME 为空，自动回退为默认值 tzzb"
+    DB_NAME="tzzb"
+    if grep -q '^DB_NAME=' .env; then
+        sed -i 's/^DB_NAME=.*/DB_NAME=tzzb/' .env
+    else
+        echo "DB_NAME=tzzb" >> .env
+    fi
+fi
+
 # 数据库初始化/更新
 log_info "初始化/更新数据库..."
 
