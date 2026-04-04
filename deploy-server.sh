@@ -99,12 +99,25 @@ if ! command -v mysql >/dev/null 2>&1; then
     apt-get install -y mysql-server
 fi
 
-if systemctl list-unit-files | grep -q '^mysql\.service'; then
-    systemctl enable mysql
-    systemctl restart mysql
+# 尝试多种可能的 MySQL/MariaDB 服务名
+MYSQL_SERVICE_NAMES=("mysql" "mysqld" "mariadb")
+MYSQL_SERVICE_FOUND=""
+
+for service_name in "${MYSQL_SERVICE_NAMES[@]}"; do
+    if systemctl list-unit-files | grep -q "^${service_name}\.service"; then
+        MYSQL_SERVICE_FOUND="${service_name}"
+        break
+    fi
+done
+
+if [ -n "${MYSQL_SERVICE_FOUND}" ]; then
+    log_info "找到 MySQL/MariaDB 服务: ${MYSQL_SERVICE_FOUND}"
+    systemctl enable "${MYSQL_SERVICE_FOUND}" || true
+    systemctl restart "${MYSQL_SERVICE_FOUND}" || true
+    # 等待服务启动
+    sleep 5
 else
-    log_error "未找到 mysql.service，请先安装并配置 MySQL 服务"
-    exit 1
+    log_warn "未找到标准的 MySQL/MariaDB 服务，尝试继续..."
 fi
 
 log_info "重建 MySQL 数据库 ${DB_NAME}..."
