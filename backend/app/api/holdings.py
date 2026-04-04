@@ -39,7 +39,7 @@ async def get_holdings(
         return holdings
     except Exception as e:
         logger.error(f"用户 {user.username} 获取持仓失败: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail="获取持仓数据失败")
+        raise HTTPException(status_code=500, detail={"message": "获取持仓数据失败", "error": str(e)})
 
 
 @router.post("", response_model=HoldingResponse)
@@ -98,7 +98,7 @@ async def create_holding(
     except Exception as e:
         logger.error(f"用户 {user.username} 添加持仓失败: {req.code}, 错误: {str(e)}", exc_info=True)
         await db.rollback()
-        raise HTTPException(status_code=500, detail="添加持仓失败")
+        raise HTTPException(status_code=500, detail={"message": "添加持仓失败", "error": str(e)})
 
 
 @router.put("/bulk")
@@ -185,13 +185,15 @@ async def bulk_save_holdings(
             .order_by(Holding.market, Holding.code)
         )
         saved_holdings = result.scalars().all()
+        if len(saved_holdings) != len(req.holdings):
+            raise RuntimeError(f"保存校验失败: 预期持仓 {len(req.holdings)}，实际 {len(saved_holdings)}")
         logger.info(f"用户 {user.username} 批量保存成功: {len(saved_holdings)} 个持仓")
         return {"ok": True, "count": len(saved_holdings), "holdings": saved_holdings}
     except Exception as e:
         logger.error(f"用户 {user.username} 批量保存持仓失败: {str(e)}", exc_info=True)
         await db.rollback()
         logger.debug(f"用户 {user.username} 回滚数据库事务")
-        raise HTTPException(status_code=500, detail="批量保存持仓失败")
+        raise HTTPException(status_code=500, detail={"message": "批量保存持仓失败", "error": str(e)})
 
 
 @router.delete("/{market}/{code}")
@@ -245,4 +247,4 @@ async def delete_holding(
     except Exception as e:
         logger.error(f"用户 {user.username} 删除持仓失败: {market}/{code}, 错误: {str(e)}", exc_info=True)
         await db.rollback()
-        raise HTTPException(status_code=500, detail="删除持仓失败")
+        raise HTTPException(status_code=500, detail={"message": "删除持仓失败", "error": str(e)})

@@ -587,6 +587,24 @@
         </div>
       </div>
     </div>
+
+    <!-- ── Error Detail Modal ── -->
+    <div v-if="errorModal.visible" class="overlay" @click.self="closeErrorModal">
+      <div class="modal error-detail-modal">
+        <div class="modal-title">操作失败</div>
+        <div class="error-detail-message">{{ errorModal.message }}</div>
+        <div class="error-detail-actions">
+          <button class="btn btn-ghost" @click="errorModal.expanded = !errorModal.expanded">
+            {{ errorModal.expanded ? '收起异常详情' : '展开异常详情' }}
+          </button>
+          <button class="btn btn-ink" @click="copyErrorDetail">复制异常日志</button>
+        </div>
+        <pre v-if="errorModal.expanded" class="error-detail-log">{{ errorModal.detail }}</pre>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" @click="closeErrorModal">关闭</button>
+        </div>
+      </div>
+    </div>
   </div>
   </transition>
 </template>
@@ -741,6 +759,7 @@ export default {
     const importInput = ref(null)
     const allLedgersImportInput = ref(null)
     const ioMessage = ref('')
+    const errorModal = ref({ visible: false, message: '', detail: '', expanded: false })
     const loginError = ref('')
     const isLoggedIn = ref(api.isLoggedIn())
     // 计算单个账本的汇总信息
@@ -900,6 +919,47 @@ export default {
       isLoggedIn.value = false
     }
     const ioMessageClass = ref('')
+    const formatErrorDetail = (err) => {
+      const detail = err?.detail
+      if (typeof detail === 'string') return detail
+      if (detail && typeof detail === 'object') return JSON.stringify(detail, null, 2)
+      return err?.stack || err?.message || String(err)
+    }
+    const showErrorDetailModal = (fallbackMessage, err) => {
+      errorModal.value = {
+        visible: true,
+        message: err?.message || fallbackMessage,
+        detail: formatErrorDetail(err),
+        expanded: false,
+      }
+    }
+    const closeErrorModal = () => {
+      errorModal.value.visible = false
+    }
+    const copyErrorDetail = async () => {
+      try {
+        await navigator.clipboard.writeText(errorModal.value.detail || '')
+        showIOMessage('异常日志已复制')
+      } catch (e) {
+        showIOMessage('复制失败，请手动复制', true)
+      }
+    }
+
+    const persistHoldingsAndSync = async (successMessage = '', rollbackHoldings = null) => {
+      if (!currentLedger.value) return
+      try {
+        const savedHoldings = await api.saveHoldings(holdings.value, currentLedger.value.id)
+        holdings.value = savedHoldings || []
+        if (successMessage) showIOMessage(successMessage)
+      } catch (err) {
+        if (rollbackHoldings) {
+          holdings.value = rollbackHoldings
+        }
+        showIOMessage('保存失败: ' + err.message, true)
+        showErrorDetailModal('保存失败', err)
+        throw err
+      }
+    }
 
     // Derived
     const enriched = computed(() => holdings.value.map(h => {
@@ -999,6 +1059,7 @@ export default {
         } catch (err) {
           console.warn('保存失败:', err)
           showIOMessage('保存失败: ' + err.message, true)
+        showErrorDetailModal('操作失败', err)
         }
       }, 500)
     }
@@ -1033,6 +1094,7 @@ export default {
         showIOMessage('账本创建成功')
       } catch (err) {
         showIOMessage('创建账本失败: ' + err.message, true)
+        showErrorDetailModal('操作失败', err)
       }
     }
 
@@ -1072,6 +1134,7 @@ export default {
         showIOMessage('账本更新成功')
       } catch (err) {
         showIOMessage('更新账本失败: ' + err.message, true)
+        showErrorDetailModal('操作失败', err)
       }
     }
 
@@ -1103,6 +1166,7 @@ export default {
         showIOMessage('账本删除成功')
       } catch (err) {
         showIOMessage('删除账本失败: ' + err.message, true)
+        showErrorDetailModal('操作失败', err)
       }
     }
 
@@ -1202,6 +1266,7 @@ export default {
         refreshQuotes()
       } catch (err) {
         showIOMessage('导入失败: ' + err.message, true)
+        showErrorDetailModal('操作失败', err)
       }
 
       if (allLedgersImportInput.value) allLedgersImportInput.value.value = ''
@@ -1312,14 +1377,16 @@ export default {
         refreshQuotes()
       } catch (err) {
         showIOMessage('导入失败: ' + err.message, true)
+        showErrorDetailModal('操作失败', err)
       }
 
       if (importInput.value) importInput.value.value = ''
     }
 
     // ─── Trade actions ───────────────────────────────────────────
-    const updateTrade = () => {
+    const updateTrade = async () => {
       if (!editingTrade.value) return
+      const snapshot = JSON.parse(JSON.stringify(holdings.value))
       const { holdingMarket, holdingCode, tradeId, qty, price } = editingTrade.value
       holdings.value = holdings.value.map(h => 
         !(h.market === holdingMarket && h.code === holdingCode) ? h : {
@@ -1328,11 +1395,12 @@ export default {
       )
       editingTrade.value = null
       if (currentLedger.value) {
-        api.saveHoldings(holdings.value, currentLedger.value.id)
+        await persistHoldingsAndSync('交易保存成功', snapshot)
       }
     }
 
-    const deleteTrade = (holding, tradeId) => {
+    const deleteTrade = async (holding, tradeId) => {
+      const snapshot = JSON.parse(JSON.stringify(holdings.value))
       const { market, code } = holding
       holdings.value = holdings.value.map(h => {
         if (!(h.market === market && h.code === code)) return h
@@ -1340,7 +1408,7 @@ export default {
         return trades.length > 0 ? { ...h, trades } : h
       })
       if (currentLedger.value) {
-        api.saveHoldings(holdings.value, currentLedger.value.id)
+        await persistHoldingsAndSync('交易删除成功', snapshot)
       }
     }
 
@@ -1366,6 +1434,7 @@ export default {
         showIOMessage('持仓删除成功')
       } catch (err) {
         showIOMessage('删除失败: ' + err.message, true)
+        showErrorDetailModal('操作失败', err)
       }
     }
 
@@ -1398,14 +1467,15 @@ export default {
       }
     }
 
-    const cancelReset = () => {
+    const cancelReset = async () => {
       resetTarget.value = null
       resetPrice.value = ''
       if (currentLedger.value) {
-        api.saveHoldings(holdings.value, currentLedger.value.id)
+        await persistHoldingsAndSync()
       }
     }
-    const resetCost = (holding) => {
+    const resetCost = async (holding) => {
+      const snapshot = JSON.parse(JSON.stringify(holdings.value))
       const { market, code } = holding
       const enrichedH = enriched.value.find(e => e.market === market && e.code === code)
       if (!enrichedH) return
@@ -1418,7 +1488,7 @@ export default {
       resetTarget.value = null
       resetPrice.value = ''
       if (currentLedger.value) {
-        api.saveHoldings(holdings.value, currentLedger.value.id)
+        await persistHoldingsAndSync('重置成本成功', snapshot)
       }
     }
 
@@ -1432,12 +1502,13 @@ export default {
 
     const tradeError = ref('')
 
-    const saveAddTrade = () => {
+    const saveAddTrade = async () => {
       if (!addTradeTarget.value || !addTradeForm.qty || !addTradeForm.price) {
         tradeError.value = '请填写数量和价格'
         return
       }
       tradeError.value = ''
+      const snapshot = JSON.parse(JSON.stringify(holdings.value))
       const { holdingMarket, holdingCode } = addTradeTarget.value
       const { type, qty, price, date, note } = addTradeForm
       const signedQty = type === '卖出' ? -Math.abs(+qty) : Math.abs(+qty)
@@ -1449,7 +1520,7 @@ export default {
       addTradeTarget.value = null
       Object.assign(addTradeForm, { type: '买入', qty: '', price: '', date: '', note: '' })
       if (currentLedger.value) {
-        api.saveHoldings(holdings.value, currentLedger.value.id)
+        await persistHoldingsAndSync('新增交易成功', snapshot)
       }
     }
     const addError = ref('')
@@ -1479,7 +1550,8 @@ export default {
       onCodeChange(newForm.code)
     }
 
-    const saveNewHolding = () => {
+    const saveNewHolding = async () => {
+      const snapshot = JSON.parse(JSON.stringify(holdings.value))
       const { market, code, name, sector, qty, price, date } = newForm
       if (!code || !name || !qty || !price) {
         addError.value = '请填写股票代码、名称、数量和成本价'
@@ -1500,10 +1572,7 @@ export default {
       Object.assign(newForm, { market: 'A股', code: '', name: '', sector: '', qty: '', price: '', date: today() })
       // 立即持久化
       if (currentLedger.value) {
-        api.saveHoldings(holdings.value, currentLedger.value.id).then(() => {
-          ioMessage.value = '✅ 保存成功'
-          setTimeout(() => { if (ioMessage.value === '✅ 保存成功') ioMessage.value = '' }, 3000)
-        })
+        await persistHoldingsAndSync('✅ 保存成功', snapshot)
       }
     }
 
@@ -1550,6 +1619,7 @@ export default {
       quoteStatus, quoteError, lastQuoteTime, refreshQuotes, refreshSingleQuote,
       // IO
       importInput, allLedgersImportInput, ioMessage, ioMessageClass,
+      errorModal, closeErrorModal, copyErrorDetail,
       handleExportCSV, handleExportPDF, triggerImport, handleImport,
       handleExportAllLedgersCSV, triggerAllLedgersImport, handleAllLedgersImport,
       // Trade actions
@@ -2378,6 +2448,13 @@ input:focus, select:focus { outline: none; }
   background: #fff; border-radius: 14px; padding: 28px; width: 100%; max-width: 420px; box-shadow: 0 20px 60px rgba(0,0,0,.18);
   animation: slideIn .3s ease-out;
   transform-origin: center;
+}
+.error-detail-modal { max-width: 760px; }
+.error-detail-message { font-size: 14px; color: #c0392b; margin-bottom: 12px; line-height: 1.6; }
+.error-detail-actions { display: flex; gap: 10px; margin-bottom: 10px; }
+.error-detail-log {
+  max-height: 320px; overflow: auto; background: #f6f8fa; border: 1px solid #e5e7eb;
+  border-radius: 8px; padding: 10px; white-space: pre-wrap; word-break: break-word; font-size: 12px;
 }
 
 @keyframes fadeIn {
