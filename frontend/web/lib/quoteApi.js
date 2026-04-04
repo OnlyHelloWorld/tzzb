@@ -25,9 +25,10 @@ function isShanghai(code) {
 // ─── 判断是否是ETF ───────────────────────────────────
 function isETF(code) {
   const c = code.toString()
-  // 沪市ETF：5xx开头
-  // 深市ETF：159xxx、512xxx等（3xx、159、512等常见ETF代码）
-  return c.startsWith('5') || c.startsWith('159') || c.startsWith('512') || c.startsWith('3')
+  // 沪市ETF：510、511、512、513、514、515、516、517、518、519、588开头
+  // 深市ETF：159、160、161、162、163、164、165、166、167、168、169开头
+  const etfPrefixes = ['159', '160', '161', '162', '163', '164', '165', '166', '167', '168', '169', '510', '511', '512', '513', '514', '515', '516', '517', '518', '519', '588']
+  return etfPrefixes.some(prefix => c.startsWith(prefix))
 }
 
 // ─── 规范化股票代码 ───────────────────────────────────
