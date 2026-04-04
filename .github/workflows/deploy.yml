@@ -42,7 +42,7 @@ jobs:
           host: ${{ secrets.GCP_HOST }}
           username: ${{ secrets.GCP_USER }}
           password: ${{ secrets.GCP_PASSWORD }}
-          envs: SMTP_USER,SMTP_PASSWORD,QQ_EMAIL,QQ_AUTH_CODE
+          envs: SMTP_USER SMTP_PASSWORD QQ_EMAIL QQ_AUTH_CODE
           script: |
             set -e
             # 创建项目目录
