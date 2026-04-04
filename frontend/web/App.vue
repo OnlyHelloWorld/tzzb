@@ -1124,13 +1124,8 @@ export default {
 
       try {
         const newLedger = await api.createLedger(newLedgerName.value.trim(), newLedgerColor.value)
-        ledgers.value.push(newLedger)
-        
-        // 计算新账本的汇总信息并添加到 ledgerSummaries
-        const summary = await calculateLedgerSummary(newLedger)
-        ledgerSummaries.value.push(summary)
-        
         createLedgerModal.value = false
+        await switchLedger(newLedger)
         triggerBlessingEffect()
         showIOMessage('账本创建成功')
       } catch (err) {
@@ -1220,7 +1215,7 @@ export default {
       showDropdown.value = false
       closeLedgerActionMenu()
       closeTradeActionMenu()
-      await loadData()
+      await loadData({ useStoredLedger: false })
     }
 
     const goHome = async () => {
