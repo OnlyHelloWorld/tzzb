@@ -9,8 +9,8 @@
         <p class="login-subtitle">请登录以继续</p>
         <form @submit.prevent="handleLogin">
           <div class="login-field">
-            <label>账号</label>
-            <input v-model="form.username" class="login-input" placeholder="请输入账号" autocomplete="username" :disabled="loading" />
+            <label>账号（邮箱或用户名）</label>
+            <input v-model="form.username" class="login-input" placeholder="请输入邮箱或用户名" autocomplete="username" :disabled="loading" />
           </div>
           <div class="login-field">
             <label>密码</label>
@@ -44,7 +44,7 @@
           </div>
           <div class="login-field">
             <label>用户名</label>
-            <input v-model="form.username" class="login-input" placeholder="2-50 个字符" :disabled="loading" />
+            <input v-model="form.username" class="login-input" placeholder="2-64 个字符" :disabled="loading" />
           </div>
           <div class="login-field">
             <label>密码</label>
@@ -55,6 +55,7 @@
             <input v-model="form.password2" class="login-input" type="password" placeholder="再次输入密码" :disabled="loading" />
           </div>
           <div v-if="error" class="login-error">{{ error }}</div>
+          <div v-if="successMsg" class="login-success">{{ successMsg }}</div>
           <button class="login-btn" type="submit" :disabled="loading">{{ loading ? '注册中...' : '注册' }}</button>
         </form>
         <div class="login-links">
@@ -100,7 +101,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch, onUnmounted } from 'vue'
+import { ref, reactive, watch, onMounted, onUnmounted } from 'vue'
 import * as api from '../lib/api.js'
 
 const props = defineProps({
@@ -137,6 +138,11 @@ function switchView(v) {
   form.password2 = ''
 }
 
+const syncHashByView = () => {
+  const map = { login: '#/login', register: '#/register', reset: '#/reset-password' }
+  window.history.replaceState(null, '', map[view.value] || '#/login')
+}
+
 function clearForm() {
   form.username = ''
   form.email = ''
@@ -150,6 +156,7 @@ async function handleSendCode(type) {
   error.value = ''
   try {
     await api.sendCode(form.email, type)
+    successMsg.value = '验证码已发送，请查收邮箱'
     codeCooldown.value = 60
     cooldownTimer = setInterval(() => {
       codeCooldown.value--
@@ -177,6 +184,9 @@ async function handleLogin() {
 async function handleRegister() {
   if (!form.email || !form.code || !form.username || !form.password) {
     error.value = '请填写所有字段'; return
+  }
+  if (form.username.length < 2 || form.username.length > 64) {
+    error.value = '用户名长度需为 2-64 个字符'; return
   }
   if (form.password !== form.password2) { error.value = '两次密码不一致'; return }
   if (form.password.length < 6) { error.value = '密码至少 6 个字符'; return }
@@ -214,6 +224,16 @@ async function handleReset() {
 
 onUnmounted(() => {
   if (cooldownTimer) clearInterval(cooldownTimer)
+})
+
+watch(view, syncHashByView)
+
+onMounted(() => {
+  const hash = window.location.hash
+  if (hash === '#/register') view.value = 'register'
+  else if (hash === '#/reset-password') view.value = 'reset'
+  else view.value = 'login'
+  syncHashByView()
 })
 </script>
 

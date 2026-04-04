@@ -1,7 +1,7 @@
 <template>
   <transition name="page" mode="out-in">
     <LoginPage v-if="!isLoggedIn" key="login" @login="handleLogin" :loginError="loginError" />
-    <div v-else key="app" class="app-root">
+    <div v-else key="app" class="app-root" :style="appThemeStyle">
     <!-- ── Header ── -->
     <div class="header">
       <div class="header-left" :style="{ cursor: currentLedger ? 'pointer' : 'default' }" @click="currentLedger && goHome()">
@@ -13,6 +13,12 @@
         <span class="app-title">投资账本</span>
       </div>
       <div v-if="!currentLedger" class="header-right">
+        <button class="icon-btn" title="退出登录" @click="handleLogout">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M6 2.5H3.5A1.5 1.5 0 0 0 2 4v8a1.5 1.5 0 0 0 1.5 1.5H6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+            <path d="M10 11.5 13 8l-3-3.5M13 8H6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
         <button class="btn btn-ink" @click="openCreateLedger">+ 新建账本</button>
       </div>
       <div v-else class="header-right">
@@ -100,15 +106,31 @@
         <!-- Ledger management page -->
         <div v-if="!currentLedger" key="ledger-management" class="ledger-management">
         <!-- 所有账本汇总卡片 -->
-        <div class="summary-card" v-if="ledgers.length > 0">
-          <div class="summary-row" style="justify-content: space-between; align-items: center;">
+        <div class="summary-card">
+          <div class="summary-row summary-row-ledger-overview">
             <div>
               <div class="summary-label">所有账本总市值（人民币）</div>
               <div class="big-num" style="font-size: 28px;">¥ {{ fmt(allLedgersSummary.totalCNY) }}</div>
             </div>
-            <div style="text-align: right; margin-left: 20px;">
-              <div class="summary-label">账本数量</div>
-              <div style="font-size: 32px; font-weight: 600; color: #1a1814;">{{ ledgers.length }}</div>
+            <div class="ledger-donut-wrap">
+              <svg class="ledger-donut" viewBox="0 0 120 120">
+                <circle cx="60" cy="60" r="42" fill="none" stroke="#ece7de" stroke-width="14"/>
+                <circle
+                  v-for="segment in ledgerDistribution"
+                  :key="segment.id"
+                  cx="60" cy="60" r="42" fill="none"
+                  :stroke="segment.color"
+                  stroke-width="14"
+                  :stroke-dasharray="segment.dashArray"
+                  :stroke-dashoffset="segment.dashOffset"
+                  stroke-linecap="butt"
+                  transform="rotate(-90 60 60)"
+                />
+              </svg>
+              <div class="ledger-donut-center">
+                <div class="summary-label">账本数量</div>
+                <div class="ledger-donut-count">{{ ledgers.length }}</div>
+              </div>
             </div>
           </div>
           <div class="summary-row">
@@ -610,7 +632,7 @@
 </template>
 
 <script>
-import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import PnLTag from './components/PnLTag.vue'
 import Tag from './components/Tag.vue'
 import LoginPage from './components/LoginPage.vue'
@@ -650,6 +672,7 @@ const fmt = (n, d = 2) => Number(n).toLocaleString('zh-CN', { minimumFractionDig
 const toCNY = (val, ccy, fx) => ccy === 'CNY' ? val : val * (fx[ccy] || 1)
 const today = () => new Date().toISOString().slice(0, 10)
 const MARKET_OPTIONS = ['A股', '港股', '美股']
+const LEDGER_PATH_PREFIX = '#/ledger/'
 
 // ─── Sub-components ─────────────────────────────────────────────
 
@@ -677,6 +700,7 @@ export default {
     const blessingEffectKey = ref(0)
     const openLedgerActionMenuId = ref(null)
     let blessingEffectTimer = null
+    const buttonClickTimestamps = new WeakMap()
 
     // Ledger state
     const ledgers = ref([])
@@ -745,6 +769,11 @@ export default {
     const closeLedgerActionMenu = () => {
       openLedgerActionMenuId.value = null
     }
+
+    const appThemeStyle = computed(() => {
+      const theme = currentLedger.value?.color || '#1a1814'
+      return { '--ledger-theme': theme }
+    })
 
     // Quote state
     const quoteStatus = ref('idle') // idle | loading | ok | error
@@ -1032,6 +1061,23 @@ export default {
       { label: '港股', ccy: 'HKD', val: allLedgersSummary.value.byCcy.HKD },
       { label: '美股', ccy: 'USD', val: allLedgersSummary.value.byCcy.USD },
     ])
+    const ledgerDistribution = computed(() => {
+      const total = ledgerSummaries.value.reduce((sum, item) => sum + Math.max(0, item.totalCNY || 0), 0)
+      const c = 2 * Math.PI * 42
+      let offset = 0
+      return ledgerSummaries.value.map((item) => {
+        const ratio = total > 0 ? Math.max(0, item.totalCNY || 0) / total : 1 / Math.max(ledgerSummaries.value.length, 1)
+        const length = c * ratio
+        const segment = {
+          id: item.id,
+          color: item.color || '#1a1814',
+          dashArray: `${length} ${c - length}`,
+          dashOffset: -offset,
+        }
+        offset += length
+        return segment
+      })
+    })
 
     const fxList = [
       { label: 'USD/CNY', key: 'USD' },
@@ -1197,7 +1243,11 @@ export default {
         localStorage.removeItem('investment-current-ledger-id')
       }
       updatePageTitle()
+      syncHashByState()
     }, { deep: true })
+    watch(isLoggedIn, () => {
+      syncHashByState()
+    })
 
     // ─── Update export functions ─────────────────────────────────
     function handleExportCSV() {
@@ -1405,10 +1455,10 @@ export default {
       holdings.value = holdings.value.map(h => {
         if (!(h.market === market && h.code === code)) return h
         const trades = h.trades.filter(t => t.id !== tradeId)
-        return trades.length > 0 ? { ...h, trades } : h
-      })
+        return trades.length > 0 ? { ...h, trades } : null
+      }).filter(Boolean)
       if (currentLedger.value) {
-        await persistHoldingsAndSync('交易删除成功', snapshot)
+        await persistHoldingsAndSync('记录删除成功，相关数据已重算', snapshot)
       }
     }
 
@@ -1585,23 +1635,65 @@ export default {
         closeLedgerActionMenu()
       }
     }
+    const handleButtonDebounce = (event) => {
+      const target = event.target?.closest?.('button')
+      if (!target) return
+      const now = Date.now()
+      const last = buttonClickTimestamps.get(target) || 0
+      if (now - last < 300) {
+        event.preventDefault()
+        event.stopPropagation()
+        event.stopImmediatePropagation?.()
+        return
+      }
+      buttonClickTimestamps.set(target, now)
+    }
+    const syncHashByState = () => {
+      if (!isLoggedIn.value) {
+        window.history.replaceState(null, '', '#/login')
+        return
+      }
+      if (!currentLedger.value) {
+        window.history.replaceState(null, '', '#/home')
+        return
+      }
+      window.history.replaceState(null, '', `${LEDGER_PATH_PREFIX}${currentLedger.value.id}`)
+    }
+    const restoreStateByHash = async () => {
+      const hash = window.location.hash || '#/home'
+      if (hash.startsWith(LEDGER_PATH_PREFIX)) {
+        const ledgerId = Number(hash.replace(LEDGER_PATH_PREFIX, ''))
+        if (Number.isFinite(ledgerId)) {
+          const target = ledgers.value.find((item) => item.id === ledgerId)
+          if (target) {
+            currentLedger.value = target
+          }
+        }
+      } else if (hash === '#/home') {
+        currentLedger.value = null
+      }
+    }
 
     // ─── Lifecycle ───────────────────────────────────────────────
     onMounted(async () => {
       if (isLoggedIn.value) {
         await loadData()
+        await restoreStateByHash()
         // 数据加载完成后更新页面标题
         updatePageTitle()
       }
+      syncHashByState()
       startAutoRefresh()
       
       // 点击外部关闭下拉菜单
       document.addEventListener('click', handleDocumentClick)
+      document.addEventListener('click', handleButtonDebounce, true)
     })
 
     onUnmounted(() => {
       stopAutoRefresh()
       document.removeEventListener('click', handleDocumentClick)
+      document.removeEventListener('click', handleButtonDebounce, true)
       if (blessingEffectTimer) {
         clearTimeout(blessingEffectTimer)
       }
@@ -1614,6 +1706,7 @@ export default {
       addHolding, newForm, openAddHolding,
       enriched, summary, filtered, ccyBreakdown,
       allLedgersHoldings, allLedgersSummary, allLedgersCcyBreakdown,
+      ledgerDistribution, appThemeStyle,
       fmt, toCNY,
       // Quote
       quoteStatus, quoteError, lastQuoteTime, refreshQuotes, refreshSingleQuote,
@@ -1985,6 +2078,8 @@ input:focus, select:focus { outline: none; }
 .summary-card {
   background: #fff; border-radius: 14px; border: 1px solid #ede9e2;
   padding: 22px 22px 18px; margin-bottom: 20px;
+  border-top: 3px solid color-mix(in srgb, var(--ledger-theme, #1a1814) 42%, #ede9e2);
+  position: relative;
 }
 .summary-card-header {
   display: flex;
@@ -1995,7 +2090,19 @@ input:focus, select:focus { outline: none; }
 .add-holding-btn {
   font-size: 13px;
   padding: 8px 14px;
+  background: var(--ledger-theme, #1a1814);
+  border-color: var(--ledger-theme, #1a1814);
 }
+.icon-btn { border: none; background: transparent; color: #63594a; width: 34px; height: 34px; border-radius: 50%; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.icon-btn:hover { background: rgba(26,24,20,.08); }
+.summary-row-ledger-overview {
+  min-height: 90px;
+  padding-right: 110px;
+}
+.ledger-donut-wrap { position: absolute; top: 10px; right: 12px; width: 88px; height: 88px; }
+.ledger-donut { width: 88px; height: 88px; }
+.ledger-donut-center { position: absolute; inset: 0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.ledger-donut-count { font-size: 20px; font-weight: 700; color: #1a1814; line-height: 1; }
 .summary-label { font-size: 11px; color: #aaa; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
 .summary-row { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
 .big-num { font-family: 'Playfair Display', Georgia, serif; font-size: clamp(28px, 7vw, 46px); font-weight: 600; line-height: 1; letter-spacing: -1px; }
@@ -2211,7 +2318,7 @@ input:focus, select:focus { outline: none; }
 /* Tabs */
 .tabs-row { display: flex; gap: 4px; margin-bottom: 14px; }
 .tab { background: none; border: none; cursor: pointer; font-size: 13px; padding: 6px 14px; border-radius: 20px; color: #888; transition: all .2s cubic-bezier(0.4, 0, 0.2, 1); font-family: inherit; position: relative; overflow: hidden; }
-.tab.on { background: #1a1814; color: #f9f7f3; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+.tab.on { background: var(--ledger-theme, #1a1814); color: #f9f7f3; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,.15); }
 .tab:not(.on):hover { background: rgba(26,24,20,.07); color: #1a1814; transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,.1); }
 .tab:active { transform: translateY(0); box-shadow: none; }
 .tabs-count { margin-left: auto; font-size: 12px; color: #bbb; align-self: center; }
