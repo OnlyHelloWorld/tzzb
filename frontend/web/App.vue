@@ -1626,13 +1626,22 @@ export default {
       }]
       // 新增后切换到对应市场标签，避免用户在其他标签下看不到新持仓
       tab.value = market
-      prices[normalizedCode] = +price
       addHolding.value = false
       triggerBlessingEffect()
       Object.assign(newForm, { market: 'A股', code: '', name: '', sector: '', qty: '', price: '', date: today() })
       // 立即持久化
       if (currentLedger.value) {
         await persistHoldingsAndSync('✅ 保存成功', snapshot)
+      }
+      // 持久化完成后尝试获取新持仓的行情价格
+      try {
+        const quote = await fetchQuote(market, normalizedCode)
+        if (quote && quote.price > 0) {
+          prices[normalizedCode] = quote.price
+        }
+      } catch (e) {
+        // 如果获取行情失败，不做处理，使用成本价已经在其他地方处理
+        console.warn('获取新持仓行情失败:', e)
       }
     }
 
@@ -1686,6 +1695,7 @@ export default {
           const target = ledgers.value.find((item) => item.id === ledgerId)
           if (target) {
             currentLedger.value = target
+            await loadData()
           }
         }
       } else if (hash === '#/home') {
@@ -1708,8 +1718,17 @@ export default {
     // ─── Lifecycle ───────────────────────────────────────────────
     onMounted(async () => {
       if (isLoggedIn.value) {
-        await loadData()
+        // 首先加载账本列表
+        try {
+          const savedLedgers = await api.loadLedgers()
+          ledgers.value = savedLedgers || []
+        } catch (err) {
+          console.warn('加载账本列表失败:', err)
+        }
+        // 然后恢复状态
         await restoreStateByHash()
+        // 最后加载完整数据
+        await loadData()
         // 数据加载完成后更新页面标题
         updatePageTitle()
       }
