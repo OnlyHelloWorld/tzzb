@@ -1308,10 +1308,20 @@ export default {
       quoteError.value = ''
 
       try {
+        // 准备要获取行情的持仓数据
+        let holdingsForQuotes = []
+        if (holdings.value.length > 0) {
+          // 当前有选中的账本，使用当前账本的持仓
+          holdingsForQuotes = holdings.value
+        } else if (allLedgersHoldings.value.length > 0) {
+          // 当前在首页，使用所有账本的持仓
+          holdingsForQuotes = allLedgersHoldings.value
+        }
+
         // 并行获取汇率和行情
         const [fxResult, quoteResult] = await Promise.allSettled([
           fetchFxRates(),
-          holdings.value.length > 0 ? fetchQuotes(holdings.value) : Promise.resolve({ prices: {}, errors: [] })
+          holdingsForQuotes.length > 0 ? fetchQuotes(holdingsForQuotes) : Promise.resolve({ prices: {}, errors: [] })
         ])
 
         // 更新汇率（保留两位小数）
@@ -1333,12 +1343,20 @@ export default {
         }
 
         const hasFx = fxResult.status === 'fulfilled' && fxResult.value
-        const hasQuotes = holdings.value.length === 0 || (quoteData.prices && Object.keys(quoteData.prices).length > 0)
+        const hasQuotes = holdingsForQuotes.length === 0 || (quoteData.prices && Object.keys(quoteData.prices).length > 0)
 
         if (hasFx || hasQuotes) {
-          quoteStatus.value = (holdings.value.length > 0 && failedList.length === holdings.value.length) ? 'error' : 'ok'
+          quoteStatus.value = (holdingsForQuotes.length > 0 && failedList.length === holdingsForQuotes.length) ? 'error' : 'ok'
           const now = new Date()
           lastQuoteTime.value = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
+          
+          // 重新计算所有账本的汇总信息，使用最新的价格和汇率
+          const summaries = []
+          for (const ledger of ledgers.value) {
+            const summary = await calculateLedgerSummary(ledger)
+            summaries.push(summary)
+          }
+          ledgerSummaries.value = summaries
         } else {
           quoteStatus.value = 'error'
           quoteError.value = '所有数据源均无有效数据'
