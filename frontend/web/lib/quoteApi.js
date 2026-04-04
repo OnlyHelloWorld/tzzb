@@ -22,6 +22,14 @@ function isShanghai(code) {
   return c.startsWith('6') || c.startsWith('5') || c.startsWith('9')
 }
 
+// ─── 判断是否是ETF ───────────────────────────────────
+function isETF(code) {
+  const c = code.toString()
+  // 沪市ETF：5xx开头
+  // 深市ETF：159xxx、512xxx等（3xx、159、512等常见ETF代码）
+  return c.startsWith('5') || c.startsWith('159') || c.startsWith('512') || c.startsWith('3')
+}
+
 // ─── 规范化股票代码 ───────────────────────────────────
 function normalizeCode(market, code) {
   // 统一转大写
@@ -62,7 +70,11 @@ async function fetchEastmoney(market, code) {
   let price = 0
   if (d.f43) {
     if (market === 'A股') {
-      price = d.f43 / 100   // A股：分
+      if (isETF(code)) {
+        price = d.f43 / 1000  // ETF：厘（与港股/美股相同）
+      } else {
+        price = d.f43 / 100   // 普通A股：分
+      }
     } else {
       price = d.f43 / 1000  // 港股/美股：厘
     }
