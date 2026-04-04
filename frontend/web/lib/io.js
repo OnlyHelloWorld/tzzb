@@ -350,16 +350,24 @@ export async function exportPDF(holdings = [], prices = {}, fx = { USD: 7.28, HK
 
 export async function exportAllLedgersPDF(ledgers = [], ledgerHoldings = {}, prices = {}, fx = { USD: 7.28, HKD: 0.925 }) {
   const merged = []
+  let totalMV = 0
+  let totalPnL = 0
   for (const ledger of ledgers) {
     const holdings = ledgerHoldings[ledger.id] || []
+    merged.push([`【账本】${ledger.name}`, '', '', '', '', '', '', '', ''])
     if (holdings.length === 0) {
-      merged.push([ledger.name, '-', '-', '-', '-', '-', '-', '-', '-'])
+      merged.push(['', '-', '-', '(空账本)', '-', '-', '-', '-', '-'])
+      merged.push(['', '小计', '-', '-', '-', '-', `${SYM.CNY}0.00`, `${SYM.CNY}0.00`, '0.00%'])
       continue
     }
+    let ledgerMV = 0
+    let ledgerPnL = 0
     holdings.forEach((h) => {
       const data = toHoldingRow(h, prices, fx)
+      ledgerMV += data.mvCNY
+      ledgerPnL += data.pnlCNY
       merged.push([
-        ledger.name,
+        '',
         h.market,
         h.code,
         h.name || '',
@@ -370,6 +378,19 @@ export async function exportAllLedgersPDF(ledgers = [], ledgerHoldings = {}, pri
         `${data.pnlPct.toFixed(2)}%`,
       ])
     })
+    totalMV += ledgerMV
+    totalPnL += ledgerPnL
+    merged.push([
+      '',
+      '小计',
+      '-',
+      '-',
+      '-',
+      '-',
+      `${SYM.CNY}${ledgerMV.toFixed(2)}`,
+      `${ledgerPnL >= 0 ? '+' : ''}${SYM.CNY}${ledgerPnL.toFixed(2)}`,
+      '-',
+    ])
   }
 
   const doc = new jsPDF('l', 'mm', 'a4')
@@ -377,6 +398,7 @@ export async function exportAllLedgersPDF(ledgers = [], ledgerHoldings = {}, pri
   const page = renderPdfPage({
     title: '投资账本 - 所有账本汇总报告',
     subtitle: `导出时间 ${now.toLocaleString('zh-CN')}`,
+    summary: [`总市值(CNY): ${SYM.CNY}${totalMV.toFixed(2)}`, `总盈亏(CNY): ${totalPnL >= 0 ? '+' : ''}${SYM.CNY}${totalPnL.toFixed(2)}`],
     headers: ['账本', '市场', '代码', '名称', '持仓', '成本均价', '市值(CNY)', '盈亏(CNY)', '盈亏%'],
     rows: merged,
     landscape: true,
