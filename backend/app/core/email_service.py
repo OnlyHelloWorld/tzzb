@@ -24,11 +24,9 @@ def _generate_code() -> str:
 
 def _send_email(to_email: str, subject: str, html_body: str):
     """发送邮件"""
-    # 模拟模式：总是使用模拟模式，这样即使用户没有网络连接，也能够看到验证码
-    logger.info(f"[模拟模式] 验证码已发送到 {to_email} - {subject}")
-    logger.info(f"[模拟模式] 验证码内容: {html_body}")
-    return
-    
+    if not settings.SMTP_USER or not settings.SMTP_PASSWORD:
+        raise ValueError("邮件服务未配置，请联系管理员配置 SMTP")
+
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"] = settings.SMTP_USER
@@ -36,9 +34,13 @@ def _send_email(to_email: str, subject: str, html_body: str):
 
     msg.attach(MIMEText(html_body, "html", "utf-8"))
 
-    with smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT) as server:
-        server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-        server.sendmail(settings.SMTP_USER, to_email, msg.as_string())
+    try:
+        with smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15) as server:
+            server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+            server.sendmail(settings.SMTP_USER, to_email, msg.as_string())
+    except smtplib.SMTPException as e:
+        logger.error(f"SMTP发送失败: {to_email}, 错误: {str(e)}")
+        raise ValueError("验证码发送失败，请检查邮箱配置后重试")
 
     logger.info(f"邮件已发送: {to_email} - {subject}")
 
