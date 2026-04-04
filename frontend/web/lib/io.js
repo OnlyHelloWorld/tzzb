@@ -7,7 +7,6 @@
 
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import html2canvas from 'html2canvas'
 
 // ─── 工具函数 ───────────────────────────────────────────────────
 function downloadBlob(blob, filename) {
@@ -28,6 +27,22 @@ function downloadText(text, filename, mimeType = 'text/csv') {
 
 const SYM = { CNY: '¥', HKD: 'HK$', USD: '$' }
 const MARKET_CCY = { 'A股': 'CNY', '港股': 'HKD', '美股': 'USD' }
+
+function toHoldingRow(h, prices, fx) {
+  const ccy = MARKET_CCY[h.market] || 'CNY'
+  const price = prices?.[h.code] || 0
+  const qty = h.trades.reduce((s, t) => s + t.qty, 0)
+  const totalCost = h.trades.reduce((s, t) => s + t.qty * t.price, 0)
+  const avgCost = qty > 0 ? totalCost / qty : 0
+  const mv = price * qty
+  const costBasis = avgCost * qty
+  const pnl = mv - costBasis
+  const pnlPct = costBasis > 0 ? (pnl / costBasis * 100) : 0
+  const mvCNY = ccy === 'CNY' ? mv : mv * (fx?.[ccy] || 1)
+  const pnlCNY = ccy === 'CNY' ? pnl : pnl * (fx?.[ccy] || 1)
+
+  return { ccy, price, qty, avgCost, mv, pnl, pnlPct, mvCNY, pnlCNY }
+}
 
 // ─── 导出单个账本 CSV ───────────────────────────────────────────────────
 export function exportCSV(holdings, prices, fx) {
@@ -303,121 +318,134 @@ function parseSingleLedgerCSV(lines, headers) {
 
 // ─── 导出 PDF ───────────────────────────────────────────────────
 export async function exportPDF(holdings = [], prices = {}, fx = { USD: 7.28, HKD: 0.925 }) {
-  // 创建临时容器
-  const container = document.createElement('div')
-  container.style.position = 'fixed'
-  container.style.left = '-9999px'
-  container.style.top = '0'
-  container.style.width = '800px'
-  container.style.backgroundColor = '#ffffff'
-  container.style.padding = '40px'
-  container.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
-  container.style.color = '#1a1814'
-  document.body.appendChild(container)
-
+  const doc = new jsPDF('p', 'mm', 'a4')
+  const now = new Date()
+  const rows = holdings.map((h) => ({ h, data: toHoldingRow(h, prices, fx) }))
   let totalMV = 0
   let totalPnL = 0
+  rows.forEach((item) => {
+    totalMV += item.data.mvCNY
+    totalPnL += item.data.pnlCNY
+  })
 
-  // 构建 HTML 内容
-  let htmlContent = `
-    <div style="text-align: center; margin-bottom: 30px;">
-      <h1 style="font-size: 28px; margin: 0 0 10px 0; font-weight: 600;">投资账本</h1>
-      <p style="color: #666; margin: 0; font-size: 14px;">导出日期: ${new Date().toLocaleString('zh-CN')}</p>
-    </div>
-    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-      <thead>
-        <tr style="background-color: #1a1814; color: #f9f7f3;">
-          <th style="padding: 12px 10px; text-align: left; border: 1px solid #ddd;">市场</th>
-          <th style="padding: 12px 10px; text-align: left; border: 1px solid #ddd;">代码</th>
-          <th style="padding: 12px 10px; text-align: left; border: 1px solid #ddd;">名称</th>
-          <th style="padding: 12px 10px; text-align: right; border: 1px solid #ddd;">持仓量</th>
-          <th style="padding: 12px 10px; text-align: right; border: 1px solid #ddd;">成本均价</th>
-          <th style="padding: 12px 10px; text-align: right; border: 1px solid #ddd;">现价</th>
-          <th style="padding: 12px 10px; text-align: right; border: 1px solid #ddd;">市值</th>
-          <th style="padding: 12px 10px; text-align: right; border: 1px solid #ddd;">盈亏</th>
-          <th style="padding: 12px 10px; text-align: right; border: 1px solid #ddd;">盈亏%</th>
-        </tr>
-      </thead>
-      <tbody>
-  `
+  doc.setFillColor(26, 24, 20)
+  doc.rect(0, 0, 210, 34, 'F')
+  doc.setTextColor(249, 247, 243)
+  doc.setFontSize(18)
+  doc.text('投资账本 - 持仓报告', 14, 15)
+  doc.setFontSize(10)
+  doc.text(`导出时间 ${now.toLocaleString('zh-CN')}`, 14, 23)
+  doc.text(`持仓数量 ${holdings.length}`, 14, 29)
 
-  for (const h of holdings) {
-    const ccy = MARKET_CCY[h.market] || 'CNY'
-    const price = prices[h.code] || 0
-    const qty = h.trades.reduce((s, t) => s + t.qty, 0)
-    const totalCost = h.trades.reduce((s, t) => s + t.qty * t.price, 0)
-    const avgCost = qty > 0 ? totalCost / qty : 0
-    const mv = price * qty
-    const costBasis = avgCost * qty
-    const pnl = mv - costBasis
-    const pnlPct = costBasis > 0 ? (pnl / costBasis * 100) : 0
-    
-    const mvCNY = ccy === 'CNY' ? mv : mv * (fx[ccy] || 1)
-    const pnlCNY = ccy === 'CNY' ? pnl : pnl * (fx[ccy] || 1)
-    
-    totalMV += mvCNY
-    totalPnL += pnlCNY
+  doc.setTextColor(26, 24, 20)
+  doc.setDrawColor(228, 223, 214)
+  doc.setFillColor(249, 247, 243)
+  doc.roundedRect(14, 40, 88, 18, 2, 2, 'FD')
+  doc.roundedRect(108, 40, 88, 18, 2, 2, 'FD')
+  doc.setFontSize(10)
+  doc.text('总市值 (CNY)', 18, 47)
+  doc.text('总盈亏 (CNY)', 112, 47)
+  doc.setFontSize(12)
+  doc.text(`${SYM.CNY}${totalMV.toFixed(2)}`, 18, 54)
+  doc.setTextColor(totalPnL >= 0 ? 26 : 192, totalPnL >= 0 ? 122 : 57, totalPnL >= 0 ? 74 : 43)
+  doc.text(`${totalPnL >= 0 ? '+' : ''}${SYM.CNY}${totalPnL.toFixed(2)}`, 112, 54)
 
-    const pnlColor = pnl >= 0 ? '#1a7a4a' : '#c0392b'
+  autoTable(doc, {
+    startY: 64,
+    head: [['市场', '代码', '名称', '持仓', '成本均价', '现价', '市值(CNY)', '盈亏(CNY)', '盈亏%']],
+    body: rows.map(({ h, data }) => ([
+      h.market,
+      h.code,
+      h.name || '',
+      data.qty.toFixed(0),
+      `${SYM[data.ccy]}${data.avgCost.toFixed(2)}`,
+      `${SYM[data.ccy]}${data.price.toFixed(2)}`,
+      `${SYM.CNY}${data.mvCNY.toFixed(2)}`,
+      `${data.pnlCNY >= 0 ? '+' : ''}${SYM.CNY}${data.pnlCNY.toFixed(2)}`,
+      `${data.pnlPct.toFixed(2)}%`,
+    ])),
+    theme: 'striped',
+    headStyles: { fillColor: [26, 24, 20], textColor: [249, 247, 243], fontSize: 10 },
+    bodyStyles: { fontSize: 9, textColor: [40, 40, 40] },
+    alternateRowStyles: { fillColor: [249, 247, 243] },
+    columnStyles: {
+      3: { halign: 'right' },
+      4: { halign: 'right' },
+      5: { halign: 'right' },
+      6: { halign: 'right' },
+      7: { halign: 'right' },
+      8: { halign: 'right' },
+    },
+    didParseCell: (hook) => {
+      if (hook.section === 'body' && hook.column.index === 7) {
+        hook.cell.styles.textColor = hook.cell.text[0]?.startsWith('+') ? [26, 122, 74] : [192, 57, 43]
+      }
+    },
+  })
 
-    htmlContent += `
-      <tr style="background-color: #f9f7f3;">
-        <td style="padding: 10px; border: 1px solid #ddd;">${h.market}</td>
-        <td style="padding: 10px; border: 1px solid #ddd;">${h.code}</td>
-        <td style="padding: 10px; border: 1px solid #ddd;">${h.name || ''}</td>
-        <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">${qty.toFixed(0)}</td>
-        <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">${SYM[ccy]}${avgCost.toFixed(2)}</td>
-        <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">${SYM[ccy]}${price.toFixed(2)}</td>
-        <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">${SYM.CNY}${mvCNY.toFixed(2)}</td>
-        <td style="padding: 10px; text-align: right; border: 1px solid #ddd; color: ${pnlColor};">${SYM.CNY}${pnlCNY.toFixed(2)}</td>
-        <td style="padding: 10px; text-align: right; border: 1px solid #ddd; color: ${pnlColor};">${pnlPct.toFixed(2)}%</td>
-      </tr>
-    `
-  }
+  const date = now.toISOString().slice(0, 10)
+  doc.save(`tzzb-${date}.pdf`)
+}
 
-  htmlContent += `
-      </tbody>
-    </table>
-    <div style="margin-top: 20px; font-size: 16px; font-weight: 600;">
-      <p>总计市值: ${SYM.CNY}${totalMV.toFixed(2)}</p>
-      <p style="color: ${totalPnL >= 0 ? '#1a7a4a' : '#c0392b'};">总计盈亏: ${SYM.CNY}${totalPnL.toFixed(2)}</p>
-    </div>
-  `
-
-  container.innerHTML = htmlContent
-
-  try {
-    // 使用 html2canvas 捕获
-    const canvas = await html2canvas(container, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: '#ffffff'
-    })
-
-    // 创建 PDF
-    const imgWidth = 210
-    const pageHeight = 297
-    const imgHeight = (canvas.height * imgWidth) / canvas.width
-
-    const doc = new jsPDF('p', 'mm', 'a4')
-    let heightLeft = imgHeight
-    let position = 0
-
-    doc.addImage(canvas.toDataURL('image/jpeg', 1.0), 'JPEG', 0, position, imgWidth, imgHeight)
-    heightLeft -= pageHeight
-
-    while (heightLeft > 0) {
-      position = heightLeft - imgHeight
-      doc.addPage()
-      doc.addImage(canvas.toDataURL('image/jpeg', 1.0), 'JPEG', 0, position, imgWidth, imgHeight)
-      heightLeft -= pageHeight
+export async function exportAllLedgersPDF(ledgers = [], ledgerHoldings = {}, prices = {}, fx = { USD: 7.28, HKD: 0.925 }) {
+  const merged = []
+  for (const ledger of ledgers) {
+    const holdings = ledgerHoldings[ledger.id] || []
+    if (holdings.length === 0) {
+      merged.push([ledger.name, '-', '-', '-', '-', '-', '-', '-', '-'])
+      continue
     }
-
-    // 保存 PDF
-    const date = new Date().toISOString().slice(0, 10)
-    doc.save(`tzzb-${date}.pdf`)
-  } finally {
-    // 清理临时容器
-    document.body.removeChild(container)
+    holdings.forEach((h) => {
+      const data = toHoldingRow(h, prices, fx)
+      merged.push([
+        ledger.name,
+        h.market,
+        h.code,
+        h.name || '',
+        data.qty.toFixed(0),
+        `${SYM[data.ccy]}${data.avgCost.toFixed(2)}`,
+        `${SYM.CNY}${data.mvCNY.toFixed(2)}`,
+        `${data.pnlCNY >= 0 ? '+' : ''}${SYM.CNY}${data.pnlCNY.toFixed(2)}`,
+        `${data.pnlPct.toFixed(2)}%`,
+      ])
+    })
   }
+
+  const doc = new jsPDF('l', 'mm', 'a4')
+  const now = new Date()
+  doc.setFillColor(26, 24, 20)
+  doc.rect(0, 0, 297, 26, 'F')
+  doc.setTextColor(249, 247, 243)
+  doc.setFontSize(16)
+  doc.text('投资账本 - 所有账本汇总报告', 14, 12)
+  doc.setFontSize(10)
+  doc.text(`导出时间 ${now.toLocaleString('zh-CN')}`, 14, 19)
+
+  autoTable(doc, {
+    startY: 32,
+    head: [['账本', '市场', '代码', '名称', '持仓', '成本均价', '市值(CNY)', '盈亏(CNY)', '盈亏%']],
+    body: merged,
+    theme: 'grid',
+    styles: { fontSize: 8.5, cellPadding: 2 },
+    headStyles: { fillColor: [26, 24, 20], textColor: [249, 247, 243] },
+    columnStyles: {
+      0: { cellWidth: 30 },
+      1: { cellWidth: 16 },
+      2: { cellWidth: 18 },
+      3: { cellWidth: 46 },
+      4: { halign: 'right', cellWidth: 14 },
+      5: { halign: 'right', cellWidth: 24 },
+      6: { halign: 'right', cellWidth: 26 },
+      7: { halign: 'right', cellWidth: 26 },
+      8: { halign: 'right', cellWidth: 16 },
+    },
+    didParseCell: (hook) => {
+      if (hook.section === 'body' && hook.column.index === 7) {
+        const text = hook.cell.text[0] || ''
+        if (text !== '-') hook.cell.styles.textColor = text.startsWith('+') ? [26, 122, 74] : [192, 57, 43]
+      }
+    },
+  })
+
+  doc.save(`all-ledgers-${now.toISOString().slice(0, 10)}.pdf`)
 }
