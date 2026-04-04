@@ -830,7 +830,7 @@ export default {
     }
 
     // 加载数据的函数
-    const loadData = async ({ useStoredLedger = true } = {}) => {
+    const loadData = async () => {
       isLoading.value = true
       suspendAutoSave.value = true
       try {
@@ -839,15 +839,6 @@ export default {
           const savedLedgers = await api.loadLedgers()
           ledgers.value = savedLedgers || []
           console.log('加载到账本数据:', savedLedgers)
-          
-          // 从localStorage恢复currentLedger
-          const savedCurrentLedgerId = localStorage.getItem('investment-current-ledger-id')
-          if (useStoredLedger && savedCurrentLedgerId && ledgers.value.length > 0) {
-            const savedLedger = ledgers.value.find(l => l.id === parseInt(savedCurrentLedgerId))
-            if (savedLedger) {
-              currentLedger.value = savedLedger
-            }
-          }
           
           // 加载所有持仓数据（用于所有账本汇总）
           try {
@@ -1081,15 +1072,24 @@ export default {
     // ─── Data persistence (watch) ────────────────────────────────
     let saveDebounce = null
     const suspendAutoSave = ref(false)
+    const clearPendingAutoSave = () => {
+      if (saveDebounce) {
+        clearTimeout(saveDebounce)
+        saveDebounce = null
+      }
+    }
     const debounceSave = () => {
       if (!currentLedger.value || suspendAutoSave.value) return
-      
-      clearTimeout(saveDebounce)
+      const ledgerIdAtSchedule = currentLedger.value.id
+      clearPendingAutoSave()
       saveDebounce = setTimeout(async () => {
         try {
+          if (!currentLedger.value || currentLedger.value.id !== ledgerIdAtSchedule) {
+            return
+          }
           // 保存持仓并更新本地数据（包含新的 ID）
-          if (currentLedger.value) {
-            const savedHoldings = await api.saveHoldings(holdings.value, currentLedger.value.id)
+          if (ledgerIdAtSchedule) {
+            const savedHoldings = await api.saveHoldings(holdings.value, ledgerIdAtSchedule)
             if (savedHoldings && savedHoldings.length > 0) {
               holdings.value = savedHoldings
               const maxId = Math.max(...savedHoldings.flatMap(h => (h.trades || []).map(t => t.id)), ...savedHoldings.map(h => h.id), 0)
@@ -1208,6 +1208,7 @@ export default {
 
     const switchLedger = async (ledger) => {
       if (!ledger || (currentLedger.value && currentLedger.value.id === ledger.id)) return
+      clearPendingAutoSave()
       window.history.pushState(null, '', `${LEDGER_PATH_PREFIX}${ledger.id}`)
       suspendAutoSave.value = true
       currentLedger.value = ledger
@@ -1215,11 +1216,12 @@ export default {
       showDropdown.value = false
       closeLedgerActionMenu()
       closeTradeActionMenu()
-      await loadData({ useStoredLedger: false })
+      await loadData()
     }
 
     const goHome = async () => {
       if (currentLedger.value) {
+        clearPendingAutoSave()
         window.history.pushState(null, '', '#/home')
         currentLedger.value = null
         showLedgerList.value = false
@@ -1231,13 +1233,8 @@ export default {
       }
     }
     
-    // 监听currentLedger变化，保存到localStorage并更新页面标题
+    // 监听currentLedger变化并更新页面标题
     watch(currentLedger, (newLedger) => {
-      if (newLedger) {
-        localStorage.setItem('investment-current-ledger-id', newLedger.id.toString())
-      } else {
-        localStorage.removeItem('investment-current-ledger-id')
-      }
       updatePageTitle()
       if (!handlingPopState.value) {
         syncHashByState()
@@ -1699,9 +1696,10 @@ export default {
       if (!isLoggedIn.value) return
       handlingPopState.value = true
       try {
-        await loadData({ useStoredLedger: false })
+        clearPendingAutoSave()
+        await loadData()
         await restoreStateByHash()
-        await loadData({ useStoredLedger: false })
+        await loadData()
       } finally {
         handlingPopState.value = false
       }
