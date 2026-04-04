@@ -25,7 +25,7 @@ def _generate_code() -> str:
 def _send_email(to_email: str, subject: str, html_body: str):
     """发送邮件"""
     if not settings.SMTP_USER or not settings.SMTP_PASSWORD:
-        raise ValueError("邮件服务未配置，请联系管理员配置 SMTP")
+        raise ValueError("邮件服务未配置，请设置 SMTP_USER/SMTP_PASSWORD（或 QQ_EMAIL/QQ_AUTH_CODE）")
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
