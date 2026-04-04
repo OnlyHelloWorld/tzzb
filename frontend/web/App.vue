@@ -1,7 +1,7 @@
 <template>
   <transition name="page" mode="out-in">
     <LoginPage v-if="!isLoggedIn" key="login" @login="handleLogin" :loginError="loginError" />
-    <div v-else key="app" class="app-root" :style="appThemeStyle">
+    <div v-else key="app" :class="['app-root', `density-${listDensity}`]" :style="appThemeStyle">
     <!-- ── Header ── -->
     <div class="header">
       <div class="header-left" :style="{ cursor: currentLedger ? 'pointer' : 'default' }" @click="currentLedger && goHome()">
@@ -155,6 +155,7 @@
                 </svg>
                 导出所有账本 CSV
               </button>
+              <button class="btn btn-ghost" style="font-size:11px" @click="handleExportAllLedgersPDF">导出所有账本 PDF</button>
               <button class="btn btn-ink" style="font-size:11px" @click="triggerAllLedgersImport">
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="vertical-align:middle;margin-right:4px">
                   <path d="M6 11V5m0 0l-2.5 2.5M6 5l2.5 2.5M2 1h8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -165,6 +166,11 @@
             </div>
             <div v-if="ioMessage" class="io-message" :class="ioMessageClass">{{ ioMessage }}</div>
           </div>
+        </div>
+        <div class="list-density-switch">
+          <span class="density-label">列表密度</span>
+          <button class="btn btn-ghost" :class="{ on: listDensity === 'compact' }" @click="setListDensity('compact')">紧凑</button>
+          <button class="btn btn-ghost" :class="{ on: listDensity === 'cozy' }" @click="setListDensity('cozy')">宽松</button>
         </div>
 
         <div class="ledgers-grid">
@@ -278,6 +284,10 @@
       <!-- ── Tabs ── -->
       <div class="tabs-row">
         <button v-for="t in TABS" :key="t" :class="['tab', { on: tab === t }]" @click="tab = t">{{ t }}</button>
+        <div class="tabs-density">
+          <button class="btn btn-ghost" :class="{ on: listDensity === 'compact' }" @click="setListDensity('compact')">紧凑</button>
+          <button class="btn btn-ghost" :class="{ on: listDensity === 'cozy' }" @click="setListDensity('cozy')">宽松</button>
+        </div>
         <span class="tabs-count">{{ filtered.length }} 只</span>
       </div>
 
@@ -642,7 +652,7 @@ import Tag from './components/Tag.vue'
 import LoginPage from './components/LoginPage.vue'
 import { fetchQuotes, fetchQuote, fetchFxRates } from './lib/quoteApi.js'
 import * as api from './lib/api.js'
-import { exportCSV, exportPDF, importCSV, exportAllLedgersCSV } from './lib/io.js'
+import { exportCSV, exportPDF, importCSV, exportAllLedgersCSV, exportAllLedgersPDF } from './lib/io.js'
 
 // ─── Constants ──────────────────────────────────────────────────
 const SYM = { CNY: '¥', HKD: 'HK$', USD: '$' }
@@ -799,6 +809,7 @@ export default {
     const importInput = ref(null)
     const allLedgersImportInput = ref(null)
     const ioMessage = ref('')
+    const listDensity = ref(localStorage.getItem('investment-list-density') || 'cozy')
     const errorModal = ref({ visible: false, message: '', detail: '', expanded: false })
     const loginError = ref('')
     const isLoggedIn = ref(api.isLoggedIn())
@@ -961,6 +972,10 @@ export default {
       isLoggedIn.value = false
     }
     const ioMessageClass = ref('')
+    const setListDensity = (mode) => {
+      listDensity.value = mode === 'compact' ? 'compact' : 'cozy'
+      localStorage.setItem('investment-list-density', listDensity.value)
+    }
     const formatErrorDetail = (err) => {
       const detail = err?.detail
       if (typeof detail === 'string') return detail
@@ -1296,14 +1311,28 @@ export default {
     }
 
     // ─── All ledgers export/import ─────────────────────────────────
-    function handleExportAllLedgersCSV() {
+    async function buildLedgerHoldingsMap() {
+      const ledgerHoldings = {}
+      for (const ledger of ledgers.value) {
+        ledgerHoldings[ledger.id] = await api.loadHoldings(ledger.id) || []
+      }
+      return ledgerHoldings
+    }
+
+    async function handleExportAllLedgersCSV() {
       try {
-        const ledgerHoldings = {}
-        for (const ledger of ledgers.value) {
-          ledgerHoldings[ledger.id] = []
-        }
+        const ledgerHoldings = await buildLedgerHoldingsMap()
         exportAllLedgersCSV(ledgers.value, ledgerHoldings, prices, fx)
         showIOMessage('所有账本 CSV 导出成功')
+      } catch (err) {
+        showIOMessage('导出失败: ' + err.message, true)
+      }
+    }
+    async function handleExportAllLedgersPDF() {
+      try {
+        const ledgerHoldings = await buildLedgerHoldingsMap()
+        await exportAllLedgersPDF(ledgers.value, ledgerHoldings, prices, fx)
+        showIOMessage('所有账本 PDF 导出成功')
       } catch (err) {
         showIOMessage('导出失败: ' + err.message, true)
       }
@@ -1745,7 +1774,8 @@ export default {
       importInput, allLedgersImportInput, ioMessage, ioMessageClass,
       errorModal, closeErrorModal, copyErrorDetail,
       handleExportCSV, handleExportPDF, triggerImport, handleImport,
-      handleExportAllLedgersCSV, triggerAllLedgersImport, handleAllLedgersImport,
+      handleExportAllLedgersCSV, handleExportAllLedgersPDF, triggerAllLedgersImport, handleAllLedgersImport,
+      listDensity, setListDensity,
       // Trade actions
       updateTrade, deleteTrade, deleteHolding, confirmDeleteHolding, cancelDelete, toggleReset, cancelReset, resetCost,
       openAddTrade, saveAddTrade, saveNewHolding,
@@ -1907,6 +1937,14 @@ input:focus, select:focus { outline: none; }
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 16px;
 }
+.list-density-switch {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 6px 0 14px;
+}
+.density-label { font-size: 12px; color: #9e9687; }
 .ledger-card {
   background: #fff;
   border-radius: 12px;
@@ -2352,11 +2390,13 @@ input:focus, select:focus { outline: none; }
 
 /* Tabs */
 .tabs-row { display: flex; gap: 4px; margin-bottom: 14px; }
+.tabs-density { margin-left: auto; display: flex; gap: 6px; }
 .tab { background: none; border: none; cursor: pointer; font-size: 13px; padding: 6px 14px; border-radius: 20px; color: #888; transition: all .2s cubic-bezier(0.4, 0, 0.2, 1); font-family: inherit; position: relative; overflow: hidden; }
 .tab.on { background: var(--ledger-theme, #1a1814); color: #f9f7f3; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,.15); }
 .tab:not(.on):hover { background: rgba(26,24,20,.07); color: #1a1814; transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,.1); }
 .tab:active { transform: translateY(0); box-shadow: none; }
 .tabs-count { margin-left: auto; font-size: 12px; color: #bbb; align-self: center; }
+.tabs-density + .tabs-count { margin-left: 8px; }
 
 /* Table header */
 .tbl-hdr { display: none; }
@@ -2579,6 +2619,7 @@ input:focus, select:focus { outline: none; }
 .btn-ink { background: #1a1814; color: #f9f7f3; } .btn-ink:hover { background: #333; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,.15); }
 .btn-ink:active { transform: translateY(0); box-shadow: none; }
 .btn-ghost { background: transparent; border: 1px solid #d4cfc6; color: #666; } .btn-ghost:hover { border-color: #aaa; color: #333; transform: translateY(-1px); }
+.btn-ghost.on { background: #1a1814; border-color: #1a1814; color: #f9f7f3; }
 .btn-ghost:active { transform: translateY(0); }
 .btn-ghost.loading { color: #b8a882; border-color: #d4cfc6; cursor: not-allowed; }
 .btn-ghost.loading:hover { transform: none; box-shadow: none; }
@@ -2711,6 +2752,18 @@ select.form-control { cursor: pointer; }
   padding: 10px 14px; margin-bottom: 14px; font-size: 12px; color: #c0392b;
   display: flex; align-items: center; line-height: 1.4;
 }
+
+/* Density mode */
+.density-compact .row { margin-bottom: 8px; }
+.density-compact .row-head { padding: 10px 12px; gap: 6px; }
+.density-compact .stock-name { font-size: 14px; }
+.density-compact .trade-zone { padding: 9px 12px; }
+.density-compact .trade-row { padding: 5px 0; }
+.density-compact .ledger-card-body { padding: 14px 12px; }
+.density-compact .summary-card { padding: 18px 18px 14px; }
+.density-cozy .row-head { padding: 16px 18px; }
+.density-cozy .trade-zone { padding: 14px 18px; }
+.density-cozy .ledger-card-body { padding: 20px 16px; }
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-thumb { background: #d4cfc6; border-radius: 2px; }
