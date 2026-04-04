@@ -53,8 +53,17 @@ SMTP_PASSWORD=
 EOF
 fi
 
+set -a
+source .env
+set +a
+
 # 数据库初始化/更新
 log_info "初始化/更新数据库..."
+
+if [ "${DB_DRIVER}" != "mysql" ]; then
+    log_error "当前部署脚本仅支持 MySQL，检测到 DB_DRIVER=${DB_DRIVER}"
+    exit 1
+fi
 
 log_info "检查并安装 MySQL..."
 if ! command -v mysql >/dev/null 2>&1; then
@@ -62,15 +71,12 @@ if ! command -v mysql >/dev/null 2>&1; then
     apt-get update
     apt-get install -y mysql-server
 fi
-systemctl enable mysql
-systemctl restart mysql
 
-set -a
-source .env
-set +a
-
-if [ "${DB_DRIVER}" != "mysql" ]; then
-    log_error "当前部署脚本仅支持 MySQL，检测到 DB_DRIVER=${DB_DRIVER}"
+if systemctl list-unit-files | grep -q '^mysql\.service'; then
+    systemctl enable mysql
+    systemctl restart mysql
+else
+    log_error "未找到 mysql.service，请先安装并配置 MySQL 服务"
     exit 1
 fi
 
