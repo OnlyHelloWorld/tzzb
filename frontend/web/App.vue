@@ -1339,6 +1339,14 @@ export default {
           quoteStatus.value = (holdings.value.length > 0 && failedList.length === holdings.value.length) ? 'error' : 'ok'
           const now = new Date()
           lastQuoteTime.value = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
+          
+          // 重新计算所有账本的汇总信息，使用最新的价格和汇率
+          const summaries = []
+          for (const ledger of ledgers.value) {
+            const summary = await calculateLedgerSummary(ledger)
+            summaries.push(summary)
+          }
+          ledgerSummaries.value = summaries
         } else {
           quoteStatus.value = 'error'
           quoteError.value = '所有数据源均无有效数据'
