@@ -5,7 +5,7 @@ import re
 import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -50,21 +50,26 @@ async def get_current_user(
 @router.post("/login", response_model=LoginResponse)
 async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
     """用户登录"""
-    logger.info(f"用户尝试登录: username={req.username}")
+    account = req.username.strip()
+    logger.info(f"用户尝试登录: account={account}")
     try:
-        result = await db.execute(select(User).where(User.username == req.username))
+        result = await db.execute(
+            select(User).where(
+                or_(User.username == account, User.email == account.lower())
+            )
+        )
         user = result.scalar_one_or_none()
         if not user or not verify_password(req.password, user.password_hash):
-            logger.warning(f"登录失败: username={req.username} - 账号或密码错误")
+            logger.warning(f"登录失败: account={account} - 账号或密码错误")
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="账号或密码错误")
 
         token = create_access_token(user.id, user.username)
-        logger.info(f"用户登录成功: {req.username}")
+        logger.info(f"用户登录成功: {user.username}")
         return LoginResponse(access_token=token, username=user.username)
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"用户登录异常: username={req.username}, 错误: {str(e)}", exc_info=True)
+        logger.error(f"用户登录异常: account={account}, 错误: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail="登录失败")
 
 
@@ -126,9 +131,9 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
         if not re.match(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", email):
             logger.warning(f"用户注册失败: 邮箱格式不正确 {email}")
             raise HTTPException(status_code=400, detail="邮箱格式不正确")
-        if len(username) < 2 or len(username) > 50:
+        if len(username) < 2 or len(username) > 64:
             logger.warning(f"用户注册失败: 用户名长度不正确 {username}")
-            raise HTTPException(status_code=400, detail="用户名长度 2-50 个字符")
+            raise HTTPException(status_code=400, detail="用户名长度 2-64 个字符")
         if len(req.password) < 6:
             logger.warning(f"用户注册失败: 密码长度不足 {username}")
             raise HTTPException(status_code=400, detail="密码至少 6 个字符")
