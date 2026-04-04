@@ -37,7 +37,6 @@ pip install -r requirements.txt
 if [ ! -f ".env" ]; then
     log_info "创建 .env 文件..."
     cat > .env << EOF
-DB_DRIVER=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_USER=root
@@ -59,11 +58,6 @@ set +a
 
 # 数据库初始化/更新
 log_info "初始化/更新数据库..."
-
-if [ "${DB_DRIVER}" != "mysql" ]; then
-    log_error "当前部署脚本仅支持 MySQL，检测到 DB_DRIVER=${DB_DRIVER}"
-    exit 1
-fi
 
 log_info "检查并安装 MySQL..."
 if ! command -v mysql >/dev/null 2>&1; then

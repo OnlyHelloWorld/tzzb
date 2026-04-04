@@ -6,7 +6,12 @@ services:
     container_name: investment-backend
     restart: always
     environment:
-      - DB_DRIVER=sqlite
+      - DB_DRIVER=mysql
+      - DB_HOST=${DB_HOST:-localhost}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_USER=${DB_USER:-root}
+      - DB_PASSWORD=${DB_PASSWORD:-}
+      - DB_NAME=${DB_NAME:-tzzb}
       - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
       - HOST=0.0.0.0
       - PORT=8000

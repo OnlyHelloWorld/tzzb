@@ -73,7 +73,12 @@ services:
     container_name: investment-backend
     restart: always
     environment:
-      - DB_DRIVER=sqlite
+      - DB_DRIVER=mysql
+      - DB_HOST=\${DB_HOST:-localhost}
+      - DB_PORT=\${DB_PORT:-3306}
+      - DB_USER=\${DB_USER:-root}
+      - DB_PASSWORD=\${DB_PASSWORD:-}
+      - DB_NAME=\${DB_NAME:-tzzb}
       - JWT_SECRET=\${JWT_SECRET:-change-me-in-production}
       - HOST=0.0.0.0
       - PORT=8000
@@ -132,6 +137,11 @@ show_deploy_guide() {
     cat << 'EOF'
    cat > .env << ENVEOF
 JWT_SECRET=$(openssl rand -hex 32)
+DB_HOST=your-mysql-host
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=your-mysql-password
+DB_NAME=tzzb
 SMTP_HOST=smtp.qq.com
 SMTP_PORT=465
 SMTP_USER=your-email@qq.com

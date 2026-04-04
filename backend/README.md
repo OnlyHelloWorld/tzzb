@@ -7,7 +7,7 @@
 - FastAPI 0.110.0
 - Uvicorn 0.29.0（ASGI 服务器）
 - SQLAlchemy 2.0.30（异步 ORM）
-- aiosqlite 0.22.1（异步 SQLite 驱动）
+- aiomysql 0.2.0（异步 MySQL 驱动）
 - passlib 1.7.4（密码哈希，使用 pbkdf2_sha256 算法）
 - PyJWT 2.9.0（JWT 认证，令牌永久有效）
 - python-dotenv 1.0.1（环境变量管理）
