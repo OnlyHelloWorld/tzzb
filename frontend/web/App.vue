@@ -107,16 +107,14 @@
         <div v-if="!currentLedger" key="ledger-management" class="ledger-management">
         <!-- 所有账本汇总卡片 -->
         <div class="summary-card all-ledgers-summary-card">
-          <div class="summary-row">
-            <div>
-              <div class="summary-label">账本数量</div>
-              <div class="big-num" style="font-size: 22px;">{{ ledgers.length }}</div>
-            </div>
-          </div>
-          <div class="summary-row">
+          <div class="summary-top-row">
             <div>
               <div class="summary-label">所有账本总市值（人民币）</div>
               <div class="big-num" style="font-size: 28px;">¥ {{ fmt(allLedgersSummary.totalCNY) }}</div>
+            </div>
+            <div class="ledger-count-chip">
+              <span class="summary-label">账本数量</span>
+              <span class="ledger-count-num">{{ ledgers.length }}</span>
             </div>
           </div>
           <div class="summary-row">
@@ -242,8 +240,7 @@
 
         <!-- ── Import/Export ── -->
         <div class="io-section">
-          <div class="io-label">导入导出</div>
-          <div class="io-btns">
+          <div class="io-btns io-btns-right">
             <div class="io-dropdown" @click.stop>
               <button class="btn btn-ghost" style="font-size:11px" @click="showHoldingIOMenu = !showHoldingIOMenu">导入/导出</button>
               <div v-if="showHoldingIOMenu" class="io-dropdown-menu">
@@ -833,7 +830,7 @@ export default {
     }
 
     // 加载数据的函数
-    const loadData = async () => {
+    const loadData = async ({ useStoredLedger = true } = {}) => {
       isLoading.value = true
       suspendAutoSave.value = true
       try {
@@ -845,7 +842,7 @@ export default {
           
           // 从localStorage恢复currentLedger
           const savedCurrentLedgerId = localStorage.getItem('investment-current-ledger-id')
-          if (savedCurrentLedgerId && ledgers.value.length > 0) {
+          if (useStoredLedger && savedCurrentLedgerId && ledgers.value.length > 0) {
             const savedLedger = ledgers.value.find(l => l.id === parseInt(savedCurrentLedgerId))
             if (savedLedger) {
               currentLedger.value = savedLedger
@@ -952,6 +949,7 @@ export default {
       isLoggedIn.value = false
     }
     const ioMessageClass = ref('')
+    const handlingPopState = ref(false)
     const formatErrorDetail = (err) => {
       const detail = err?.detail
       if (typeof detail === 'string') return detail
@@ -1214,6 +1212,8 @@ export default {
     }
 
     const switchLedger = async (ledger) => {
+      if (!ledger || (currentLedger.value && currentLedger.value.id === ledger.id)) return
+      window.history.pushState(null, '', `${LEDGER_PATH_PREFIX}${ledger.id}`)
       suspendAutoSave.value = true
       currentLedger.value = ledger
       showLedgerList.value = false
@@ -1225,6 +1225,7 @@ export default {
 
     const goHome = async () => {
       if (currentLedger.value) {
+        window.history.pushState(null, '', '#/home')
         currentLedger.value = null
         showLedgerList.value = false
         showDropdown.value = false
@@ -1243,7 +1244,9 @@ export default {
         localStorage.removeItem('investment-current-ledger-id')
       }
       updatePageTitle()
-      syncHashByState()
+      if (!handlingPopState.value) {
+        syncHashByState()
+      }
     }, { deep: true })
     watch(isLoggedIn, () => {
       syncHashByState()
@@ -1697,6 +1700,17 @@ export default {
         currentLedger.value = null
       }
     }
+    const handlePopState = async () => {
+      if (!isLoggedIn.value) return
+      handlingPopState.value = true
+      try {
+        await loadData({ useStoredLedger: false })
+        await restoreStateByHash()
+        await loadData({ useStoredLedger: false })
+      } finally {
+        handlingPopState.value = false
+      }
+    }
 
     // ─── Lifecycle ───────────────────────────────────────────────
     onMounted(async () => {
@@ -1712,12 +1726,14 @@ export default {
       // 点击外部关闭下拉菜单
       document.addEventListener('click', handleDocumentClick)
       document.addEventListener('click', handleButtonDebounce, true)
+      window.addEventListener('popstate', handlePopState)
     })
 
     onUnmounted(() => {
       stopAutoRefresh()
       document.removeEventListener('click', handleDocumentClick)
       document.removeEventListener('click', handleButtonDebounce, true)
+      window.removeEventListener('popstate', handlePopState)
       if (blessingEffectTimer) {
         clearTimeout(blessingEffectTimer)
       }
@@ -2142,6 +2158,23 @@ input:focus, select:focus { outline: none; }
 .ledger-donut-count { font-size: 22px; font-weight: 700; color: #1a1814; line-height: 1; }
 .summary-label { font-size: 11px; color: #aaa; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
 .summary-row { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.summary-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.ledger-count-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+.ledger-count-num {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1;
+}
 .big-num { font-family: 'Playfair Display', Georgia, serif; font-size: clamp(28px, 7vw, 46px); font-weight: 600; line-height: 1; letter-spacing: -1px; }
 .summary-pnl { padding-bottom: 4px; display: flex; align-items: center; gap: 8px; }
 .pnl-abs { font-size: 12px; color: #aaa; font-family: monospace; }
@@ -2175,8 +2208,8 @@ input:focus, select:focus { outline: none; }
 
 /* Import/Export */
 .io-section { margin-top: 14px; padding-top: 12px; border-top: 1px solid #f0ece5; }
-.io-label { font-size: 11px; color: #bbb; letter-spacing: .5px; margin-bottom: 8px; }
 .io-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.io-btns-right { justify-content: flex-end; }
 .io-dropdown { position: relative; }
 .io-dropdown-menu {
   position: absolute;
@@ -2203,9 +2236,11 @@ input:focus, select:focus { outline: none; }
   display: flex;
   flex-direction: column;
   gap: 8px;
+  align-items: flex-end;
 }
 .ledger-io-section .io-btns {
   gap: 10px;
+  justify-content: flex-end;
 }
 .ledger-io-section .io-message {
   margin-top: 0;
