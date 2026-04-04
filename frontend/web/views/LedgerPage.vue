@@ -1072,13 +1072,13 @@ export default {
       }
     }
     
-    // 页面加载时
-    onMounted(async () => {
+    // 加载账本和持仓数据
+    const loadLedgerData = async (ledgerId) => {
       // 加载账本数据
       await store.loadData()
       
       // 找到当前账本
-      const ledger = store.ledgers.find(l => l.id.toString() === props.id)
+      const ledger = store.ledgers.find(l => l.id.toString() === ledgerId)
       if (ledger) {
         store.setCurrentLedger(ledger)
         // 加载当前账本的持仓
@@ -1098,6 +1098,18 @@ export default {
       } else {
         // 账本不存在，回到首页
         goHome()
+      }
+    }
+    
+    // 页面加载时
+    onMounted(async () => {
+      await loadLedgerData(props.id)
+    })
+    
+    // 监听账本ID变化
+    watch(() => props.id, async (newId) => {
+      if (newId) {
+        await loadLedgerData(newId)
       }
     })
     
