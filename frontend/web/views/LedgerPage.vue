@@ -674,7 +674,16 @@ export default {
       nameLoading.value = true
       try {
         // 规范化股票代码（转大写）
-        const normalizedCode = newForm.value.code.toString().toUpperCase().trim()
+        let normalizedCode = newForm.value.code.toString().toUpperCase().trim()
+        
+        // 港股代码：如果全是数字且长度小于5，自动补0
+        if (newForm.value.market === '港股' && /^\d+$/.test(normalizedCode)) {
+          // 港股代码通常是5位，如果不足5位前面补0
+          while (normalizedCode.length < 5) {
+            normalizedCode = '0' + normalizedCode
+          }
+        }
+        
         newForm.value.code = normalizedCode
         
         const result = await fetchQuote(newForm.value.market, normalizedCode)
