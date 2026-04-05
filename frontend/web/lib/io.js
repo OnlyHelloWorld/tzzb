@@ -4,9 +4,13 @@
  * 支持 CSV / PDF 两种格式
  * 支持单个账本和多个账本导入导出
  */
-
 import jsPDF from 'jspdf'
 import { fetchQuote } from './quoteApi.js'
+
+// ─── 常量定义 ───────────────────────────────────────────────────
+const SYM = { CNY: '¥', HKD: 'HK$', USD: '$' }
+const MARKET_CCY = { 'A股': 'CNY', '港股': 'HKD', '美股': 'USD' }
+const PDF_FONT_FAMILY = '"Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "Heiti SC", sans-serif'
 
 // ─── 工具函数 ───────────────────────────────────────────────────
 function escapeCSV(value) {
@@ -33,10 +37,6 @@ function downloadText(text, filename, mimeType = 'text/csv') {
   downloadBlob(blob, filename)
 }
 
-const SYM = { CNY: '¥', HKD: 'HK$', USD: '$' }
-const MARKET_CCY = { 'A股': 'CNY', '港股': 'HKD', '美股': 'USD' }
-const PDF_FONT_FAMILY = '"Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "Heiti SC", sans-serif'
-
 function toHoldingRow(h, prices, fx) {
   const ccy = MARKET_CCY[h.market] || 'CNY'
   const price = prices?.[h.code] || 0
@@ -53,22 +53,20 @@ function toHoldingRow(h, prices, fx) {
   return { ccy, price, qty, avgCost, mv, pnl, pnlPct, mvCNY, pnlCNY }
 }
 
-// ─── 导出单个账本 CSV ───────────────────────────────────────────────────
+// ─── CSV 导出功能 ───────────────────────────────────────────────────
+
+/**
+ * 导出单个账本 CSV
+ * @param {Array} holdings - 持仓数据
+ * @param {Object} prices - 价格数据
+ * @param {Object} fx - 汇率数据
+ */
 export function exportCSV(holdings, prices, fx) {
   const headers = ['Market', 'Code', 'Name', 'Qty', 'AvgCost', 'Price', 'MV', 'PnL', 'PnL%', 'MV(CNY)']
   const rows = []
 
   for (const h of holdings) {
-    const ccy = MARKET_CCY[h.market] || 'CNY'
-    const price = prices?.[h.code] || 0
-    const qty = h.trades.reduce((s, t) => s + t.qty, 0)
-    const totalCost = h.trades.reduce((s, t) => s + t.qty * t.price, 0)
-    const avgCost = qty > 0 ? totalCost / qty : 0
-    const mv = price * qty
-    const costBasis = avgCost * qty
-    const pnl = mv - costBasis
-    const pnlPct = costBasis > 0 ? (pnl / costBasis * 100) : 0
-    const mvCNY = ccy === 'CNY' ? mv : mv * (fx?.[ccy] || 1)
+    const { ccy, price, qty, avgCost, mv, pnl, pnlPct, mvCNY } = toHoldingRow(h, prices, fx)
 
     rows.push([
       h.market,
@@ -91,7 +89,13 @@ export function exportCSV(holdings, prices, fx) {
   downloadText(csv, `investment-ledger-${date}.csv`, 'text/csv;charset=utf-8')
 }
 
-// ─── 导出所有账本 CSV（包含账本信息）────────────────────────────────────────
+/**
+ * 导出所有账本 CSV（包含账本信息）
+ * @param {Array} ledgers - 账本列表
+ * @param {Object|Array} ledgerHoldings - 账本持仓数据
+ * @param {Object} prices - 价格数据
+ * @param {Object} fx - 汇率数据
+ */
 export function exportAllLedgersCSV(ledgers, ledgerHoldings, prices, fx) {
   const headers = ['LedgerId', 'LedgerName', 'LedgerColor', 'Market', 'Code', 'Name', 'Qty', 'AvgCost', 'Price', 'MV', 'PnL', 'PnL%', 'MV(CNY)']
   const rows = []
@@ -103,16 +107,7 @@ export function exportAllLedgersCSV(ledgers, ledgerHoldings, prices, fx) {
       (ledgerHoldings[ledger.id] || [])
     
     for (const h of holdings) {
-      const ccy = MARKET_CCY[h.market] || 'CNY'
-      const price = prices?.[h.code] || 0
-      const qty = h.trades.reduce((s, t) => s + t.qty, 0)
-      const totalCost = h.trades.reduce((s, t) => s + t.qty * t.price, 0)
-      const avgCost = qty > 0 ? totalCost / qty : 0
-      const mv = price * qty
-      const costBasis = avgCost * qty
-      const pnl = mv - costBasis
-      const pnlPct = costBasis > 0 ? (pnl / costBasis * 100) : 0
-      const mvCNY = ccy === 'CNY' ? mv : mv * (fx?.[ccy] || 1)
+      const { ccy, price, qty, avgCost, mv, pnl, pnlPct, mvCNY } = toHoldingRow(h, prices, fx)
 
       rows.push([
         ledger.id,
@@ -158,7 +153,13 @@ export function exportAllLedgersCSV(ledgers, ledgerHoldings, prices, fx) {
   downloadText(csv, `all-ledgers-${date}.csv`, 'text/csv;charset=utf-8')
 }
 
-// ─── 工具函数：解析 CSV 行（支持带引号的字段）──────────────────────────────
+// ─── CSV 导入功能 ───────────────────────────────────────────────────
+
+/**
+ * 解析 CSV 行（支持带引号的字段）
+ * @param {string} line - CSV 行
+ * @returns {Array} 解析后的字段数组
+ */
 function parseCSVLine(line) {
   const result = []
   let current = ''
@@ -192,50 +193,11 @@ function parseCSVLine(line) {
   })
 }
 
-// ─── 导入 CSV（支持单个账本或所有账本）──────────────────────────────────────
-export function importCSV(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = async (e) => {
-      try {
-        const text = e.target.result
-        // 移除 BOM
-        const content = text.startsWith('\uFEFF') ? text.slice(1) : text
-        
-        const lines = content.split('\n').filter(line => line.trim())
-        if (lines.length < 1) {
-          reject(new Error('CSV 文件为空'))
-          return
-        }
-
-        const headers = parseCSVLine(lines[0])
-        
-        // 检查是否是多账本格式
-        const isMultiLedger = headers.includes('LedgerId') && headers.includes('LedgerName')
-        
-        if (isMultiLedger) {
-          // 多账本格式
-          let result = parseMultiLedgerCSV(lines.slice(1), headers)
-          // 尝试通过股票代码获取股票名称
-          result = await enrichHoldingsWithNames(result)
-          resolve(result)
-        } else {
-          // 单账本格式
-          let result = parseSingleLedgerCSV(lines.slice(1), headers)
-          // 尝试通过股票代码获取股票名称
-          result = await enrichHoldingsWithNames(result)
-          resolve(result)
-        }
-      } catch (err) {
-        reject(new Error('CSV 解析错误: ' + err.message))
-      }
-    }
-    reader.onerror = () => reject(new Error('文件读取错误'))
-    reader.readAsText(file)
-  })
-}
-
-// 通过股票代码获取股票名称
+/**
+ * 通过股票代码获取股票名称
+ * @param {Object} result - 解析结果
+ * @returns {Promise<Object>} 增强后的结果
+ */
 async function enrichHoldingsWithNames(result) {
   if (result.isMultiLedger) {
     // 处理多账本格式
@@ -272,7 +234,12 @@ async function enrichHoldingsWithNames(result) {
   return result
 }
 
-// 解析多账本 CSV
+/**
+ * 解析多账本 CSV
+ * @param {Array} lines - CSV 行数组
+ * @param {Array} headers - 表头数组
+ * @returns {Object} 解析结果
+ */
 function parseMultiLedgerCSV(lines, headers) {
   const ledgers = []
   const ledgerHoldings = {}
@@ -355,7 +322,12 @@ function parseMultiLedgerCSV(lines, headers) {
   }
 }
 
-// 解析单账本 CSV
+/**
+ * 解析单账本 CSV
+ * @param {Array} lines - CSV 行数组
+ * @param {Array} headers - 表头数组
+ * @returns {Object} 解析结果
+ */
 function parseSingleLedgerCSV(lines, headers) {
   const holdings = []
   let holdingId = 1000
@@ -403,7 +375,122 @@ function parseSingleLedgerCSV(lines, headers) {
   }
 }
 
-// ─── 导出 PDF ───────────────────────────────────────────────────
+/**
+ * 导入 CSV（支持单个账本或所有账本）
+ * @param {File} file - CSV 文件
+ * @returns {Promise<Object>} 导入结果
+ */
+export function importCSV(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = async (e) => {
+      try {
+        const text = e.target.result
+        // 移除 BOM
+        const content = text.startsWith('\uFEFF') ? text.slice(1) : text
+        
+        const lines = content.split('\n').filter(line => line.trim())
+        if (lines.length < 1) {
+          reject(new Error('CSV 文件为空'))
+          return
+        }
+
+        const headers = parseCSVLine(lines[0])
+        
+        // 检查是否是多账本格式
+        const isMultiLedger = headers.includes('LedgerId') && headers.includes('LedgerName')
+        
+        if (isMultiLedger) {
+          // 多账本格式
+          let result = parseMultiLedgerCSV(lines.slice(1), headers)
+          // 尝试通过股票代码获取股票名称
+          result = await enrichHoldingsWithNames(result)
+          resolve(result)
+        } else {
+          // 单账本格式
+          let result = parseSingleLedgerCSV(lines.slice(1), headers)
+          // 尝试通过股票代码获取股票名称
+          result = await enrichHoldingsWithNames(result)
+          resolve(result)
+        }
+      } catch (err) {
+        reject(new Error('CSV 解析错误: ' + err.message))
+      }
+    }
+    reader.onerror = () => reject(new Error('文件读取错误'))
+    reader.readAsText(file)
+  })
+}
+
+// ─── PDF 导出功能 ───────────────────────────────────────────────────
+
+/**
+ * 渲染 PDF 页面
+ * @param {Object} options - 渲染选项
+ * @returns {string} 页面数据 URL
+ */
+function renderPdfPage({ title, subtitle, summary = [], headers = [], rows = [], landscape = false }) {
+  const canvas = document.createElement('canvas')
+  canvas.width = landscape ? 1754 : 1240
+  canvas.height = landscape ? 1240 : 1754
+  const ctx = canvas.getContext('2d')
+
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
+  ctx.fillStyle = '#1a1814'
+  ctx.font = `700 ${landscape ? 38 : 42}px ${PDF_FONT_FAMILY}`
+  ctx.fillText(title, 60, 80)
+  ctx.font = `400 ${landscape ? 22 : 24}px ${PDF_FONT_FAMILY}`
+  ctx.fillStyle = '#666'
+  ctx.fillText(subtitle, 60, 120)
+
+  let y = 170
+  summary.forEach((line) => {
+    ctx.fillStyle = '#1a1814'
+    ctx.font = `600 26px ${PDF_FONT_FAMILY}`
+    ctx.fillText(line, 60, y)
+    y += 42
+  })
+  y += 10
+
+  const rowHeight = 38
+  const tableWidth = canvas.width - 120
+  const colWidth = tableWidth / Math.max(headers.length, 1)
+  ctx.fillStyle = '#1a1814'
+  ctx.fillRect(60, y, tableWidth, rowHeight)
+  ctx.fillStyle = '#f9f7f3'
+  ctx.font = `600 20px ${PDF_FONT_FAMILY}`
+  headers.forEach((header, index) => {
+    ctx.fillText(header, 66 + index * colWidth, y + 25)
+  })
+  y += rowHeight
+
+  ctx.font = `400 18px ${PDF_FONT_FAMILY}`
+  rows.forEach((row, rowIndex) => {
+    if (y + rowHeight > canvas.height - 60) return
+    if (rowIndex % 2 === 0) {
+      ctx.fillStyle = '#f9f7f3'
+      ctx.fillRect(60, y, tableWidth, rowHeight)
+    }
+    row.forEach((cell, index) => {
+      const text = String(cell ?? '')
+      const truncated = text.length > 18 ? `${text.slice(0, 17)}…` : text
+      ctx.fillStyle = '#2a2a2a'
+      if (index === 7 && text.startsWith('+')) ctx.fillStyle = '#1a7a4a'
+      if (index === 7 && text.startsWith('-')) ctx.fillStyle = '#c0392b'
+      ctx.fillText(truncated, 66 + index * colWidth, y + 25)
+    })
+    y += rowHeight
+  })
+  return canvas.toDataURL('image/png')
+}
+
+/**
+ * 导出单个账本 PDF
+ * @param {Array} holdings - 持仓数据
+ * @param {Object} prices - 价格数据
+ * @param {Object} fx - 汇率数据
+ */
 export async function exportPDF(holdings = [], prices = {}, fx = { USD: 7.28, HKD: 0.925 }) {
   const doc = new jsPDF('p', 'mm', 'a4')
   const now = new Date()
@@ -435,6 +522,13 @@ export async function exportPDF(holdings = [], prices = {}, fx = { USD: 7.28, HK
   doc.save(`tzzb-${date}.pdf`)
 }
 
+/**
+ * 导出所有账本 PDF
+ * @param {Array} ledgers - 账本列表
+ * @param {Object|Array} ledgerHoldings - 账本持仓数据
+ * @param {Object} prices - 价格数据
+ * @param {Object} fx - 汇率数据
+ */
 export async function exportAllLedgersPDF(ledgers = [], ledgerHoldings = {}, prices = {}, fx = { USD: 7.28, HKD: 0.925 }) {
   const merged = []
   let totalMV = 0
@@ -496,60 +590,4 @@ export async function exportAllLedgersPDF(ledgers = [], ledgerHoldings = {}, pri
   doc.addImage(page, 'PNG', 0, 0, 297, 210)
 
   doc.save(`all-ledgers-${now.toISOString().slice(0, 10)}.pdf`)
-}
-
-function renderPdfPage({ title, subtitle, summary = [], headers = [], rows = [], landscape = false }) {
-  const canvas = document.createElement('canvas')
-  canvas.width = landscape ? 1754 : 1240
-  canvas.height = landscape ? 1240 : 1754
-  const ctx = canvas.getContext('2d')
-
-  ctx.fillStyle = '#ffffff'
-  ctx.fillRect(0, 0, canvas.width, canvas.height)
-  ctx.fillStyle = '#1a1814'
-  ctx.font = `700 ${landscape ? 38 : 42}px ${PDF_FONT_FAMILY}`
-  ctx.fillText(title, 60, 80)
-  ctx.font = `400 ${landscape ? 22 : 24}px ${PDF_FONT_FAMILY}`
-  ctx.fillStyle = '#666'
-  ctx.fillText(subtitle, 60, 120)
-
-  let y = 170
-  summary.forEach((line) => {
-    ctx.fillStyle = '#1a1814'
-    ctx.font = `600 26px ${PDF_FONT_FAMILY}`
-    ctx.fillText(line, 60, y)
-    y += 42
-  })
-  y += 10
-
-  const rowHeight = 38
-  const tableWidth = canvas.width - 120
-  const colWidth = tableWidth / Math.max(headers.length, 1)
-  ctx.fillStyle = '#1a1814'
-  ctx.fillRect(60, y, tableWidth, rowHeight)
-  ctx.fillStyle = '#f9f7f3'
-  ctx.font = `600 20px ${PDF_FONT_FAMILY}`
-  headers.forEach((header, index) => {
-    ctx.fillText(header, 66 + index * colWidth, y + 25)
-  })
-  y += rowHeight
-
-  ctx.font = `400 18px ${PDF_FONT_FAMILY}`
-  rows.forEach((row, rowIndex) => {
-    if (y + rowHeight > canvas.height - 60) return
-    if (rowIndex % 2 === 0) {
-      ctx.fillStyle = '#f9f7f3'
-      ctx.fillRect(60, y, tableWidth, rowHeight)
-    }
-    row.forEach((cell, index) => {
-      const text = String(cell ?? '')
-      const truncated = text.length > 18 ? `${text.slice(0, 17)}…` : text
-      ctx.fillStyle = '#2a2a2a'
-      if (index === 7 && text.startsWith('+')) ctx.fillStyle = '#1a7a4a'
-      if (index === 7 && text.startsWith('-')) ctx.fillStyle = '#c0392b'
-      ctx.fillText(truncated, 66 + index * colWidth, y + 25)
-    })
-    y += rowHeight
-  })
-  return canvas.toDataURL('image/png')
 }
