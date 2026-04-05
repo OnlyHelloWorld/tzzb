@@ -2,7 +2,7 @@
  * api.js — 后端 API 请求层
  */
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+const BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
 function getToken() {
   return localStorage.getItem('investment-token') || ''
@@ -48,6 +48,7 @@ async function request(url, options = {}) {
     return data
   } catch (error) {
     console.error('请求失败:', error)
+    console.error('请求失败详情:', JSON.stringify(error, null, 2))
     throw error
   }
 }

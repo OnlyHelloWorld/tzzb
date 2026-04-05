@@ -69,20 +69,9 @@ export const useAppStore = defineStore('app', {
     async loadData() {
       this.isLoading = true
       try {
-        // 模拟数据
-        const mockLedgers = [
-          {
-            id: 1,
-            name: '测试账本',
-            color: '#1a7a4a',
-            user_id: 1
-          }
-        ]
-        
-        const mockHoldings = []
-        
-        // 使用模拟数据
-        this.ledgers = mockLedgers
+        // 加载账本数据
+        const savedLedgers = await api.loadLedgers()
+        this.ledgers = savedLedgers || []
         
         // 检查当前账本是否仍然存在
         if (this.currentLedger) {
@@ -93,14 +82,20 @@ export const useAppStore = defineStore('app', {
         }
         
         // 加载所有持仓数据
-        this.allLedgersHoldings = mockHoldings
-        
-        // 为所有持仓设置价格
-        for (const h of this.allLedgersHoldings) {
-          if (!(h.code in this.prices)) {
-            const cost = avgCost(h.trades || [])
-            this.prices[h.code] = cost || 0
+        try {
+          const allHoldings = await api.loadHoldings()
+          this.allLedgersHoldings = allHoldings || []
+          
+          // 为所有持仓设置价格
+          for (const h of this.allLedgersHoldings) {
+            if (!(h.code in this.prices)) {
+              const cost = avgCost(h.trades || [])
+              this.prices[h.code] = cost || 0
+            }
           }
+        } catch (err) {
+          console.warn('加载所有持仓失败:', err)
+          this.allLedgersHoldings = []
         }
         
         // 计算所有账本的汇总信息
@@ -108,9 +103,27 @@ export const useAppStore = defineStore('app', {
         
         // 加载当前账本的持仓数据
         if (this.currentLedger) {
-          this.holdings = mockHoldings.filter(h => h.ledger_id === this.currentLedger.id) || []
+          try {
+            const savedHoldings = await api.loadHoldings(this.currentLedger.id)
+            this.holdings = savedHoldings || []
+          } catch (err) {
+            console.warn('加载持仓失败:', err)
+            this.holdings = []
+          }
         } else {
           this.holdings = []
+        }
+        
+        // 加载设置
+        try {
+          const savedSettings = await api.loadSettings()
+          if (savedSettings) {
+            this.fx.USD = savedSettings.fx_usd || this.fx.USD
+            this.fx.HKD = savedSettings.fx_hkd || this.fx.HKD
+            this.autoRefresh = savedSettings.auto_refresh !== false
+          }
+        } catch (err) {
+          console.warn('加载设置失败:', err)
         }
         
         // 为当前账本持仓设置价格
@@ -138,9 +151,7 @@ export const useAppStore = defineStore('app', {
     // 计算单个账本的汇总信息
     async calculateLedgerSummary(ledger) {
       try {
-        // 模拟持仓数据
-        const holdings = []
-        
+        const holdings = await api.loadHoldings(ledger.id)
         if (!holdings || holdings.length === 0) {
           return { ...ledger, totalCNY: 0, pnl: 0, pct: 0, holdingCount: 0 }
         }
