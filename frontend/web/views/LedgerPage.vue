@@ -413,8 +413,17 @@
         </div>
         <div class="modal-footer">
           <div v-if="addError" style="color:#c0392b;font-size:12px;margin-right:auto">{{ addError }}</div>
-          <button class="btn btn-ghost" style="padding:9px 18px" @click="addError='';addHolding = false">取消</button>
-          <button class="btn btn-ink" style="padding:9px 22px" @click="saveNewHolding">确认添加</button>
+          <button class="btn btn-ghost" style="padding:9px 18px" @click="addError='';addHolding = false" :disabled="isAddingHolding">取消</button>
+          <button class="btn btn-ink" style="padding:9px 22px" @click="saveNewHolding" :disabled="isAddingHolding">
+            <span v-if="isAddingHolding">
+              <svg class="spin" width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:middle;margin-right:4px">
+                <path d="M1.5 7a5.5 5.5 0 0 1 9.3-3.95M12.5 7a5.5 5.5 0 0 1-9.3 3.95" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                <path d="M10.8.5v2.55h-2.55M3.2 13.5v-2.55h2.55" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              添加中...
+            </span>
+            <span v-else>确认添加</span>
+          </button>
         </div>
       </div>
     </div>
@@ -499,6 +508,21 @@
         <div class="modal-footer" style="justify-content: center; gap: 20px;">
           <button class="btn btn-ghost" style="padding: 10px 24px; min-width: 100px; font-size: 14px;" @click="deleteLedgerConfirm = false">取消</button>
           <button class="btn btn-warn" style="padding: 10px 24px; min-width: 100px; font-size: 14px; color: #c0392b; border-color: #c0392b;" @click="deleteSelectedLedger">确认删除</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Holding Exists Confirm Modal ── -->
+    <div v-if="holdingExistsConfirm" class="overlay" @click.self="holdingExistsConfirm = null">
+      <div class="modal">
+        <div class="modal-title">持仓已存在</div>
+        <div style="margin: 20px 0; font-size: 14px; line-height: 1.5; text-align: center; color: #666;">
+          {{ holdingExistsConfirm.name }} ({{ holdingExistsConfirm.code }}) 已存在于当前账本中<br>
+          是否作为新一笔交易添加？
+        </div>
+        <div class="modal-footer" style="justify-content: center; gap: 20px;">
+          <button class="btn btn-ghost" style="padding: 10px 24px; min-width: 100px; font-size: 14px;" @click="holdingExistsConfirm = null">取消</button>
+          <button class="btn btn-ink" style="padding: 10px 24px; min-width: 100px; font-size: 14px;" @click="addAsNewTrade">确认添加</button>
         </div>
       </div>
     </div>
@@ -617,6 +641,8 @@ export default {
     const nameLoading = ref(false)
     const errorModal = ref({ visible: false, message: '', detail: '', expanded: false })
     const openHoldingActionMenuKey = ref(null)
+    const isAddingHolding = ref(false)
+    const holdingExistsConfirm = ref(null)
     const fxList = [
       { label: 'USD/CNY', key: 'USD' },
       { label: 'HKD/CNY', key: 'HKD' },
@@ -738,6 +764,25 @@ export default {
         return
       }
 
+      // 检查持仓是否已存在
+      const existingHolding = store.holdings.find(h => h.market === newForm.value.market && h.code === newForm.value.code)
+      
+      if (existingHolding) {
+        // 显示确认模态框
+        holdingExistsConfirm.value = {
+          market: newForm.value.market,
+          code: newForm.value.code,
+          name: newForm.value.name,
+          qty: parseInt(newForm.value.qty),
+          price: parseFloat(newForm.value.price),
+          date: newForm.value.date
+        }
+        return
+      }
+
+      // 开始添加持仓，设置加载状态
+      isAddingHolding.value = true
+
       const newHolding = {
         id: ++_id,
         market: newForm.value.market,
@@ -769,6 +814,52 @@ export default {
         store.holdings = rollback
         addError.value = '添加失败: ' + err.message
         showErrorDetailModal('操作失败', err)
+      } finally {
+        // 无论成功失败，都关闭加载状态
+        isAddingHolding.value = false
+      }
+    }
+
+    // 作为新交易添加
+    const addAsNewTrade = async () => {
+      if (!holdingExistsConfirm.value) return
+
+      // 开始添加交易，设置加载状态
+      isAddingHolding.value = true
+
+      const { market, code, qty, price, date } = holdingExistsConfirm.value
+      const holding = store.holdings.find(h => h.market === market && h.code === code)
+
+      if (!holding) {
+        isAddingHolding.value = false
+        holdingExistsConfirm.value = null
+        store.showMessage('持仓不存在', true)
+        return
+      }
+
+      const rollback = JSON.parse(JSON.stringify(store.holdings))
+      holding.trades.push(mkTrade(date, qty, price))
+
+      try {
+        await store.saveHoldings(store.holdings)
+        // 添加交易成功后立即获取实时价格
+        try {
+          await store.refreshSingleHoldingPrice({ market, code })
+        } catch (priceErr) {
+          console.warn('获取价格失败:', priceErr)
+        }
+        addHolding.value = false
+        holdingExistsConfirm.value = null
+        triggerBlessingEffect()
+        store.showMessage('交易添加成功')
+      } catch (err) {
+        store.holdings = rollback
+        addError.value = '添加失败: ' + err.message
+        showErrorDetailModal('操作失败', err)
+        holdingExistsConfirm.value = null
+      } finally {
+        // 无论成功失败，都关闭加载状态
+        isAddingHolding.value = false
       }
     }
     
@@ -1249,6 +1340,8 @@ export default {
       deleteConfirm,
       nameLoading,
       errorModal,
+      isAddingHolding,
+      holdingExistsConfirm,
       fxList,
       ledgerColors,
       TABS,
@@ -1286,6 +1379,7 @@ export default {
       handleImport,
       openCreateLedger,
       saveNewLedger,
+      addAsNewTrade,
       editLedger,
       saveEditLedger,
       confirmDeleteLedger,
