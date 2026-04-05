@@ -524,7 +524,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import PnLTag from '../components/PnLTag.vue'
 import Tag from '../components/Tag.vue'
@@ -546,6 +546,32 @@ export default {
     const router = useRouter()
     const route = useRoute()
     const store = useAppStore()
+    
+    // 点击外部关闭所有菜单
+    const closeAllMenus = () => {
+      showHoldingIOMenu.value = false
+      openTradeActionMenuKey.value = null
+      openHoldingActionMenuKey.value = null
+      showDropdown.value = false
+      showLedgerList.value = false
+    }
+    
+    // 监听点击事件，点击外部关闭菜单
+    const handleClickOutside = (e) => {
+      // 检查是否点击了菜单外部
+      const target = e.target
+      if (!target.closest('.io-dropdown') && !target.closest('.trade-more-wrap') && !target.closest('.holding-more-wrap') && !target.closest('.header-actions-group') && !target.closest('.ledger-badge')) {
+        closeAllMenus()
+      }
+    }
+    
+    onMounted(() => {
+      document.addEventListener('click', handleClickOutside)
+    })
+    
+    onUnmounted(() => {
+      document.removeEventListener('click', handleClickOutside)
+    })
     
     // 状态
     let _id = 100
