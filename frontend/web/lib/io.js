@@ -97,7 +97,10 @@ export function exportAllLedgersCSV(ledgers, ledgerHoldings, prices, fx) {
   const rows = []
 
   for (const ledger of ledgers) {
-    const holdings = ledgerHoldings[ledger.id] || []
+    // 处理 ledgerHoldings 是数组的情况
+    const holdings = Array.isArray(ledgerHoldings) ? 
+      ledgerHoldings.filter(h => h.ledger_id === ledger.id) : 
+      (ledgerHoldings[ledger.id] || [])
     
     for (const h of holdings) {
       const ccy = MARKET_CCY[h.market] || 'CNY'
@@ -437,7 +440,10 @@ export async function exportAllLedgersPDF(ledgers = [], ledgerHoldings = {}, pri
   let totalMV = 0
   let totalPnL = 0
   for (const ledger of ledgers) {
-    const holdings = ledgerHoldings[ledger.id] || []
+    // 处理 ledgerHoldings 是数组的情况
+    const holdings = Array.isArray(ledgerHoldings) ? 
+      ledgerHoldings.filter(h => h.ledger_id === ledger.id) : 
+      (ledgerHoldings[ledger.id] || [])
     merged.push([`【账本】${ledger.name}`, '', '', '', '', '', '', '', ''])
     if (holdings.length === 0) {
       merged.push(['', '-', '-', '(空账本)', '-', '-', '-', '-', '-'])
