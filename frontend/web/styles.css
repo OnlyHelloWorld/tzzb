@@ -645,6 +645,23 @@ input:focus, select:focus { outline: none; }
   overflow: hidden;
   position: relative;
 }
+.delete-holding-btn-wrap {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+}
+.delete-holding-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #c0392b;
+  border-color: #c0392b;
+}
 .holding-list {
   display: flex;
   flex-direction: column;
@@ -688,6 +705,10 @@ input:focus, select:focus { outline: none; }
   pointer-events: none;
 }
 .trade-row-deleting {
+  animation: explodeOut 1.5s ease forwards;
+  pointer-events: none;
+}
+.ledger-card-deleting {
   animation: explodeOut 1.5s ease forwards;
   pointer-events: none;
 }
