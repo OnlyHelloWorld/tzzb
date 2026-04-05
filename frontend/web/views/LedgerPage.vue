@@ -14,11 +14,11 @@
         <div class="header-actions-group">
           <span class="ledger-badge" :style="{ backgroundColor: store.currentLedger?.color, color: '#fff' }">
             {{ store.currentLedger?.name }}
-            <span class="ledger-badge-action" @click="() => { isMenuClick = true; setTimeout(() => { isMenuClick = false }, 0); showLedgerList = !showLedgerList; }">▼</span>
+            <span class="ledger-badge-action" @click="toggleLedgerList">▼</span>
           </span>
           
           <div class="dropdown-container" @click.stop>
-            <button class="btn btn-ghost" style="padding: 6px 10px;" @click="() => { isMenuClick = true; setTimeout(() => { isMenuClick = false }, 0); showDropdown = !showDropdown; }">
+            <button class="btn btn-ghost" style="padding: 6px 10px;" @click="toggleDropdown">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:middle">
                 <circle cx="7" cy="7" r="1" fill="currentColor"/>
                 <circle cx="7" cy="4" r="1" fill="currentColor"/>
@@ -26,16 +26,16 @@
               </svg>
             </button>
             <div v-if="showDropdown" class="dropdown-menu" @click.stop>
-              <button class="dropdown-item" @click="() => { isMenuClick = true; setTimeout(() => { isMenuClick = false }, 0); goHome(); showDropdown = false; }">
+              <button class="dropdown-item" @click="handleGoHome">
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="vertical-align:middle;margin-right:6px">
                   <path d="M2 6h8M6 2l4 4-4 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
                 返回主页
               </button>
               <div class="dropdown-divider"></div>
-              <button class="dropdown-item" @click="() => { isMenuClick = true; setTimeout(() => { isMenuClick = false }, 0); openCreateLedger(); showDropdown = false; }">+ 新建账本</button>
+              <button class="dropdown-item" @click="handleOpenCreateLedger">+ 新建账本</button>
               <div class="dropdown-divider"></div>
-              <button class="dropdown-item" @click="() => { isMenuClick = true; setTimeout(() => { isMenuClick = false }, 0); store.refreshQuotes(); showDropdown = false; }" :disabled="store.quoteStatus === 'loading'">
+              <button class="dropdown-item" @click="handleRefreshQuotes" :disabled="store.quoteStatus === 'loading'">
                 <svg :class="{ 'spin': store.quoteStatus === 'loading' }" width="12" height="12" viewBox="0 0 14 14" fill="none" style="vertical-align:middle;margin-right:6px">
                   <path d="M1.5 7a5.5 5.5 0 0 1 9.3-3.95M12.5 7a5.5 5.5 0 0 1-9.3 3.95" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
                   <path d="M10.8.5v2.55h-2.55M3.2 13.5v-2.55h2.55" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
@@ -48,10 +48,10 @@
                 </span>
               </div>
               <div class="dropdown-divider"></div>
-              <button class="dropdown-item" @click="() => { isMenuClick = true; setTimeout(() => { isMenuClick = false }, 0); editLedger(store.currentLedger); showDropdown = false; }">编辑当前账本</button>
-              <button class="dropdown-item" @click="() => { isMenuClick = true; setTimeout(() => { isMenuClick = false }, 0); confirmDeleteLedger(store.currentLedger); showDropdown = false; }" style="color: #c0392b;">删除当前账本</button>
+              <button class="dropdown-item" @click="handleEditCurrentLedger">编辑当前账本</button>
+              <button class="dropdown-item" @click="handleDeleteCurrentLedger" style="color: #c0392b;">删除当前账本</button>
               <div class="dropdown-divider"></div>
-              <button class="dropdown-item" @click="() => { isMenuClick = true; setTimeout(() => { isMenuClick = false }, 0); handleLogout(); showDropdown = false; }" style="color: #c0392b;">退出</button>
+              <button class="dropdown-item" @click="handleLogout" style="color: #c0392b;">退出</button>
             </div>
           </div>
         </div>
@@ -59,14 +59,14 @@
       
       <!-- Ledger dropdown -->
       <div v-if="store.currentLedger && showLedgerList" class="ledger-dropdown">
-        <div v-for="ledger in store.ledgers" :key="ledger.id" class="ledger-item" @click="() => { isMenuClick = true; setTimeout(() => { isMenuClick = false }, 0); switchLedger(ledger); }">
+        <div v-for="ledger in store.ledgers" :key="ledger.id" class="ledger-item" @click="handleSwitchLedger(ledger)">
           <div class="ledger-color" :style="{ backgroundColor: ledger.color }"></div>
           <div class="ledger-info">
             <div class="ledger-name">{{ ledger.name }}</div>
           </div>
           <div class="ledger-actions">
-            <button class="btn btn-ghost btn-sm" @click.stop="() => { isMenuClick = true; setTimeout(() => { isMenuClick = false }, 0); editLedger(ledger); }">编辑</button>
-            <button class="btn btn-warn btn-sm" @click.stop="() => { isMenuClick = true; setTimeout(() => { isMenuClick = false }, 0); confirmDeleteLedger(ledger); }">删除</button>
+            <button class="btn btn-ghost btn-sm" @click.stop="handleEditLedger(ledger)">编辑</button>
+            <button class="btn btn-warn btn-sm" @click.stop="handleDeleteLedger(ledger)">删除</button>
           </div>
         </div>
       </div>
@@ -142,11 +142,11 @@
         <div class="io-section">
           <div class="io-btns io-btns-right">
             <div class="io-dropdown" @click.stop>
-              <button class="btn btn-ghost" style="font-size:11px" @click="showHoldingIOMenu = !showHoldingIOMenu">导入/导出</button>
+              <button class="btn btn-ghost" style="font-size:11px" @click="toggleHoldingIOMenu">导入/导出</button>
               <div v-if="showHoldingIOMenu" class="io-dropdown-menu">
-                <button class="dropdown-item" @click="handleExportCSV(); showHoldingIOMenu = false;">导出 CSV</button>
-                <button class="dropdown-item" @click="handleExportPDF(); showHoldingIOMenu = false;">导出 PDF</button>
-                <button class="dropdown-item" @click="triggerImport(); showHoldingIOMenu = false;">导入 CSV</button>
+                <button class="dropdown-item" @click="handleExportCSV">导出 CSV</button>
+                <button class="dropdown-item" @click="handleExportPDF">导出 PDF</button>
+                <button class="dropdown-item" @click="triggerImport">导入 CSV</button>
               </div>
             </div>
             <input ref="importInput" type="file" accept=".csv" style="display:none" @change="handleImport" />
@@ -183,9 +183,9 @@
         :class="['row', { 'row-updating': h.refreshing, 'row-deleting': deletingHoldings.includes(`${h.market}-${h.code}`) }]"
       >
         <div class="holding-more-wrap" @click.stop>
-          <button class="btn btn-ghost holding-more-btn" @click.stop="() => { isMenuClick = true; setTimeout(() => { isMenuClick = false }, 0); toggleHoldingActionMenu(`${h.market}-${h.code}`); }">⋯</button>
+          <button class="btn btn-ghost holding-more-btn" @click.stop="toggleHoldingActionMenu(`${h.market}-${h.code}`)">⋯</button>
           <div v-if="openHoldingActionMenuKey === `${h.market}-${h.code}`" class="holding-more-menu">
-            <button class="holding-more-item holding-more-item-danger" @click.stop="() => { isMenuClick = true; setTimeout(() => { isMenuClick = false }, 0); confirmDeleteHolding({ market: h.market, code: h.code }); closeHoldingActionMenu(); }">删除持仓</button>
+            <button class="holding-more-item holding-more-item-danger" @click.stop="handleConfirmDeleteHolding({ market: h.market, code: h.code })">删除持仓</button>
           </div>
         </div>
 
@@ -232,7 +232,7 @@
           <div class="trade-header">
             <span class="trade-title">买入记录</span>
             <div class="trade-actions">
-              <button class="btn btn-ghost" style="font-size:11px" @click.stop="openAddTrade({ market: h.market, code: h.code })">+ 新增一笔</button>
+              <button class="btn btn-ghost" style="font-size:11px" @click.stop="openAddTrade({ market: h.market, code: h.code })"">+ 新增一笔</button>
               <button class="btn btn-warn" style="font-size:11px" @click.stop="toggleReset({ market: h.market, code: h.code })">
                 {{ resetTarget && resetTarget.market === h.market && resetTarget.code === h.code ? '取消' : '一键重置成本' }}
               </button>
@@ -288,9 +288,9 @@
                   修改
                 </button>
                 <div class="trade-more-wrap" @click.stop>
-                  <button class="btn btn-ghost trade-more-btn" @click.stop="() => { isMenuClick = true; setTimeout(() => { isMenuClick = false }, 0); toggleTradeActionMenu(`${h.market}-${h.code}-${t.id}`); }">⋯</button>
+                  <button class="btn btn-ghost trade-more-btn" @click.stop="toggleTradeActionMenu(`${h.market}-${h.code}-${t.id}`)">⋯</button>
                   <div v-if="openTradeActionMenuKey === `${h.market}-${h.code}-${t.id}`" class="trade-more-menu">
-                    <button class="trade-more-item trade-more-item-danger" @click.stop="() => { isMenuClick = true; setTimeout(() => { isMenuClick = false }, 0); deleteTrade({ market: h.market, code: h.code }, t.id); closeTradeActionMenu(); }">删除记录</button>
+                    <button class="trade-more-item trade-more-item-danger" @click.stop="handleDeleteTrade({ market: h.market, code: h.code }, t.id)">删除记录</button>
                   </div>
                 </div>
               </div>
@@ -571,49 +571,6 @@ export default {
     const route = useRoute()
     const store = useAppStore()
     
-    // 点击外部关闭所有菜单
-    const closeAllMenus = () => {
-      showHoldingIOMenu.value = false
-      openTradeActionMenuKey.value = null
-      openHoldingActionMenuKey.value = null
-      showDropdown.value = false
-      showLedgerList.value = false
-    }
-    
-    // 标记是否刚刚点击了菜单相关元素
-    let isMenuClick = false
-    
-    // 监听点击事件，点击外部关闭菜单
-    const handleClickOutside = (e) => {
-      // 如果是菜单点击，则忽略并重置标记
-      if (isMenuClick) {
-        isMenuClick = false
-        return
-      }
-      
-      // 检查是否点击了菜单外部
-      const target = e.target
-      const isInMenu = target.closest('.io-dropdown') || 
-         target.closest('.trade-more-wrap') || 
-         target.closest('.holding-more-wrap') || 
-         target.closest('.header-actions-group') || 
-         target.closest('.ledger-badge')
-      
-      if (!isInMenu) {
-        closeAllMenus()
-      }
-    }
-    
-
-    
-    onMounted(() => {
-      document.addEventListener('click', handleClickOutside)
-    })
-    
-    onUnmounted(() => {
-      document.removeEventListener('click', handleClickOutside)
-    })
-    
     // 状态
     let _id = 100
     const holdings = ref([])
@@ -632,25 +589,16 @@ export default {
     const blessingEffectKey = ref(0)
     const loadingEffectKey = ref(0)
     const openLedgerActionMenuId = ref(null)
-    
-    // 定期更新loadingEffectKey，确保动画循环播放
-    let loadingEffectInterval = null
-    if (loadingEffectInterval) clearInterval(loadingEffectInterval)
-    loadingEffectInterval = setInterval(() => {
-      if (store.isLoading) {
-        loadingEffectKey.value += 1
-      }
-    }, 1800)
     const openTradeActionMenuKey = ref(null)
     const showLedgerList = ref(false)
     const showDropdown = ref(false)
+    const showHoldingIOMenu = ref(false)
     const createLedgerModal = ref(false)
     const editLedgerModal = ref(false)
     const deleteLedgerConfirm = ref(null)
     const newLedgerName = ref('')
     const newLedgerColor = ref('#1a1814')
     const editingLedger = ref({ id: null, name: '', color: '#1a1814' })
-    const showHoldingIOMenu = ref(false)
     const importInput = ref(null)
     const tradeError = ref('')
     const addError = ref('')
@@ -1059,6 +1007,7 @@ export default {
     // 确认删除持仓
     const confirmDeleteHolding = (target) => {
       deleteConfirm.value = target
+      closeHoldingActionMenu()
     }
     
     // 取消删除
@@ -1123,16 +1072,19 @@ export default {
     // 处理导出 CSV
     const handleExportCSV = () => {
       exportCSV(store.holdings, store.prices, store.fx)
+      showHoldingIOMenu.value = false
     }
     
     // 处理导出 PDF
     const handleExportPDF = () => {
       exportPDF(store.holdings, store.prices, store.fx)
+      showHoldingIOMenu.value = false
     }
     
     // 触发导入
     const triggerImport = () => {
       if (importInput.value) importInput.value.click()
+      showHoldingIOMenu.value = false
     }
     
     // 处理导入
@@ -1295,6 +1247,84 @@ export default {
       }
     }
     
+    // 切换账本列表
+    const toggleLedgerList = () => {
+      showLedgerList.value = !showLedgerList.value
+    }
+    
+    // 切换下拉菜单
+    const toggleDropdown = () => {
+      showDropdown.value = !showDropdown.value
+    }
+    
+    // 切换持仓导入导出菜单
+    const toggleHoldingIOMenu = () => {
+      showHoldingIOMenu.value = !showHoldingIOMenu.value
+    }
+    
+    // 处理回到首页
+    const handleGoHome = () => {
+      goHome()
+      showDropdown.value = false
+    }
+    
+    // 处理打开创建账本
+    const handleOpenCreateLedger = () => {
+      openCreateLedger()
+      showDropdown.value = false
+    }
+    
+    // 处理刷新行情
+    const handleRefreshQuotes = () => {
+      store.refreshQuotes()
+      showDropdown.value = false
+    }
+    
+    // 处理编辑当前账本
+    const handleEditCurrentLedger = () => {
+      if (store.currentLedger) {
+        editLedger(store.currentLedger)
+        showDropdown.value = false
+      }
+    }
+    
+    // 处理删除当前账本
+    const handleDeleteCurrentLedger = () => {
+      if (store.currentLedger) {
+        confirmDeleteLedger(store.currentLedger)
+        showDropdown.value = false
+      }
+    }
+    
+    // 处理切换账本
+    const handleSwitchLedger = (ledger) => {
+      switchLedger(ledger)
+      showLedgerList.value = false
+    }
+    
+    // 处理编辑账本
+    const handleEditLedger = (ledger) => {
+      editLedger(ledger)
+      showLedgerList.value = false
+    }
+    
+    // 处理删除账本
+    const handleDeleteLedger = (ledger) => {
+      confirmDeleteLedger(ledger)
+      showLedgerList.value = false
+    }
+    
+    // 处理确认删除持仓
+    const handleConfirmDeleteHolding = (target) => {
+      confirmDeleteHolding(target)
+    }
+    
+    // 处理删除交易
+    const handleDeleteTrade = (holdingInfo, tradeId) => {
+      deleteTrade(holdingInfo, tradeId)
+      closeTradeActionMenu()
+    }
+    
     // 页面加载时
     onMounted(async () => {
       // 加载账本数据
@@ -1324,6 +1354,10 @@ export default {
       }
     })
     
+    onUnmounted(() => {
+      // 清理定时器等
+    })
+    
     return {
       store,
       tab,
@@ -1344,13 +1378,13 @@ export default {
       openTradeActionMenuKey,
       showLedgerList,
       showDropdown,
+      showHoldingIOMenu,
       createLedgerModal,
       editLedgerModal,
       deleteLedgerConfirm,
       newLedgerName,
       newLedgerColor,
       editingLedger,
-      showHoldingIOMenu,
       importInput,
       tradeError,
       addError,
@@ -1406,7 +1440,20 @@ export default {
       handleLogout,
       showErrorDetailModal,
       closeErrorModal,
-      copyErrorDetail
+      copyErrorDetail,
+      toggleLedgerList,
+      toggleDropdown,
+      toggleHoldingIOMenu,
+      handleGoHome,
+      handleOpenCreateLedger,
+      handleRefreshQuotes,
+      handleEditCurrentLedger,
+      handleDeleteCurrentLedger,
+      handleSwitchLedger,
+      handleEditLedger,
+      handleDeleteLedger,
+      handleConfirmDeleteHolding,
+      handleDeleteTrade
     }
   }
 }
