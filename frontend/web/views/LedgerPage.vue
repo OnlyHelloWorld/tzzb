@@ -608,6 +608,8 @@ export default {
     const wrapMenuClick = (fn) => {
       return (...args) => {
         isMenuClick = true
+        // 在下一个事件循环中重置标记，避免 @click.stop 阻止冒泡导致标记无法重置
+        setTimeout(() => { isMenuClick = false }, 0)
         fn(...args)
       }
     }
