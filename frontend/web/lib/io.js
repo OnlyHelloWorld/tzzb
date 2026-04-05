@@ -6,8 +6,17 @@
  */
 
 import jsPDF from 'jspdf'
+import { fetchQuote } from './quoteApi.js'
 
 // ─── 工具函数 ───────────────────────────────────────────────────
+function escapeCSV(value) {
+  const str = String(value || '')
+  if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+    return '"' + str.replace(/"/g, '""') + '"'
+  }
+  return str
+}
+
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -77,7 +86,7 @@ export function exportCSV(holdings, prices, fx) {
 
   // BOM for Excel UTF-8 compatibility
   const bom = '\uFEFF'
-  const csv = bom + [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+  const csv = bom + [headers.map(escapeCSV).join(','), ...rows.map(row => row.map(escapeCSV).join(','))].join('\n')
   const date = new Date().toISOString().slice(0, 10)
   downloadText(csv, `investment-ledger-${date}.csv`, 'text/csv;charset=utf-8')
 }
@@ -141,16 +150,50 @@ export function exportAllLedgersCSV(ledgers, ledgerHoldings, prices, fx) {
 
   // BOM for Excel UTF-8 compatibility
   const bom = '\uFEFF'
-  const csv = bom + [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+  const csv = bom + [headers.map(escapeCSV).join(','), ...rows.map(row => row.map(escapeCSV).join(','))].join('\n')
   const date = new Date().toISOString().slice(0, 10)
   downloadText(csv, `all-ledgers-${date}.csv`, 'text/csv;charset=utf-8')
+}
+
+// ─── 工具函数：解析 CSV 行（支持带引号的字段）──────────────────────────────
+function parseCSVLine(line) {
+  const result = []
+  let current = ''
+  let inQuotes = false
+  let quoteCount = 0
+  
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i]
+    
+    if (char === '"') {
+      inQuotes = !inQuotes
+      quoteCount++
+    } else if (char === ',' && !inQuotes) {
+      // 只有不在引号内的逗号才是分隔符
+      result.push(current.trim())
+      current = ''
+    } else {
+      current += char
+    }
+  }
+  
+  // 处理最后一个字段
+  result.push(current.trim())
+  
+  // 移除字段中的双引号（如果有）
+  return result.map(field => {
+    if (field.startsWith('"') && field.endsWith('"')) {
+      return field.substring(1, field.length - 1).replace(/""/g, '"')
+    }
+    return field
+  })
 }
 
 // ─── 导入 CSV（支持单个账本或所有账本）──────────────────────────────────────
 export function importCSV(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const text = e.target.result
         // 移除 BOM
@@ -162,18 +205,22 @@ export function importCSV(file) {
           return
         }
 
-        const headers = lines[0].split(',').map(h => h.trim())
+        const headers = parseCSVLine(lines[0])
         
         // 检查是否是多账本格式
         const isMultiLedger = headers.includes('LedgerId') && headers.includes('LedgerName')
         
         if (isMultiLedger) {
           // 多账本格式
-          const result = parseMultiLedgerCSV(lines.slice(1), headers)
+          let result = parseMultiLedgerCSV(lines.slice(1), headers)
+          // 尝试通过股票代码获取股票名称
+          result = await enrichHoldingsWithNames(result)
           resolve(result)
         } else {
           // 单账本格式
-          const result = parseSingleLedgerCSV(lines.slice(1), headers)
+          let result = parseSingleLedgerCSV(lines.slice(1), headers)
+          // 尝试通过股票代码获取股票名称
+          result = await enrichHoldingsWithNames(result)
           resolve(result)
         }
       } catch (err) {
@@ -183,6 +230,43 @@ export function importCSV(file) {
     reader.onerror = () => reject(new Error('文件读取错误'))
     reader.readAsText(file)
   })
+}
+
+// 通过股票代码获取股票名称
+async function enrichHoldingsWithNames(result) {
+  if (result.isMultiLedger) {
+    // 处理多账本格式
+    for (const ledgerId in result.ledgerHoldings) {
+      const holdings = result.ledgerHoldings[ledgerId]
+      for (const holding of holdings) {
+        if (!holding.name || holding.name.trim() === '') {
+          try {
+            const quote = await fetchQuote(holding.market, holding.code)
+            if (quote.name) {
+              holding.name = quote.name
+            }
+          } catch (err) {
+            console.warn(`获取股票名称失败: ${holding.market}:${holding.code}`, err.message)
+          }
+        }
+      }
+    }
+  } else {
+    // 处理单账本格式
+    for (const holding of result.holdings) {
+      if (!holding.name || holding.name.trim() === '') {
+        try {
+          const quote = await fetchQuote(holding.market, holding.code)
+          if (quote.name) {
+            holding.name = quote.name
+          }
+        } catch (err) {
+          console.warn(`获取股票名称失败: ${holding.market}:${holding.code}`, err.message)
+        }
+      }
+    }
+  }
+  return result
 }
 
 // 解析多账本 CSV
@@ -205,7 +289,7 @@ function parseMultiLedgerCSV(lines, headers) {
   let tradeId = 10000
 
   for (const line of lines) {
-    const values = line.split(',').map(v => v.trim())
+    const values = parseCSVLine(line)
     
     const originalLedgerId = values[ledgerIdIdx]
     const ledgerName = values[ledgerNameIdx]
@@ -281,7 +365,7 @@ function parseSingleLedgerCSV(lines, headers) {
   const avgCostIdx = headers.indexOf('AvgCost')
 
   for (const line of lines) {
-    const values = line.split(',').map(v => v.trim())
+    const values = parseCSVLine(line)
     
     const market = values[marketIdx]
     const code = values[codeIdx]
