@@ -367,11 +367,11 @@ export default {
         
         // 延迟执行局部更新，让动画播放
         setTimeout(async () => {
-          // 局部更新：从ledgers数组和summaries中移除已删除的账本
+          // 局部更新：从ledgers数组中移除已删除的账本
           store.ledgers = store.ledgers.filter(ledger => ledger.id !== deletedId)
           
-          // 重新计算账本汇总信息
-          await store.calculateAllLedgerSummaries()
+          // 使用 store 方法更新数据
+          await store.updateAfterDeleteLedger(deletedId)
           
           // 清理删除状态
           deletingLedgers.value = deletingLedgers.value.filter(id => id !== deletedId)
