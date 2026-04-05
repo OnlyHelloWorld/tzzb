@@ -102,14 +102,14 @@
 
 <script setup>
 import { ref, reactive, watch, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import * as api from '../lib/api.js'
 
 const props = defineProps({
   loginError: { type: String, default: '' }
 })
 
-const emit = defineEmits(['login'])
-
+const router = useRouter()
 const view = ref('login') // login | register | reset
 const error = ref('')
 const successMsg = ref('')
@@ -173,7 +173,7 @@ async function handleLogin() {
   loading.value = true
   try {
     await api.login(form.username, form.password)
-    emit('login')
+    router.push('/home')
   } catch (e) {
     error.value = e.message
   } finally {
@@ -194,7 +194,7 @@ async function handleRegister() {
   loading.value = true
   try {
     await api.register(form.email, form.code, form.username, form.password)
-    emit('login')
+    router.push('/home')
   } catch (e) {
     error.value = e.message
   } finally {
