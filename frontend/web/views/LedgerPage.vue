@@ -1142,6 +1142,7 @@ export default {
       summary,
       ccyBreakdown,
       fmt,
+      toCNY,
       SYM,
       triggerBlessingEffect,
       openAddHolding,
