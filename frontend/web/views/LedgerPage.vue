@@ -258,7 +258,7 @@
           </div>
 
           <!-- Trade rows -->
-          <div v-for="t in h.trades" :key="t.id" class="trade-row">
+          <div v-for="t in h.trades" :key="t.id" :class="['trade-row', { 'trade-row-deleting': t.deleting }]">
             <template v-if="editingTrade && editingTrade.holdingMarket === h.market && editingTrade.holdingCode === h.code && editingTrade.tradeId === t.id">
               <input class="field field-sm" type="date" v-model="editingTrade.date" />
               <span class="trade-type" :class="t.qty >= 0 ? 'type-buy' : 'type-sell'">
@@ -815,18 +815,28 @@ export default {
       const holding = store.holdings.find(h => h.market === holdingInfo.market && h.code === holdingInfo.code)
       if (!holding || holding.trades.length <= 1) return
 
-      const rollback = JSON.parse(JSON.stringify(store.holdings))
-      holding.trades = holding.trades.filter(t => t.id !== tradeId)
-
-      try {
-        await store.saveHoldings(store.holdings)
-        triggerBlessingEffect()
-        store.showMessage('交易记录删除成功')
-      } catch (err) {
-        store.holdings = rollback
-        store.showMessage('删除失败: ' + err.message, true)
-        showErrorDetailModal('操作失败', err)
+      // 标记要删除的交易记录，用于动画效果
+      const trade = holding.trades.find(t => t.id === tradeId)
+      if (trade) {
+        trade.deleting = true
       }
+
+      const rollback = JSON.parse(JSON.stringify(store.holdings))
+
+      // 延迟删除，让动画有时间播放
+      setTimeout(async () => {
+        try {
+          // 从trades数组中过滤掉该交易记录
+          holding.trades = holding.trades.filter(t => t.id !== tradeId)
+          await store.saveHoldings(store.holdings)
+          triggerBlessingEffect()
+          store.showMessage('交易记录删除成功')
+        } catch (err) {
+          store.holdings = rollback
+          store.showMessage('删除失败: ' + err.message, true)
+          showErrorDetailModal('操作失败', err)
+        }
+      }, 800)
     }
     
     // 切换交易菜单
@@ -1038,8 +1048,18 @@ export default {
         const deletedId = deleteLedgerConfirm.value.id
         await api.deleteLedger(deletedId)
         deleteLedgerConfirm.value = null
-        goHome()
-        await store.loadData()
+        
+        // 局部更新：从ledgers数组中移除已删除的账本
+        store.ledgers = store.ledgers.filter(ledger => ledger.id !== deletedId)
+        
+        // 重新计算账本汇总信息
+        await store.calculateAllLedgerSummaries()
+        
+        // 如果删除的是当前账本，回到首页
+        if (store.currentLedger && store.currentLedger.id === deletedId) {
+          goHome()
+        }
+        
         triggerBlessingEffect()
         store.showMessage('账本删除成功')
       } catch (err) {
