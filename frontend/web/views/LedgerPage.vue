@@ -335,7 +335,7 @@
         <div class="form-grid">
           <div class="form-row">
             <div class="form-label">交易类型</div>
-            <select class="form-control" v-model="addTradeForm.type"
+            <select id="trade-type" name="trade-type" class="form-control" v-model="addTradeForm.type"
               :style="{ color: addTradeForm.type === '卖出' ? '#c0392b' : '#1a7a4a' }">
               <option value="买入">买入</option>
               <option value="卖出">卖出</option>
@@ -343,20 +343,20 @@
           </div>
           <div class="form-row">
             <div class="form-label">数量（股）</div>
-            <input class="form-control" type="number" placeholder="如 100" v-model="addTradeForm.qty" />
+            <input id="trade-qty" name="trade-qty" class="form-control" type="number" placeholder="如 100" v-model="addTradeForm.qty" />
           </div>
           <div class="form-row">
             <div class="form-label">价格（{{ addTradeTarget.ccy }}）</div>
-            <input class="form-control" type="number" step="0.01"
+            <input id="trade-price" name="trade-price" class="form-control" type="number" step="0.01"
               :placeholder="`如 ${addTradeTarget.avgCost}`" v-model="addTradeForm.price" />
           </div>
           <div class="form-row">
             <div class="form-label">日期</div>
-            <input class="form-control" type="date" v-model="addTradeForm.date" />
+            <input id="trade-date" name="trade-date" class="form-control" type="date" v-model="addTradeForm.date" />
           </div>
           <div class="form-row" style="grid-column:1/-1">
             <div class="form-label">变动笔记（可选）</div>
-            <input class="form-control" placeholder="如 加仓、减仓、分红再投..." v-model="addTradeForm.note" />
+            <input id="trade-note" name="trade-note" class="form-control" placeholder="如 加仓、减仓、分红再投..." v-model="addTradeForm.note" />
           </div>
         </div>
         <div class="modal-footer">
@@ -388,27 +388,27 @@
           </div>
           <div class="form-row">
             <div class="form-label">股票代码</div>
-            <input class="form-control" placeholder="如 600519" v-model="newForm.code" @blur="handleCodeBlur" />
+            <input id="stock-code" name="stock-code" class="form-control" placeholder="如 600519" v-model="newForm.code" @blur="handleCodeBlur" />
           </div>
           <div class="form-row">
             <div class="form-label">股票名称{{ nameLoading ? ' (获取中…)' : '' }}</div>
-            <input class="form-control" placeholder="自动获取或手动输入" v-model="newForm.name" />
+            <input id="stock-name" name="stock-name" class="form-control" placeholder="自动获取或手动输入" v-model="newForm.name" />
           </div>
           <div class="form-row">
             <div class="form-label">持仓数量（股）</div>
-            <input class="form-control" type="number" placeholder="100" v-model="newForm.qty" />
+            <input id="stock-qty" name="stock-qty" class="form-control" type="number" placeholder="100" v-model="newForm.qty" />
           </div>
           <div class="form-row">
             <div class="form-label">成本价</div>
-            <input class="form-control" type="number" placeholder="0.00" v-model="newForm.price" />
+            <input id="stock-price" name="stock-price" class="form-control" type="number" placeholder="0.00" v-model="newForm.price" />
           </div>
           <div class="form-row">
             <div class="form-label">日期</div>
-            <input class="form-control" type="date" v-model="newForm.date" />
+            <input id="stock-date" name="stock-date" class="form-control" type="date" v-model="newForm.date" />
           </div>
           <div class="form-row" style="grid-column:1/-1">
             <div class="form-label">板块（可选）</div>
-            <input class="form-control" placeholder="如 科技、消费" v-model="newForm.sector" />
+            <input id="stock-sector" name="stock-sector" class="form-control" placeholder="如 科技、消费" v-model="newForm.sector" />
           </div>
         </div>
         <div class="modal-footer">
