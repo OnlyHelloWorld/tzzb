@@ -673,12 +673,20 @@ export default {
       if (!newForm.value.code) return
       nameLoading.value = true
       try {
-        const result = await fetchQuote(newForm.value.market, newForm.value.code)
+        // 规范化股票代码（转大写）
+        const normalizedCode = newForm.value.code.toString().toUpperCase().trim()
+        newForm.value.code = normalizedCode
+        
+        const result = await fetchQuote(newForm.value.market, normalizedCode)
         if (result.name) {
           newForm.value.name = result.name
         }
+        // 如果获取到价格且成本价为空，自动填充成本价
+        if (result.price > 0 && !newForm.value.price) {
+          newForm.value.price = result.price.toString()
+        }
       } catch (err) {
-        console.warn('获取股票名称失败:', err)
+        console.warn('获取股票信息失败:', err)
       } finally {
         nameLoading.value = false
       }
