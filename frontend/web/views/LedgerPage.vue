@@ -182,12 +182,11 @@
         :style="{ '--stagger': `${index * 60}ms` }"
         :class="['row', { 'row-updating': h.refreshing, 'row-deleting': deletingHoldings.includes(`${h.market}-${h.code}`) }]"
       >
-        <div class="delete-holding-btn-wrap" @click.stop>
-          <button class="btn btn-warn delete-holding-btn" @click.stop="confirmDeleteHolding({ market: h.market, code: h.code })">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path d="M4 4l6 6M10 4L4 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-            </svg>
-          </button>
+        <div class="holding-more-wrap" @click.stop>
+          <button class="btn btn-ghost holding-more-btn" @click.stop="toggleHoldingActionMenu(`${h.market}-${h.code}`)">⋯</button>
+          <div v-if="openHoldingActionMenuKey === `${h.market}-${h.code}`" class="holding-more-menu">
+            <button class="holding-more-item holding-more-item-danger" @click.stop="confirmDeleteHolding({ market: h.market, code: h.code }); closeHoldingActionMenu();">删除持仓</button>
+          </div>
         </div>
 
         <div class="row-head" @click="expanded = expanded === `${h.market}-${h.code}` ? null : `${h.market}-${h.code}`">
@@ -591,6 +590,7 @@ export default {
     const deleteConfirm = ref(null)
     const nameLoading = ref(false)
     const errorModal = ref({ visible: false, message: '', detail: '', expanded: false })
+    const openHoldingActionMenuKey = ref(null)
     const fxList = [
       { label: 'USD/CNY', key: 'USD' },
       { label: 'HKD/CNY', key: 'HKD' },
@@ -726,6 +726,16 @@ export default {
 
       try {
         await store.saveHoldings(store.holdings)
+        // 添加持仓成功后立即获取实时价格
+        try {
+          await store.refreshSingleHoldingPrice({
+            market: newForm.value.market,
+            code: newForm.value.code
+          })
+        } catch (priceErr) {
+          console.warn('获取新持仓价格失败:', priceErr)
+          // 不阻止添加成功的提示
+        }
         addHolding.value = false
         triggerBlessingEffect()
         store.showMessage('持仓添加成功')
@@ -859,6 +869,16 @@ export default {
       openTradeActionMenuKey.value = null
     }
     
+    // 切换持仓菜单
+    const toggleHoldingActionMenu = (holdingKey) => {
+      openHoldingActionMenuKey.value = openHoldingActionMenuKey.value === holdingKey ? null : holdingKey
+    }
+    
+    // 关闭持仓菜单
+    const closeHoldingActionMenu = () => {
+      openHoldingActionMenuKey.value = null
+    }
+    
     // 切换重置成本
     const toggleReset = (target) => {
       if (resetTarget.value && resetTarget.value.market === target.market && resetTarget.value.code === target.code) {
@@ -920,10 +940,22 @@ export default {
       deletingHoldings.value.push(holdingKey)
 
       const rollback = JSON.parse(JSON.stringify(store.holdings))
-      store.holdings = store.holdings.filter(h => h.market !== deleteConfirm.value.market || h.code !== deleteConfirm.value.code)
-
+      
       try {
-        await store.saveHoldings(store.holdings)
+        // 使用 API 直接删除持仓
+        await api.deleteHolding(
+          deleteConfirm.value.market, 
+          deleteConfirm.value.code, 
+          store.currentLedger?.id
+        )
+        
+        // 使用 store 方法更新数据
+        await store.updateAfterDeleteHolding(
+          deleteConfirm.value.market, 
+          deleteConfirm.value.code, 
+          store.currentLedger?.id
+        )
+        
         deleteConfirm.value = null
         setTimeout(() => {
           deletingHoldings.value = deletingHoldings.value.filter(key => key !== holdingKey)
@@ -1062,8 +1094,8 @@ export default {
         // 局部更新：从ledgers数组中移除已删除的账本
         store.ledgers = store.ledgers.filter(ledger => ledger.id !== deletedId)
         
-        // 重新计算账本汇总信息
-        await store.calculateAllLedgerSummaries()
+        // 使用 store 方法更新数据
+        await store.updateAfterDeleteLedger(deletedId)
         
         // 如果删除的是当前账本，回到首页
         if (store.currentLedger && store.currentLedger.id === deletedId) {
@@ -1213,6 +1245,8 @@ export default {
       deleteTrade,
       toggleTradeActionMenu,
       closeTradeActionMenu,
+      toggleHoldingActionMenu,
+      closeHoldingActionMenu,
       toggleReset,
       cancelReset,
       resetCost,

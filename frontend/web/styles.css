@@ -645,23 +645,39 @@ input:focus, select:focus { outline: none; }
   overflow: hidden;
   position: relative;
 }
-.delete-holding-btn-wrap {
+.holding-more-wrap {
   position: absolute;
   top: 8px;
   right: 8px;
   z-index: 10;
 }
-.delete-holding-btn {
-  width: 28px;
+.holding-more-btn {
+  min-width: 28px;
   height: 28px;
-  border-radius: 50%;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #c0392b;
-  border-color: #c0392b;
+  padding: 2px 6px;
 }
+.holding-more-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  background: #fff;
+  border: 1px solid #e8e0d4;
+  border-radius: 8px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, .12);
+  z-index: 30;
+  min-width: 98px;
+}
+.holding-more-item {
+  width: 100%;
+  padding: 7px 10px;
+  text-align: left;
+  font-size: 12px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+.holding-more-item:hover { background: #f8f5ef; }
+.holding-more-item-danger { color: #c0392b; }
 .holding-list {
   display: flex;
   flex-direction: column;

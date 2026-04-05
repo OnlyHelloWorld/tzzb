@@ -264,11 +264,49 @@ export const useAppStore = defineStore('app', {
       try {
         const savedHoldings = await api.saveHoldings(holdingsData, this.currentLedger.id)
         this.holdings = savedHoldings || []
+        // 更新 allLedgersHoldings
+        this.allLedgersHoldings = await api.loadHoldings() || []
         // 重新计算账本汇总
         await this.calculateAllLedgerSummaries()
         return savedHoldings
       } catch (err) {
         console.warn('保存持仓失败:', err)
+        throw err
+      }
+    },
+    
+    // 删除账本后更新数据
+    async updateAfterDeleteLedger(deletedLedgerId) {
+      // 更新 allLedgersHoldings，移除已删除账本的持仓
+      this.allLedgersHoldings = this.allLedgersHoldings.filter(h => h.ledger_id !== deletedLedgerId)
+      // 重新计算账本汇总
+      await this.calculateAllLedgerSummaries()
+    },
+    
+    // 删除持仓后更新数据
+    async updateAfterDeleteHolding(market, code, ledgerId) {
+      // 更新 holdings
+      this.holdings = this.holdings.filter(h => h.market !== market || h.code !== code)
+      // 更新 allLedgersHoldings
+      this.allLedgersHoldings = this.allLedgersHoldings.filter(
+        h => !(h.market === market && h.code === code && h.ledger_id === ledgerId)
+      )
+      // 重新计算账本汇总
+      await this.calculateAllLedgerSummaries()
+    },
+    
+    // 刷新单个持仓价格
+    async refreshSingleHoldingPrice(holding) {
+      try {
+        const { fetchQuote } = await import('../lib/quoteApi.js')
+        const result = await fetchQuote(holding.market, holding.code)
+        if (result.price > 0) {
+          this.prices[holding.code] = result.price
+          await this.calculateAllLedgerSummaries()
+        }
+        return result
+      } catch (err) {
+        console.warn('刷新持仓价格失败:', err)
         throw err
       }
     },
