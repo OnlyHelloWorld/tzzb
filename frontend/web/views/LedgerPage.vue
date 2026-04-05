@@ -1132,8 +1132,13 @@ export default {
     }
     
     // 处理导出 PDF
-    const handleExportPDF = () => {
-      exportPDF(store.holdings, store.prices, store.fx)
+    const handleExportPDF = async () => {
+      try {
+        await exportPDF(store.holdings, store.prices, store.fx)
+      } catch (err) {
+        store.showMessage('导出 PDF 失败: ' + err.message, true)
+        showErrorDetailModal('操作失败', err)
+      }
     }
     
     // 触发导入
