@@ -88,7 +88,7 @@
         </div>
 
         <div class="ledgers-grid">
-          <div v-for="summary in store.ledgerSummaries" :key="summary.id" class="ledger-card" @click="switchLedger(summary)">
+          <div v-for="summary in store.ledgerSummaries" :key="summary.id" :class="['ledger-card', { 'ledger-card-deleting': deletingLedgers.includes(summary.id) }]" @click="switchLedger(summary)">
             <div class="ledger-card-header" :style="{ backgroundColor: summary.color }"></div>
             <div class="ledger-card-body">
               <div class="ledger-card-title-row">
@@ -248,6 +248,7 @@ export default {
     const showAllLedgerIOMenu = ref(false)
     const allLedgersImportInput = ref(null)
     const openLedgerActionMenuId = ref(null)
+    const deletingLedgers = ref([])
     const blessingChars = ['恭', '喜', '发', '财']
     const showBlessingEffect = ref(false)
     const blessingEffectKey = ref(0)
@@ -360,12 +361,26 @@ export default {
 
       try {
         const deletedId = deleteLedgerConfirm.value.id
+        deletingLedgers.value.push(deletedId)
         await api.deleteLedger(deletedId)
         deleteLedgerConfirm.value = null
-        await store.loadData()
-        triggerBlessingEffect()
-        store.showMessage('账本删除成功')
+        
+        // 延迟执行局部更新，让动画播放
+        setTimeout(async () => {
+          // 局部更新：从ledgers数组和summaries中移除已删除的账本
+          store.ledgers = store.ledgers.filter(ledger => ledger.id !== deletedId)
+          
+          // 重新计算账本汇总信息
+          await store.calculateAllLedgerSummaries()
+          
+          // 清理删除状态
+          deletingLedgers.value = deletingLedgers.value.filter(id => id !== deletedId)
+          
+          triggerBlessingEffect()
+          store.showMessage('账本删除成功')
+        }, 800)
       } catch (err) {
+        deletingLedgers.value = deletingLedgers.value.filter(id => id !== deleteLedgerConfirm.value.id)
         store.showMessage('删除账本失败: ' + err.message, true)
         showErrorDetailModal('操作失败', err)
       }
@@ -485,6 +500,7 @@ export default {
       showAllLedgerIOMenu,
       allLedgersImportInput,
       openLedgerActionMenuId,
+      deletingLedgers,
       blessingChars,
       showBlessingEffect,
       blessingEffectKey,

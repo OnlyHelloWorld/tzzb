@@ -182,6 +182,13 @@
         :style="{ '--stagger': `${index * 60}ms` }"
         :class="['row', { 'row-updating': h.refreshing, 'row-deleting': deletingHoldings.includes(`${h.market}-${h.code}`) }]"
       >
+        <div class="delete-holding-btn-wrap" @click.stop>
+          <button class="btn btn-warn delete-holding-btn" @click.stop="confirmDeleteHolding({ market: h.market, code: h.code })">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M4 4l6 6M10 4L4 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
 
         <div class="row-head" @click="expanded = expanded === `${h.market}-${h.code}` ? null : `${h.market}-${h.code}`">
           <div>
@@ -229,9 +236,6 @@
               <button class="btn btn-ghost" style="font-size:11px" @click.stop="openAddTrade({ market: h.market, code: h.code })">+ 新增一笔</button>
               <button class="btn btn-warn" style="font-size:11px" @click.stop="toggleReset({ market: h.market, code: h.code })">
                 {{ resetTarget && resetTarget.market === h.market && resetTarget.code === h.code ? '取消' : '一键重置成本' }}
-              </button>
-              <button class="btn btn-warn" style="font-size:11px;color:#c0392b;border-color:#c0392b" @click.stop="confirmDeleteHolding({ market: h.market, code: h.code })">
-                删除持仓
               </button>
             </div>
           </div>
@@ -284,7 +288,7 @@
                   @click="editingTrade = { holdingMarket: h.market, holdingCode: h.code, tradeId: t.id, date: t.date, qty: t.qty, price: t.price }">
                   修改
                 </button>
-                <div v-if="h.trades.length > 1" class="trade-more-wrap" @click.stop>
+                <div class="trade-more-wrap" @click.stop>
                   <button class="btn btn-ghost trade-more-btn" @click.stop="toggleTradeActionMenu(`${h.market}-${h.code}-${t.id}`)">⋯</button>
                   <div v-if="openTradeActionMenuKey === `${h.market}-${h.code}-${t.id}`" class="trade-more-menu">
                     <button class="trade-more-item trade-more-item-danger" @click.stop="deleteTrade({ market: h.market, code: h.code }, t.id); closeTradeActionMenu()">删除记录</button>
@@ -813,7 +817,7 @@ export default {
     // 删除交易
     const deleteTrade = async (holdingInfo, tradeId) => {
       const holding = store.holdings.find(h => h.market === holdingInfo.market && h.code === holdingInfo.code)
-      if (!holding || holding.trades.length <= 1) return
+      if (!holding) return
 
       // 标记要删除的交易记录，用于动画效果
       const trade = holding.trades.find(t => t.id === tradeId)
@@ -828,6 +832,12 @@ export default {
         try {
           // 从trades数组中过滤掉该交易记录
           holding.trades = holding.trades.filter(t => t.id !== tradeId)
+          
+          // 如果删除所有交易后没有记录了，也删除整个持仓
+          if (holding.trades.length === 0) {
+            store.holdings = store.holdings.filter(h => h.market !== holding.market || h.code !== holding.code)
+          }
+          
           await store.saveHoldings(store.holdings)
           triggerBlessingEffect()
           store.showMessage('交易记录删除成功')
