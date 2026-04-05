@@ -1036,7 +1036,7 @@ export default {
     // 处理登出
     const handleLogout = () => {
       api.logout()
-      router.push('/home')
+      router.push('/login')
     }
     
     // 格式化错误详情

@@ -4,6 +4,12 @@
 
 const BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
+let routerInstance = null
+
+export function setRouter(router) {
+  routerInstance = router
+}
+
 function getToken() {
   return localStorage.getItem('investment-token') || ''
 }
@@ -24,7 +30,12 @@ async function request(url, options = {}) {
   if (res.status === 401) {
     localStorage.removeItem('investment-token')
     localStorage.removeItem('investment-auth')
-    window.location.reload()
+    if (routerInstance) {
+      routerInstance.push('/login')
+    } else {
+      window.location.hash = '#/login'
+      window.location.reload()
+    }
     throw new Error('登录已过期')
   }
   if (!res.ok) {
