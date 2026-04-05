@@ -9,12 +9,12 @@
         <p class="login-subtitle">请登录以继续</p>
         <form @submit.prevent="handleLogin">
           <div class="login-field">
-            <label>账号（邮箱或用户名）</label>
-            <input v-model="form.username" class="login-input" placeholder="请输入邮箱或用户名" autocomplete="username" :disabled="loading" />
+            <label for="username">账号（邮箱或用户名）</label>
+            <input id="username" name="username" v-model="form.username" class="login-input" placeholder="请输入邮箱或用户名" autocomplete="username" :disabled="loading" />
           </div>
           <div class="login-field">
-            <label>密码</label>
-            <input v-model="form.password" class="login-input" type="password" placeholder="请输入密码" autocomplete="current-password" :disabled="loading" />
+            <label for="password">密码</label>
+            <input id="password" name="password" v-model="form.password" class="login-input" type="password" placeholder="请输入密码" autocomplete="current-password" :disabled="loading" />
           </div>
           <div v-if="error" class="login-error">{{ error }}</div>
           <button class="login-btn" type="submit" :disabled="loading">{{ loading ? '登录中...' : '登录' }}</button>
@@ -30,29 +30,29 @@
         <p class="login-subtitle">创建新账号</p>
         <form @submit.prevent="handleRegister">
           <div class="login-field">
-            <label>邮箱</label>
+            <label for="email">邮箱</label>
             <div class="code-row">
-              <input v-model="form.email" class="login-input code-input" placeholder="请输入邮箱" type="email" :disabled="loading" />
+              <input id="email" name="email" v-model="form.email" class="login-input code-input" placeholder="请输入邮箱" type="email" :disabled="loading" />
               <button type="button" class="code-btn" :disabled="codeCooldown > 0 || loading" @click="handleSendCode('register')">
                 {{ codeCooldown > 0 ? `${codeCooldown}s` : '发送验证码' }}
               </button>
             </div>
           </div>
           <div class="login-field">
-            <label>验证码</label>
-            <input v-model="form.code" class="login-input" placeholder="6 位验证码" maxlength="6" :disabled="loading" />
+            <label for="code">验证码</label>
+            <input id="code" name="code" v-model="form.code" class="login-input" placeholder="6 位验证码" maxlength="6" :disabled="loading" />
           </div>
           <div class="login-field">
-            <label>用户名</label>
-            <input v-model="form.username" class="login-input" placeholder="2-64 个字符" :disabled="loading" />
+            <label for="register-username">用户名</label>
+            <input id="register-username" name="register-username" v-model="form.username" class="login-input" placeholder="2-64 个字符" :disabled="loading" />
           </div>
           <div class="login-field">
-            <label>密码</label>
-            <input v-model="form.password" class="login-input" type="password" placeholder="至少 6 个字符" :disabled="loading" />
+            <label for="register-password">密码</label>
+            <input id="register-password" name="register-password" v-model="form.password" class="login-input" type="password" placeholder="至少 6 个字符" :disabled="loading" />
           </div>
           <div class="login-field">
-            <label>确认密码</label>
-            <input v-model="form.password2" class="login-input" type="password" placeholder="再次输入密码" :disabled="loading" />
+            <label for="confirm-password">确认密码</label>
+            <input id="confirm-password" name="confirm-password" v-model="form.password2" class="login-input" type="password" placeholder="再次输入密码" :disabled="loading" />
           </div>
           <div v-if="error" class="login-error">{{ error }}</div>
           <div v-if="successMsg" class="login-success">{{ successMsg }}</div>
@@ -68,25 +68,25 @@
         <p class="login-subtitle">重置密码</p>
         <form @submit.prevent="handleReset">
           <div class="login-field">
-            <label>邮箱</label>
+            <label for="reset-email">邮箱</label>
             <div class="code-row">
-              <input v-model="form.email" class="login-input code-input" placeholder="注册时使用的邮箱" type="email" :disabled="loading" />
+              <input id="reset-email" name="reset-email" v-model="form.email" class="login-input code-input" placeholder="注册时使用的邮箱" type="email" :disabled="loading" />
               <button type="button" class="code-btn" :disabled="codeCooldown > 0 || loading" @click="handleSendCode('reset')">
                 {{ codeCooldown > 0 ? `${codeCooldown}s` : '发送验证码' }}
               </button>
             </div>
           </div>
           <div class="login-field">
-            <label>验证码</label>
-            <input v-model="form.code" class="login-input" placeholder="6 位验证码" maxlength="6" :disabled="loading" />
+            <label for="reset-code">验证码</label>
+            <input id="reset-code" name="reset-code" v-model="form.code" class="login-input" placeholder="6 位验证码" maxlength="6" :disabled="loading" />
           </div>
           <div class="login-field">
-            <label>新密码</label>
-            <input v-model="form.password" class="login-input" type="password" placeholder="至少 6 个字符" :disabled="loading" />
+            <label for="reset-password">新密码</label>
+            <input id="reset-password" name="reset-password" v-model="form.password" class="login-input" type="password" placeholder="至少 6 个字符" :disabled="loading" />
           </div>
           <div class="login-field">
-            <label>确认新密码</label>
-            <input v-model="form.password2" class="login-input" type="password" placeholder="再次输入新密码" :disabled="loading" />
+            <label for="reset-confirm-password">确认新密码</label>
+            <input id="reset-confirm-password" name="reset-confirm-password" v-model="form.password2" class="login-input" type="password" placeholder="再次输入新密码" :disabled="loading" />
           </div>
           <div v-if="error" class="login-error">{{ error }}</div>
           <div v-if="successMsg" class="login-success">{{ successMsg }}</div>

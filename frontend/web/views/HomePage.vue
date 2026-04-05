@@ -140,7 +140,7 @@
         <div class="form-grid">
           <div class="form-row" style="grid-column:1/-1">
             <div class="form-label">账本名称</div>
-            <input class="form-control" placeholder="输入账本名称" v-model="newLedgerName" />
+            <input id="new-ledger-name" name="new-ledger-name" class="form-control" placeholder="输入账本名称" v-model="newLedgerName" />
           </div>
           <div class="form-row" style="grid-column:1/-1">
             <div class="form-label">主题色</div>
@@ -167,7 +167,7 @@
         <div class="form-grid">
           <div class="form-row" style="grid-column:1/-1">
             <div class="form-label">账本名称</div>
-            <input class="form-control" placeholder="输入账本名称" v-model="editingLedger.name" />
+            <input id="edit-ledger-name" name="edit-ledger-name" class="form-control" placeholder="输入账本名称" v-model="editingLedger.name" />
           </div>
           <div class="form-row" style="grid-column:1/-1">
             <div class="form-label">主题色</div>
