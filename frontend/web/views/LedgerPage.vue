@@ -14,11 +14,11 @@
         <div class="header-actions-group">
           <span class="ledger-badge" :style="{ backgroundColor: store.currentLedger?.color, color: '#fff' }">
             {{ store.currentLedger?.name }}
-            <span class="ledger-badge-action" @click="wrapMenuClick(() => showLedgerList = !showLedgerList)">▼</span>
+            <span class="ledger-badge-action" @click="() => { isMenuClick = true; setTimeout(() => { isMenuClick = false }, 0); showLedgerList = !showLedgerList; }">▼</span>
           </span>
           
           <div class="dropdown-container" @click.stop>
-            <button class="btn btn-ghost" style="padding: 6px 10px;" @click="wrapMenuClick(() => showDropdown = !showDropdown)">
+            <button class="btn btn-ghost" style="padding: 6px 10px;" @click="() => { isMenuClick = true; setTimeout(() => { isMenuClick = false }, 0); showDropdown = !showDropdown; }">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:middle">
                 <circle cx="7" cy="7" r="1" fill="currentColor"/>
                 <circle cx="7" cy="4" r="1" fill="currentColor"/>
@@ -26,16 +26,16 @@
               </svg>
             </button>
             <div v-if="showDropdown" class="dropdown-menu" @click.stop>
-              <button class="dropdown-item" @click="wrapMenuClick(() => { goHome(); showDropdown = false; })">
+              <button class="dropdown-item" @click="() => { isMenuClick = true; setTimeout(() => { isMenuClick = false }, 0); goHome(); showDropdown = false; }">
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="vertical-align:middle;margin-right:6px">
                   <path d="M2 6h8M6 2l4 4-4 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
                 返回主页
               </button>
               <div class="dropdown-divider"></div>
-              <button class="dropdown-item" @click="wrapMenuClick(() => { openCreateLedger(); showDropdown = false; })">+ 新建账本</button>
+              <button class="dropdown-item" @click="() => { isMenuClick = true; setTimeout(() => { isMenuClick = false }, 0); openCreateLedger(); showDropdown = false; }">+ 新建账本</button>
               <div class="dropdown-divider"></div>
-              <button class="dropdown-item" @click="wrapMenuClick(() => { store.refreshQuotes(); showDropdown = false; })" :disabled="store.quoteStatus === 'loading'">
+              <button class="dropdown-item" @click="() => { isMenuClick = true; setTimeout(() => { isMenuClick = false }, 0); store.refreshQuotes(); showDropdown = false; }" :disabled="store.quoteStatus === 'loading'">
                 <svg :class="{ 'spin': store.quoteStatus === 'loading' }" width="12" height="12" viewBox="0 0 14 14" fill="none" style="vertical-align:middle;margin-right:6px">
                   <path d="M1.5 7a5.5 5.5 0 0 1 9.3-3.95M12.5 7a5.5 5.5 0 0 1-9.3 3.95" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
                   <path d="M10.8.5v2.55h-2.55M3.2 13.5v-2.55h2.55" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
@@ -48,10 +48,10 @@
                 </span>
               </div>
               <div class="dropdown-divider"></div>
-              <button class="dropdown-item" @click="wrapMenuClick(() => { editLedger(store.currentLedger); showDropdown = false; })">编辑当前账本</button>
-              <button class="dropdown-item" @click="wrapMenuClick(() => { confirmDeleteLedger(store.currentLedger); showDropdown = false; })" style="color: #c0392b;">删除当前账本</button>
+              <button class="dropdown-item" @click="() => { isMenuClick = true; setTimeout(() => { isMenuClick = false }, 0); editLedger(store.currentLedger); showDropdown = false; }">编辑当前账本</button>
+              <button class="dropdown-item" @click="() => { isMenuClick = true; setTimeout(() => { isMenuClick = false }, 0); confirmDeleteLedger(store.currentLedger); showDropdown = false; }" style="color: #c0392b;">删除当前账本</button>
               <div class="dropdown-divider"></div>
-              <button class="dropdown-item" @click="wrapMenuClick(() => { handleLogout(); showDropdown = false; })" style="color: #c0392b;">退出</button>
+              <button class="dropdown-item" @click="() => { isMenuClick = true; setTimeout(() => { isMenuClick = false }, 0); handleLogout(); showDropdown = false; }" style="color: #c0392b;">退出</button>
             </div>
           </div>
         </div>
@@ -59,14 +59,14 @@
       
       <!-- Ledger dropdown -->
       <div v-if="store.currentLedger && showLedgerList" class="ledger-dropdown">
-        <div v-for="ledger in store.ledgers" :key="ledger.id" class="ledger-item" @click="wrapMenuClick(() => switchLedger(ledger))">
+        <div v-for="ledger in store.ledgers" :key="ledger.id" class="ledger-item" @click="() => { isMenuClick = true; setTimeout(() => { isMenuClick = false }, 0); switchLedger(ledger); }">
           <div class="ledger-color" :style="{ backgroundColor: ledger.color }"></div>
           <div class="ledger-info">
             <div class="ledger-name">{{ ledger.name }}</div>
           </div>
           <div class="ledger-actions">
-            <button class="btn btn-ghost btn-sm" @click.stop="wrapMenuClick(() => editLedger(ledger))">编辑</button>
-            <button class="btn btn-warn btn-sm" @click.stop="wrapMenuClick(() => confirmDeleteLedger(ledger))">删除</button>
+            <button class="btn btn-ghost btn-sm" @click.stop="() => { isMenuClick = true; setTimeout(() => { isMenuClick = false }, 0); editLedger(ledger); }">编辑</button>
+            <button class="btn btn-warn btn-sm" @click.stop="() => { isMenuClick = true; setTimeout(() => { isMenuClick = false }, 0); confirmDeleteLedger(ledger); }">删除</button>
           </div>
         </div>
       </div>
@@ -183,9 +183,9 @@
         :class="['row', { 'row-updating': h.refreshing, 'row-deleting': deletingHoldings.includes(`${h.market}-${h.code}`) }]"
       >
         <div class="holding-more-wrap" @click.stop>
-          <button class="btn btn-ghost holding-more-btn" @click.stop="wrapMenuClick(() => toggleHoldingActionMenu(`${h.market}-${h.code}`))">⋯</button>
+          <button class="btn btn-ghost holding-more-btn" @click.stop="() => { isMenuClick = true; setTimeout(() => { isMenuClick = false }, 0); toggleHoldingActionMenu(`${h.market}-${h.code}`); }">⋯</button>
           <div v-if="openHoldingActionMenuKey === `${h.market}-${h.code}`" class="holding-more-menu">
-            <button class="holding-more-item holding-more-item-danger" @click.stop="wrapMenuClick(() => { confirmDeleteHolding({ market: h.market, code: h.code }); closeHoldingActionMenu(); })">删除持仓</button>
+            <button class="holding-more-item holding-more-item-danger" @click.stop="() => { isMenuClick = true; setTimeout(() => { isMenuClick = false }, 0); confirmDeleteHolding({ market: h.market, code: h.code }); closeHoldingActionMenu(); }">删除持仓</button>
           </div>
         </div>
 
@@ -288,9 +288,9 @@
                   修改
                 </button>
                 <div class="trade-more-wrap" @click.stop>
-                  <button class="btn btn-ghost trade-more-btn" @click.stop="wrapMenuClick(() => toggleTradeActionMenu(`${h.market}-${h.code}-${t.id}`))">⋯</button>
+                  <button class="btn btn-ghost trade-more-btn" @click.stop="() => { isMenuClick = true; setTimeout(() => { isMenuClick = false }, 0); toggleTradeActionMenu(`${h.market}-${h.code}-${t.id}`); }">⋯</button>
                   <div v-if="openTradeActionMenuKey === `${h.market}-${h.code}-${t.id}`" class="trade-more-menu">
-                    <button class="trade-more-item trade-more-item-danger" @click.stop="wrapMenuClick(() => { deleteTrade({ market: h.market, code: h.code }, t.id); closeTradeActionMenu(); })">删除记录</button>
+                    <button class="trade-more-item trade-more-item-danger" @click.stop="() => { isMenuClick = true; setTimeout(() => { isMenuClick = false }, 0); deleteTrade({ market: h.market, code: h.code }, t.id); closeTradeActionMenu(); }">删除记录</button>
                   </div>
                 </div>
               </div>
@@ -604,15 +604,7 @@ export default {
       }
     }
     
-    // 包装菜单点击事件，标记为菜单点击
-    const wrapMenuClick = (fn) => {
-      return (...args) => {
-        isMenuClick = true
-        // 在下一个事件循环中重置标记，避免 @click.stop 阻止冒泡导致标记无法重置
-        setTimeout(() => { isMenuClick = false }, 0)
-        fn(...args)
-      }
-    }
+
     
     onMounted(() => {
       document.addEventListener('click', handleClickOutside)
@@ -1410,7 +1402,6 @@ export default {
       confirmDeleteLedger,
       deleteSelectedLedger,
       switchLedger,
-      wrapMenuClick,
       goHome,
       handleLogout,
       showErrorDetailModal,
