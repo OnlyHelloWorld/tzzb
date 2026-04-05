@@ -584,6 +584,7 @@ export default {
     const handleClickOutside = (e) => {
       // 检查是否点击了菜单外部
       const target = e.target
+      // 确保选择器正确识别所有菜单容器
       if (!target.closest('.io-dropdown') && !target.closest('.trade-more-wrap') && !target.closest('.holding-more-wrap') && !target.closest('.header-actions-group') && !target.closest('.ledger-badge')) {
         closeAllMenus()
       }
