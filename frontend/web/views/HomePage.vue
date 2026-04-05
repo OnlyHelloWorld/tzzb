@@ -25,7 +25,7 @@
       <div v-if="showBlessingEffect || store.isLoading" :class="['blessing-overlay', { 'blessing-overlay-loop': store.isLoading }]">
         <span
           v-for="(char, index) in blessingChars"
-          :key="`${store.isLoading ? 'loading' : blessingEffectKey}-${index}`"
+          :key="`${store.isLoading ? 'loading-' + loadingEffectKey : blessingEffectKey}-${index}`"
           :class="['blessing-char', store.isLoading ? 'blessing-char-loop' : 'blessing-char-pop']"
         >{{ char }}</span>
       </div>
@@ -251,7 +251,17 @@ export default {
     const blessingChars = ['恭', '喜', '发', '财']
     const showBlessingEffect = ref(false)
     const blessingEffectKey = ref(0)
+    const loadingEffectKey = ref(0)
     const errorModal = ref({ visible: false, message: '', detail: '', expanded: false })
+    
+    // 定期更新loadingEffectKey，确保动画循环播放
+    let loadingEffectInterval = null
+    if (loadingEffectInterval) clearInterval(loadingEffectInterval)
+    loadingEffectInterval = setInterval(() => {
+      if (store.isLoading) {
+        loadingEffectKey.value += 1
+      }
+    }, 1800)
     
     // 账本颜色选项
     const ledgerColors = [
@@ -478,6 +488,7 @@ export default {
       blessingChars,
       showBlessingEffect,
       blessingEffectKey,
+      loadingEffectKey,
       errorModal,
       ledgerColors,
       allLedgersCcyBreakdown,

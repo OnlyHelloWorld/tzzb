@@ -76,7 +76,7 @@
       <div v-if="showBlessingEffect || store.isLoading" :class="['blessing-overlay', { 'blessing-overlay-loop': store.isLoading }]">
         <span
           v-for="(char, index) in blessingChars"
-          :key="`${store.isLoading ? 'loading' : blessingEffectKey}-${index}`"
+          :key="`${store.isLoading ? 'loading-' + loadingEffectKey : blessingEffectKey}-${index}`"
           :class="['blessing-char', store.isLoading ? 'blessing-char-loop' : 'blessing-char-pop']"
         >{{ char }}</span>
       </div>
@@ -258,7 +258,7 @@
           </div>
 
           <!-- Trade rows -->
-          <div v-for="t in h.trades" :key="t.id" class="trade-row">
+          <div v-for="t in h.trades" :key="t.id" :class="['trade-row', { 'trade-row-deleting': t.deleting }]">
             <template v-if="editingTrade && editingTrade.holdingMarket === h.market && editingTrade.holdingCode === h.code && editingTrade.tradeId === t.id">
               <input class="field field-sm" type="date" v-model="editingTrade.date" />
               <span class="trade-type" :class="t.qty >= 0 ? 'type-buy' : 'type-sell'">
@@ -560,7 +560,17 @@ export default {
     const blessingChars = ['恭', '喜', '发', '财']
     const showBlessingEffect = ref(false)
     const blessingEffectKey = ref(0)
+    const loadingEffectKey = ref(0)
     const openLedgerActionMenuId = ref(null)
+    
+    // 定期更新loadingEffectKey，确保动画循环播放
+    let loadingEffectInterval = null
+    if (loadingEffectInterval) clearInterval(loadingEffectInterval)
+    loadingEffectInterval = setInterval(() => {
+      if (store.isLoading) {
+        loadingEffectKey.value += 1
+      }
+    }, 1800)
     const openTradeActionMenuKey = ref(null)
     const showLedgerList = ref(false)
     const showDropdown = ref(false)
@@ -663,12 +673,29 @@ export default {
       if (!newForm.value.code) return
       nameLoading.value = true
       try {
-        const result = await fetchQuote(newForm.value.market, newForm.value.code)
+        // 规范化股票代码（转大写）
+        let normalizedCode = newForm.value.code.toString().toUpperCase().trim()
+        
+        // 港股代码：如果全是数字且长度小于5，自动补0
+        if (newForm.value.market === '港股' && /^\d+$/.test(normalizedCode)) {
+          // 港股代码通常是5位，如果不足5位前面补0
+          while (normalizedCode.length < 5) {
+            normalizedCode = '0' + normalizedCode
+          }
+        }
+        
+        newForm.value.code = normalizedCode
+        
+        const result = await fetchQuote(newForm.value.market, normalizedCode)
         if (result.name) {
           newForm.value.name = result.name
         }
+        // 如果获取到价格且成本价为空，自动填充成本价
+        if (result.price > 0 && !newForm.value.price) {
+          newForm.value.price = result.price.toString()
+        }
       } catch (err) {
-        console.warn('获取股票名称失败:', err)
+        console.warn('获取股票信息失败:', err)
       } finally {
         nameLoading.value = false
       }
@@ -788,18 +815,28 @@ export default {
       const holding = store.holdings.find(h => h.market === holdingInfo.market && h.code === holdingInfo.code)
       if (!holding || holding.trades.length <= 1) return
 
-      const rollback = JSON.parse(JSON.stringify(store.holdings))
-      holding.trades = holding.trades.filter(t => t.id !== tradeId)
-
-      try {
-        await store.saveHoldings(store.holdings)
-        triggerBlessingEffect()
-        store.showMessage('交易记录删除成功')
-      } catch (err) {
-        store.holdings = rollback
-        store.showMessage('删除失败: ' + err.message, true)
-        showErrorDetailModal('操作失败', err)
+      // 标记要删除的交易记录，用于动画效果
+      const trade = holding.trades.find(t => t.id === tradeId)
+      if (trade) {
+        trade.deleting = true
       }
+
+      const rollback = JSON.parse(JSON.stringify(store.holdings))
+
+      // 延迟删除，让动画有时间播放
+      setTimeout(async () => {
+        try {
+          // 从trades数组中过滤掉该交易记录
+          holding.trades = holding.trades.filter(t => t.id !== tradeId)
+          await store.saveHoldings(store.holdings)
+          triggerBlessingEffect()
+          store.showMessage('交易记录删除成功')
+        } catch (err) {
+          store.holdings = rollback
+          store.showMessage('删除失败: ' + err.message, true)
+          showErrorDetailModal('操作失败', err)
+        }
+      }, 800)
     }
     
     // 切换交易菜单
@@ -1011,8 +1048,18 @@ export default {
         const deletedId = deleteLedgerConfirm.value.id
         await api.deleteLedger(deletedId)
         deleteLedgerConfirm.value = null
-        goHome()
-        await store.loadData()
+        
+        // 局部更新：从ledgers数组中移除已删除的账本
+        store.ledgers = store.ledgers.filter(ledger => ledger.id !== deletedId)
+        
+        // 重新计算账本汇总信息
+        await store.calculateAllLedgerSummaries()
+        
+        // 如果删除的是当前账本，回到首页
+        if (store.currentLedger && store.currentLedger.id === deletedId) {
+          goHome()
+        }
+        
         triggerBlessingEffect()
         store.showMessage('账本删除成功')
       } catch (err) {
@@ -1116,6 +1163,7 @@ export default {
       blessingChars,
       showBlessingEffect,
       blessingEffectKey,
+      loadingEffectKey,
       openLedgerActionMenuId,
       openTradeActionMenuKey,
       showLedgerList,
