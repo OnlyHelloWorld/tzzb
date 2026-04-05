@@ -141,12 +141,12 @@
         <!-- ── Import/Export ── -->
         <div class="io-section">
           <div class="io-btns io-btns-right">
-            <div class="io-dropdown" @click.stop>
-              <button class="btn btn-ghost" style="font-size:11px" @click="wrapMenuClick(() => showHoldingIOMenu = !showHoldingIOMenu)">导入/导出</button>
+            <div class="io-dropdown">
+              <button class="btn btn-ghost" style="font-size:11px" @click="() => { showHoldingIOMenu = !showHoldingIOMenu; }">导入/导出</button>
               <div v-if="showHoldingIOMenu" class="io-dropdown-menu">
-                <button class="dropdown-item" @click="wrapMenuClick(() => { handleExportCSV(); showHoldingIOMenu = false; })">导出 CSV</button>
-                <button class="dropdown-item" @click="wrapMenuClick(() => { handleExportPDF(); showHoldingIOMenu = false; })">导出 PDF</button>
-                <button class="dropdown-item" @click="wrapMenuClick(() => { triggerImport(); showHoldingIOMenu = false; })">导入 CSV</button>
+                <button class="dropdown-item" @click="() => { handleExportCSV(); showHoldingIOMenu = false; }">导出 CSV</button>
+                <button class="dropdown-item" @click="() => { handleExportPDF(); showHoldingIOMenu = false; }">导出 PDF</button>
+                <button class="dropdown-item" @click="() => { triggerImport(); showHoldingIOMenu = false; }">导入 CSV</button>
               </div>
             </div>
             <input ref="importInput" type="file" accept=".csv" style="display:none" @change="handleImport" />
