@@ -182,14 +182,16 @@
         :style="{ '--stagger': `${index * 60}ms` }"
         :class="['row', { 'row-updating': h.refreshing, 'row-deleting': deletingHoldings.includes(`${h.market}-${h.code}`) }]"
       >
+        <!-- 持仓操作菜单 -->
         <div class="holding-more-wrap" @click.stop>
-          <button class="btn btn-ghost holding-more-btn" @click.stop="() => { isMenuClick = true; setTimeout(() => { isMenuClick = false }, 0); toggleHoldingActionMenu(`${h.market}-${h.code}`); }">⋯</button>
-          <div v-if="openHoldingActionMenuKey === `${h.market}-${h.code}`" class="holding-more-menu">
-            <button class="holding-more-item holding-more-item-danger" @click.stop="() => { isMenuClick = true; setTimeout(() => { isMenuClick = false }, 0); confirmDeleteHolding({ market: h.market, code: h.code }); closeHoldingActionMenu(); }">删除持仓</button>
+          <button class="btn btn-ghost holding-more-btn" @click="toggleHoldingMenu(h)">⋯</button>
+          <div v-if="isHoldingMenuOpen(h)" class="holding-more-menu">
+            <button class="holding-more-item holding-more-item-danger" @click="confirmDeleteHolding({ market: h.market, code: h.code })">删除持仓</button>
           </div>
         </div>
 
-        <div class="row-head" @click="expanded = expanded === `${h.market}-${h.code}` ? null : `${h.market}-${h.code}`">
+        <!-- 持仓标题行 -->
+        <div class="row-head" @click="toggleHoldingExpand(h)">
           <div>
             <div class="name-row">
               <span class="stock-name">{{ h.name }}</span>
@@ -220,15 +222,15 @@
               </div>
             </div>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"
-              :style="{ flexShrink: 0, transition: 'transform .2s', transform: expanded === `${h.market}-${h.code}` ? 'rotate(180deg)' : 'none' }">
+              :style="{ flexShrink: 0, transition: 'transform .2s', transform: isHoldingExpanded(h) ? 'rotate(180deg)' : 'none' }">
               <path d="M4 6l4 4 4-4" stroke="#bbb" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </div>
         </div>
 
-        <!-- Trade zone -->
+        <!-- 交易记录区域 -->
         <transition name="expand" mode="out-in">
-          <div v-if="expanded === `${h.market}-${h.code}`" key="trade-zone" class="trade-zone">
+          <div v-if="isHoldingExpanded(h)" key="trade-zone" class="trade-zone">
           <div class="trade-header">
             <span class="trade-title">买入记录</span>
             <div class="trade-actions">
@@ -618,7 +620,7 @@ export default {
     let _id = 100
     const holdings = ref([])
     const tab = ref('全部')
-    const expanded = ref(null)
+    const expandedHoldings = ref(new Set())
     const editingTrade = ref(null)
     const resetTarget = ref(null)
     const resetPrice = ref('')
@@ -1295,6 +1297,36 @@ export default {
       }
     }
     
+    // 切换持仓菜单
+    const toggleHoldingMenu = (holding) => {
+      const holdingKey = `${holding.market}-${holding.code}`
+      openHoldingActionMenuKey.value = openHoldingActionMenuKey.value === holdingKey ? null : holdingKey
+    }
+    
+    // 检查持仓菜单是否打开
+    const isHoldingMenuOpen = (holding) => {
+      const holdingKey = `${holding.market}-${holding.code}`
+      return openHoldingActionMenuKey.value === holdingKey
+    }
+    
+    // 切换持仓展开状态
+    const toggleHoldingExpand = (holding) => {
+      const holdingKey = `${holding.market}-${holding.code}`
+      const currentExpanded = new Set(expandedHoldings.value)
+      if (currentExpanded.has(holdingKey)) {
+        currentExpanded.delete(holdingKey)
+      } else {
+        currentExpanded.add(holdingKey)
+      }
+      expandedHoldings.value = currentExpanded
+    }
+    
+    // 检查持仓是否展开
+    const isHoldingExpanded = (holding) => {
+      const holdingKey = `${holding.market}-${holding.code}`
+      return expandedHoldings.value.has(holdingKey)
+    }
+    
     // 页面加载时
     onMounted(async () => {
       // 加载账本数据
@@ -1327,7 +1359,7 @@ export default {
     return {
       store,
       tab,
-      expanded,
+      expandedHoldings,
       editingTrade,
       resetTarget,
       resetPrice,
