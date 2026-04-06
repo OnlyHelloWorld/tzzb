@@ -58,31 +58,12 @@
               <Tag :market="item.label" /> &thinsp;
               <span>{{ SYM[item.ccy] }}{{ fmt(item.val) }}</span>
               <span v-if="item.ccy !== 'CNY'" class="ccy-conv"> ≈ ¥{{ fmt(toCNY(item.val, item.ccy, store.fx)) }}</span>
+              <span class="ccy-percentage"> ({{ fmt(getCcyPercentage(item.ccy), 1) }}%)</span>
             </div>
           </div>
         </div>
 
-        <!-- ── Market Distribution ── -->
-        <div class="chart-card">
-          <div class="chart-header">
-            <div class="chart-title">市场分布</div>
-            <div class="chart-subtitle">各市场市值占比</div>
-          </div>
-          <div class="market-distribution">
-            <div class="market-chart">
-              <canvas ref="marketChart" width="200" height="200"></canvas>
-            </div>
-            <div class="market-legend">
-              <div v-for="(item, index) in marketData" :key="item.ccy" class="legend-item">
-                <div class="legend-color" :style="{ backgroundColor: marketColors[index] }"></div>
-                <div class="legend-info">
-                  <div class="legend-label">{{ item.label }}</div>
-                  <div class="legend-value">¥ {{ fmt(item.value) }} ({{ fmt(item.percentage, 1) }}%)</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+
 
         <!-- ── Holdings by Market Value ── -->
         <div class="chart-card">
@@ -156,61 +137,30 @@ export default {
   setup() {
     const router = useRouter()
     const store = useAppStore()
-    const marketChart = ref(null)
-    let chartInstance = null
-    
     // 应用主题样式
     const appThemeStyle = computed(() => {
       return { '--ledger-theme': '#1a1814' }
     })
-    
+
     // 所有账本的货币分类
     const allLedgersCcyBreakdown = computed(() => [
       { label: 'A股', ccy: 'CNY', val: store.allLedgersSummary.byCcy.CNY },
       { label: '港股', ccy: 'HKD', val: store.allLedgersSummary.byCcy.HKD },
       { label: '美股', ccy: 'USD', val: store.allLedgersSummary.byCcy.USD }
     ])
-    
-    // 市场分布数据
-    const marketData = computed(() => {
-      const total = store.allLedgersSummary.totalCNY
-      return [
-        {
-          label: 'A股',
-          ccy: 'CNY',
-          value: toCNY(store.allLedgersSummary.byCcy.CNY, 'CNY', store.fx),
-          percentage: total > 0 ? (toCNY(store.allLedgersSummary.byCcy.CNY, 'CNY', store.fx) / total) * 100 : 0
-        },
-        {
-          label: '港股',
-          ccy: 'HKD',
-          value: toCNY(store.allLedgersSummary.byCcy.HKD, 'HKD', store.fx),
-          percentage: total > 0 ? (toCNY(store.allLedgersSummary.byCcy.HKD, 'HKD', store.fx) / total) * 100 : 0
-        },
-        {
-          label: '美股',
-          ccy: 'USD',
-          value: toCNY(store.allLedgersSummary.byCcy.USD, 'USD', store.fx),
-          percentage: total > 0 ? (toCNY(store.allLedgersSummary.byCcy.USD, 'USD', store.fx) / total) * 100 : 0
-        }
-      ].filter(item => item.value > 0)
-    })
-    
-    // 市场颜色
-    const marketColors = ['#1a7a4a', '#1a6fa8', '#8e44ad']
-    
+
     // 所有持仓按市值排序
     const topHoldings = computed(() => {
       const allHoldings = []
       const total = store.allLedgersSummary.totalCNY
-      
+
       store.allLedgersHoldings.forEach(holding => {
         const ccy = holding.market === 'A股' ? 'CNY' : holding.market === '港股' ? 'HKD' : 'USD'
         const price = store.prices[holding.code] || 0
         const qty = holding.trades.reduce((sum, trade) => sum + trade.qty, 0)
         const mv = price * qty
         const mvCNY = toCNY(mv, ccy, store.fx)
-        
+
         allHoldings.push({
           ...holding,
           mv,
@@ -218,10 +168,10 @@ export default {
           percentage: total > 0 ? (mvCNY / total) * 100 : 0
         })
       })
-      
+
       return allHoldings.sort((a, b) => b.mvCNY - a.mvCNY).slice(0, 10)
     })
-    
+
     // 账本按市值排序
     const sortedLedgers = computed(() => {
       const total = store.allLedgersSummary.totalCNY
@@ -232,96 +182,46 @@ export default {
         }))
         .sort((a, b) => b.totalCNY - a.totalCNY)
     })
-    
+
     // 获取持仓颜色
     const getHoldingColor = (index) => {
       const colors = ['#1a7a4a', '#1a6fa8', '#8e44ad', '#f39c12', '#e74c3c']
       return colors[index % colors.length]
     }
-    
-    // 初始化市场分布图表
-    const initMarketChart = () => {
-      if (!marketChart.value) return
-      
-      const ctx = marketChart.value.getContext('2d')
-      
-      if (chartInstance) {
-        chartInstance.destroy()
-      }
-      
-      const data = marketData.value
-      const labels = data.map(item => item.label)
-      const values = data.map(item => item.value)
-      
-      chartInstance = new window.Chart(ctx, {
-        type: 'doughnut',
-        data: {
-          labels: labels,
-          datasets: [{
-            data: values,
-            backgroundColor: marketColors.slice(0, data.length),
-            borderWidth: 0,
-            hoverOffset: 4
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          cutout: '70%',
-          plugins: {
-            legend: {
-              display: false
-            },
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  const label = context.label || ''
-                  const value = context.raw || 0
-                  const total = context.dataset.data.reduce((a, b) => a + b, 0)
-                  const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0
-                  return `${label}: ¥${fmt(value)} (${percentage}%)`
-                }
-              }
-            }
-          }
-        }
-      })
+
+    // 计算各货币的百分比
+    const getCcyPercentage = (ccy) => {
+      const total = store.allLedgersSummary.totalCNY
+      if (total === 0) return 0
+      const value = toCNY(store.allLedgersSummary.byCcy[ccy], ccy, store.fx)
+      return (value / total) * 100
     }
-    
+
     // 返回首页
     const goHome = () => {
       router.push('/')
     }
-    
+
     // 页面加载时
     onMounted(async () => {
       await store.loadData()
-      // 延迟初始化图表，确保DOM已渲染
-      setTimeout(() => {
-        initMarketChart()
-      }, 100)
     })
     
     // 页面卸载时
     onUnmounted(() => {
-      if (chartInstance) {
-        chartInstance.destroy()
-      }
     })
-    
+
     return {
       store,
       appThemeStyle,
       allLedgersCcyBreakdown,
-      marketData,
-      marketColors,
       topHoldings,
       sortedLedgers,
-      marketChart,
       fmt,
       toCNY,
       SYM,
       getHoldingColor,
+      getCcyPercentage,
       goHome
     }
   }
