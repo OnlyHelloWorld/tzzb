@@ -502,21 +502,51 @@ export async function exportPDF(holdings = [], prices = {}, fx = { USD: 7.28, HK
     totalPnL += item.data.pnlCNY
   })
 
-  const page = renderPdfPage({
-    title: '投资账本 - 持仓报告',
-    subtitle: `导出时间 ${now.toLocaleString('zh-CN')} ｜ 持仓数量 ${holdings.length}`,
-    summary: [`总市值(CNY): ${SYM.CNY}${totalMV.toFixed(2)}`, `总盈亏(CNY): ${totalPnL >= 0 ? '+' : ''}${SYM.CNY}${totalPnL.toFixed(2)}`],
-    headers: ['市场', '代码', '名称', '持仓', '成本均价', '现价', '市值(CNY)', '盈亏(CNY)', '盈亏%'],
-    rows: rows.map(({ h, data }) => ([
-      h.market, h.code, h.name || '', data.qty.toFixed(0),
-      `${SYM[data.ccy]}${data.avgCost.toFixed(2)}`,
-      `${SYM[data.ccy]}${data.price.toFixed(2)}`,
-      `${SYM.CNY}${data.mvCNY.toFixed(2)}`,
-      `${data.pnlCNY >= 0 ? '+' : ''}${SYM.CNY}${data.pnlCNY.toFixed(2)}`,
-      `${data.pnlPct.toFixed(2)}%`,
-    ])),
-  })
-  doc.addImage(page, 'PNG', 0, 0, 210, 297)
+  const summary = [`总市值(CNY): ${SYM.CNY}${totalMV.toFixed(2)}`, `总盈亏(CNY): ${totalPnL >= 0 ? '+' : ''}${SYM.CNY}${totalPnL.toFixed(2)}`]
+  const headers = ['市场', '代码', '名称', '持仓', '成本均价', '现价', '市值(CNY)', '盈亏(CNY)', '盈亏%']
+  const dataRows = rows.map(({ h, data }) => ([
+    h.market, h.code, h.name || '', data.qty.toFixed(0),
+    `${SYM[data.ccy]}${data.avgCost.toFixed(2)}`,
+    `${SYM[data.ccy]}${data.price.toFixed(2)}`,
+    `${SYM.CNY}${data.mvCNY.toFixed(2)}`,
+    `${data.pnlCNY >= 0 ? '+' : ''}${SYM.CNY}${data.pnlCNY.toFixed(2)}`,
+    `${data.pnlPct.toFixed(2)}%`,
+  ]))
+  
+  // 分页处理
+  const pageHeight = 1754 // 画布高度
+  const rowHeight = 38 // 行高
+  const startY = 170 + summary.length * 42 + 10 // 表格开始Y坐标
+  const maxRowsPerPage = Math.floor((pageHeight - startY - 60) / rowHeight) // 每页最大行数
+  
+  let currentPage = 0
+  let currentRow = 0
+  
+  while (currentRow < dataRows.length) {
+    // 计算当前页的行数
+    const endRow = Math.min(currentRow + maxRowsPerPage, dataRows.length)
+    const pageRows = dataRows.slice(currentRow, endRow)
+    
+    // 渲染当前页
+    const page = renderPdfPage({
+      title: '投资账本 - 持仓报告',
+      subtitle: `导出时间 ${now.toLocaleString('zh-CN')} ｜ 持仓数量 ${holdings.length} ｜ 第 ${currentPage + 1} 页`,
+      summary: currentPage === 0 ? summary : [], // 只在第一页显示汇总信息
+      headers: headers,
+      rows: pageRows,
+      landscape: false,
+    })
+    
+    // 添加页面到PDF
+    if (currentPage > 0) {
+      doc.addPage('p', 'a4')
+    }
+    doc.addImage(page, 'PNG', 0, 0, 210, 297)
+    
+    // 更新当前行和页码
+    currentRow = endRow
+    currentPage++
+  }
 
   const date = now.toISOString().slice(0, 10)
   doc.save(`tzzb-${date}.pdf`)
@@ -530,7 +560,7 @@ export async function exportPDF(holdings = [], prices = {}, fx = { USD: 7.28, HK
  * @param {Object} fx - 汇率数据
  */
 export async function exportAllLedgersPDF(ledgers = [], ledgerHoldings = {}, prices = {}, fx = { USD: 7.28, HKD: 0.925 }) {
-  const merged = []
+  const allRows = []
   let totalMV = 0
   let totalPnL = 0
   for (const ledger of ledgers) {
@@ -538,10 +568,10 @@ export async function exportAllLedgersPDF(ledgers = [], ledgerHoldings = {}, pri
     const holdings = Array.isArray(ledgerHoldings) ? 
       ledgerHoldings.filter(h => h.ledger_id === ledger.id) : 
       (ledgerHoldings[ledger.id] || [])
-    merged.push([`【账本】${ledger.name}`, '', '', '', '', '', '', '', ''])
+    allRows.push([`【账本】${ledger.name}`, '', '', '', '', '', '', '', ''])
     if (holdings.length === 0) {
-      merged.push(['', '-', '-', '(空账本)', '-', '-', '-', '-', '-'])
-      merged.push(['', '小计', '-', '-', '-', '-', `${SYM.CNY}0.00`, `${SYM.CNY}0.00`, '0.00%'])
+      allRows.push(['', '-', '-', '(空账本)', '-', '-', '-', '-', '-'])
+      allRows.push(['', '小计', '-', '-', '-', '-', `${SYM.CNY}0.00`, `${SYM.CNY}0.00`, '0.00%'])
       continue
     }
     let ledgerMV = 0
@@ -550,7 +580,7 @@ export async function exportAllLedgersPDF(ledgers = [], ledgerHoldings = {}, pri
       const data = toHoldingRow(h, prices, fx)
       ledgerMV += data.mvCNY
       ledgerPnL += data.pnlCNY
-      merged.push([
+      allRows.push([
         '',
         h.market,
         h.code,
@@ -564,7 +594,7 @@ export async function exportAllLedgersPDF(ledgers = [], ledgerHoldings = {}, pri
     })
     totalMV += ledgerMV
     totalPnL += ledgerPnL
-    merged.push([
+    allRows.push([
       '',
       '小计',
       '-',
@@ -579,15 +609,43 @@ export async function exportAllLedgersPDF(ledgers = [], ledgerHoldings = {}, pri
 
   const doc = new jsPDF('l', 'mm', 'a4')
   const now = new Date()
-  const page = renderPdfPage({
-    title: '投资账本 - 所有账本汇总报告',
-    subtitle: `导出时间 ${now.toLocaleString('zh-CN')}`,
-    summary: [`总市值(CNY): ${SYM.CNY}${totalMV.toFixed(2)}`, `总盈亏(CNY): ${totalPnL >= 0 ? '+' : ''}${SYM.CNY}${totalPnL.toFixed(2)}`],
-    headers: ['账本', '市场', '代码', '名称', '持仓', '成本均价', '市值(CNY)', '盈亏(CNY)', '盈亏%'],
-    rows: merged,
-    landscape: true,
-  })
-  doc.addImage(page, 'PNG', 0, 0, 297, 210)
+  const summary = [`总市值(CNY): ${SYM.CNY}${totalMV.toFixed(2)}`, `总盈亏(CNY): ${totalPnL >= 0 ? '+' : ''}${SYM.CNY}${totalPnL.toFixed(2)}`]
+  const headers = ['账本', '市场', '代码', '名称', '持仓', '成本均价', '市值(CNY)', '盈亏(CNY)', '盈亏%']
+  
+  // 分页处理
+  const pageHeight = 1754 // 画布高度
+  const rowHeight = 38 // 行高
+  const startY = 170 + summary.length * 42 + 10 // 表格开始Y坐标
+  const maxRowsPerPage = Math.floor((pageHeight - startY - 60) / rowHeight) // 每页最大行数
+  
+  let currentPage = 0
+  let currentRow = 0
+  
+  while (currentRow < allRows.length) {
+    // 计算当前页的行数
+    const endRow = Math.min(currentRow + maxRowsPerPage, allRows.length)
+    const pageRows = allRows.slice(currentRow, endRow)
+    
+    // 渲染当前页
+    const page = renderPdfPage({
+      title: '投资账本 - 所有账本汇总报告',
+      subtitle: `导出时间 ${now.toLocaleString('zh-CN')} ｜ 第 ${currentPage + 1} 页`,
+      summary: currentPage === 0 ? summary : [], // 只在第一页显示汇总信息
+      headers: headers,
+      rows: pageRows,
+      landscape: true,
+    })
+    
+    // 添加页面到PDF
+    if (currentPage > 0) {
+      doc.addPage('l', 'a4')
+    }
+    doc.addImage(page, 'PNG', 0, 0, 297, 210)
+    
+    // 更新当前行和页码
+    currentRow = endRow
+    currentPage++
+  }
 
   doc.save(`all-ledgers-${now.toISOString().slice(0, 10)}.pdf`)
 }
