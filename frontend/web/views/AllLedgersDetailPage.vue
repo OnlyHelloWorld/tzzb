@@ -76,16 +76,20 @@
               <div class="holding-ranking-left">
                 <div class="ranking-number">{{ (currentPage - 1) * 10 + index + 1 }}</div>
                 <div class="holding-info">
-                  <div class="holding-name">{{ holding.name }}</div>
-                  <div class="holding-code">{{ holding.market }} {{ holding.code }}</div>
+                  <div class="holding-name-row">
+                    <span class="holding-name">{{ holding.name }}</span>
+                    <span class="holding-tag market-tag" :class="`market-${holding.market}`">{{ holding.market }}</span>
+                    <span class="holding-tag code-tag">{{ holding.code }}</span>
+                    <span class="holding-tag qty-tag">{{ holding.qty }}股</span>
+                  </div>
                 </div>
               </div>
               <div class="holding-ranking-right">
                 <div class="holding-value">¥ {{ fmt(holding.mvCNY) }}</div>
-                <div class="holding-percentage">{{ fmt(holding.percentage, 1) }}%</div>
               </div>
               <div class="holding-bar">
                 <div class="holding-bar-fill" :style="{ width: `${holding.percentage * 3}%`, backgroundColor: getHoldingColor(index) }"></div>
+                <div class="holding-bar-percentage">{{ fmt(holding.percentage, 1) }}%</div>
               </div>
             </div>
           </div>
@@ -122,10 +126,10 @@
               </div>
               <div class="ledger-ranking-right">
                 <div class="ledger-value">¥ {{ fmt(ledger.totalCNY) }}</div>
-                <div class="ledger-percentage">{{ fmt(ledger.percentage, 1) }}%</div>
               </div>
               <div class="ledger-bar">
                 <div class="ledger-bar-fill" :style="{ width: `${ledger.percentage * 3}%`, backgroundColor: ledger.color }"></div>
+                <div class="ledger-bar-percentage">{{ fmt(ledger.percentage, 1) }}%</div>
               </div>
             </div>
           </div>
@@ -180,6 +184,7 @@ export default {
 
         allHoldings.push({
           ...holding,
+          qty,
           mv,
           mvCNY,
           percentage: total > 0 ? (mvCNY / total) * 100 : 0

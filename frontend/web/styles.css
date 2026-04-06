@@ -514,10 +514,8 @@ input:focus, select:focus { outline: none; }
   font-size: 14px;
   font-weight: 600;
   color: #1a1814;
-  margin-bottom: 2px;
 }
 
-.holding-code,
 .ledger-holdings {
   font-size: 12px;
   color: #888;
@@ -526,7 +524,7 @@ input:focus, select:focus { outline: none; }
 .holding-ranking-right,
 .ledger-ranking-right {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   margin-bottom: 4px;
 }
@@ -537,13 +535,6 @@ input:focus, select:focus { outline: none; }
   font-weight: 600;
   font-family: monospace;
   color: #1a1814;
-}
-
-.holding-percentage,
-.ledger-percentage {
-  font-size: 12px;
-  color: #888;
-  font-family: monospace;
 }
 
 .holding-bar,
@@ -563,6 +554,58 @@ input:focus, select:focus { outline: none; }
   height: 100%;
   border-radius: 3px;
   transition: width 0.5s ease;
+}
+
+.holding-bar-percentage,
+.ledger-bar-percentage {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  color: #666;
+  font-family: monospace;
+}
+
+.holding-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.holding-tag {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.market-tag {
+  color: #fff;
+}
+
+.market-A股 {
+  background-color: #e74c3c;
+}
+
+.market-港股 {
+  background-color: #3498db;
+}
+
+.market-美股 {
+  background-color: #27ae60;
+}
+
+.code-tag {
+  background-color: #d4cfc6;
+  color: #1a1814;
+}
+
+.qty-tag {
+  background-color: #f39c12;
+  color: #fff;
 }
 
 /* Responsive */
