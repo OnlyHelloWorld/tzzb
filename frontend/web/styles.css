@@ -526,6 +526,7 @@ input:focus, select:focus { outline: none; }
   display: flex;
   justify-content: flex-end;
   align-items: center;
+  gap: 8px;
   margin-bottom: 4px;
 }
 
@@ -606,6 +607,23 @@ input:focus, select:focus { outline: none; }
 .qty-tag {
   background-color: #f39c12;
   color: #fff;
+}
+
+.percentage-tag {
+  background-color: #9b59b6;
+  color: #fff;
+}
+
+.holdings-tag {
+  background-color: #1abc9c;
+  color: #fff;
+}
+
+.ledger-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 /* Responsive */
