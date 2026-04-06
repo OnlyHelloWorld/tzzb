@@ -577,7 +577,7 @@ export default {
     let _id = 100
     const holdings = ref([])
     const tab = ref('全部')
-    const expanded = ref(null)
+    const expanded = ref({})
     const editingTrade = ref(null)
     const resetTarget = ref(null)
     const resetPrice = ref('')
@@ -1348,13 +1348,13 @@ export default {
     // 处理持仓点击
     const handleHoldingClick = (holding) => {
       const holdingKey = `${holding.market}-${holding.code}`
-      expanded.value = expanded.value === holdingKey ? null : holdingKey
+      expanded.value[holdingKey] = !expanded.value[holdingKey]
     }
     
     // 检查持仓是否展开
     const isHoldingExpanded = (holding) => {
       const holdingKey = `${holding.market}-${holding.code}`
-      return expanded.value === holdingKey
+      return expanded.value[holdingKey] || false
     }
     
     // 页面加载时
