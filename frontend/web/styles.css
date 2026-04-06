@@ -364,6 +364,224 @@ input:focus, select:focus { outline: none; }
 .icon-btn:hover { background: rgba(26,24,20,.08); }
 .all-ledgers-summary-card {
   padding-right: 22px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.all-ledgers-summary-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,.1);
+  transform: translateY(-1px);
+}
+
+.all-ledgers-hint {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #999;
+  text-align: right;
+  transition: color 0.2s;
+}
+
+.all-ledgers-summary-card:hover .all-ledgers-hint {
+  color: #666;
+}
+
+/* Chart cards */
+.chart-card {
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid #ede9e2;
+  padding: 22px 22px 18px;
+  margin-bottom: 20px;
+  border-top: 3px solid color-mix(in srgb, #1a1814 42%, #ede9e2);
+}
+
+.chart-header {
+  margin-bottom: 16px;
+}
+
+.chart-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1814;
+  margin-bottom: 4px;
+}
+
+.chart-subtitle {
+  font-size: 12px;
+  color: #888;
+}
+
+/* Market distribution */
+.market-distribution {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+  flex-wrap: wrap;
+}
+
+.market-chart {
+  flex: 0 0 200px;
+  height: 200px;
+}
+
+.market-legend {
+  flex: 1;
+  min-width: 200px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.legend-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+}
+
+.legend-info {
+  flex: 1;
+}
+
+.legend-label {
+  font-size: 14px;
+  color: #1a1814;
+  margin-bottom: 2px;
+}
+
+.legend-value {
+  font-size: 12px;
+  color: #888;
+  font-family: monospace;
+}
+
+/* Holdings ranking */
+.holdings-ranking,
+.ledgers-ranking {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.holding-ranking-item,
+.ledger-ranking-item {
+  position: relative;
+  padding: 14px 16px;
+  background: #f9f7f3;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.holding-ranking-item:hover,
+.ledger-ranking-item:hover {
+  background: #f5f3ef;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+
+.holding-ranking-left,
+.ledger-ranking-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.ranking-number {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #1a1814;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.holding-info,
+.ledger-info {
+  flex: 1;
+}
+
+.holding-name,
+.ledger-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1814;
+  margin-bottom: 2px;
+}
+
+.holding-code,
+.ledger-holdings {
+  font-size: 12px;
+  color: #888;
+}
+
+.holding-ranking-right,
+.ledger-ranking-right {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.holding-value,
+.ledger-value {
+  font-size: 14px;
+  font-weight: 600;
+  font-family: monospace;
+  color: #1a1814;
+}
+
+.holding-percentage,
+.ledger-percentage {
+  font-size: 12px;
+  color: #888;
+  font-family: monospace;
+}
+
+.holding-bar,
+.ledger-bar {
+  position: relative;
+  height: 6px;
+  background: #e8e0d4;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.holding-bar-fill,
+.ledger-bar-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .market-distribution {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .market-chart {
+    align-self: center;
+  }
+  
+  .holding-ranking-right,
+  .ledger-ranking-right {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
 }
 .ledger-donut-wrap {
   display: flex;

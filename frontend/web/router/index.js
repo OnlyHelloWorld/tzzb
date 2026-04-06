@@ -1,6 +1,7 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import HomePage from '../views/HomePage.vue'
 import LedgerPage from '../views/LedgerPage.vue'
+import AllLedgersDetailPage from '../views/AllLedgersDetailPage.vue'
 import LoginPage from '../components/LoginPage.vue'
 import { isLoggedIn } from '../lib/api.js'
 
@@ -20,6 +21,11 @@ const routes = [
     name: 'Ledger',
     component: LedgerPage,
     props: true
+  },
+  {
+    path: '/all-ledgers-detail',
+    name: 'AllLedgersDetail',
+    component: AllLedgersDetailPage
   },
   {
     path: '/',
