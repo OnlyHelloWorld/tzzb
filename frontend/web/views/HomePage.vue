@@ -69,6 +69,7 @@
               <Tag :market="item.label" /> &thinsp;
               <span>{{ SYM[item.ccy] }}{{ fmt(item.val) }}</span>
               <span v-if="item.ccy !== 'CNY'" class="ccy-conv"> ≈ ¥{{ fmt(toCNY(item.val, item.ccy, store.fx)) }}</span>
+              <span class="ccy-percentage"> ({{ fmt(getCcyPercentage(item.ccy), 1) }}%)</span>
             </div>
             <div class="io-btns io-btns-right">
               <div class="io-dropdown" @click.stop>
@@ -456,7 +457,15 @@ export default {
     const navigateToAllLedgersDetail = () => {
       router.push('/all-ledgers-detail')
     }
-    
+
+    // 计算各货币的百分比
+    const getCcyPercentage = (ccy) => {
+      const total = store.allLedgersSummary.totalCNY
+      if (total === 0) return 0
+      const value = toCNY(store.allLedgersSummary.byCcy[ccy], ccy, store.fx)
+      return (value / total) * 100
+    }
+
     // 格式化错误详情
     const formatErrorDetail = (err) => {
       const detail = err?.detail
@@ -534,6 +543,7 @@ export default {
       handleLogin,
       handleLogout,
       navigateToAllLedgersDetail,
+      getCcyPercentage,
       showErrorDetailModal,
       closeErrorModal,
       copyErrorDetail
