@@ -469,7 +469,7 @@ input:focus, select:focus { outline: none; }
 .holding-ranking-item,
 .ledger-ranking-item {
   position: relative;
-  padding: 14px 16px;
+  padding: 10px 14px;
   background: #f9f7f3;
   border-radius: 8px;
   transition: all 0.2s;
@@ -486,8 +486,8 @@ input:focus, select:focus { outline: none; }
 .ledger-ranking-left {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
+  gap: 10px;
+  margin-bottom: 4px;
 }
 
 .ranking-number {
@@ -528,7 +528,7 @@ input:focus, select:focus { outline: none; }
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .holding-value,
