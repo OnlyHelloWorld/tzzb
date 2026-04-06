@@ -11,10 +11,10 @@
         <span class="app-title">投资账本</span>
       </div>
       <div class="header-right">
-        <button class="icon-btn" title="返回" @click="goHome()">
+        <button class="icon-btn" title="返回首页" @click="goHome()">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M10 2.5 7 5.5 10 8.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M13 8H3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+            <path d="M4 10h8M4 6h10M4 14h10M10 6v8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+            <path d="M7 2v4h2V2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
       </div>
