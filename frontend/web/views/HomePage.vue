@@ -67,13 +67,10 @@
               <span>{{ SYM[item.ccy] }}{{ fmt(item.val) }}</span>
               <span v-if="item.ccy !== 'CNY'" class="ccy-conv"> ≈ ¥{{ fmt(toCNY(item.val, item.ccy, store.fx)) }}</span>
             </div>
-          </div>
-          <!-- ── Import/Export for all ledgers ── -->
-          <div class="ledger-io-section">
-            <div class="io-btns">
+            <div class="io-btns io-btns-right">
               <div class="io-dropdown" @click.stop>
                 <button class="btn btn-ink" style="font-size:11px" @click="showAllLedgerIOMenu = !showAllLedgerIOMenu">
-                  导入/导出所有账本
+                  导入/导出
                 </button>
                 <div v-if="showAllLedgerIOMenu" class="io-dropdown-menu">
                   <button class="dropdown-item" @click="handleExportAllLedgersCSV(); showAllLedgerIOMenu = false;">导出所有账本 CSV</button>
@@ -83,8 +80,8 @@
               </div>
               <input ref="allLedgersImportInput" type="file" accept=".csv" style="display:none" @change="handleAllLedgersImport" />
             </div>
-            <div v-if="store.ioMessage" class="io-message" :class="store.ioMessageClass">{{ store.ioMessage }}</div>
           </div>
+          <div v-if="store.ioMessage" class="io-message" :class="store.ioMessageClass">{{ store.ioMessage }}</div>
         </div>
 
         <div class="ledgers-grid">

@@ -135,24 +135,20 @@
                 <span class="toggle-slider"></span>
               </label>
             </div>
-          </div>
-        </div>
-
-        <!-- ── Import/Export ── -->
-        <div class="io-section">
-          <div class="io-btns io-btns-right">
-            <div class="io-dropdown" @click.stop>
-              <button class="btn btn-ghost" style="font-size:11px" @click="toggleHoldingIOMenu">导入/导出</button>
-              <div v-if="showHoldingIOMenu" class="io-dropdown-menu">
-                <button class="dropdown-item" @click="handleExportCSV">导出 CSV</button>
-                <button class="dropdown-item" @click="handleExportPDF">导出 PDF</button>
-                <button class="dropdown-item" @click="triggerImport">导入 CSV</button>
+            <div class="io-btns io-btns-right">
+              <div class="io-dropdown" @click.stop>
+                <button class="btn btn-ghost" style="font-size:11px" @click="toggleHoldingIOMenu">导入/导出</button>
+                <div v-if="showHoldingIOMenu" class="io-dropdown-menu">
+                  <button class="dropdown-item" @click="handleExportCSV">导出 CSV</button>
+                  <button class="dropdown-item" @click="handleExportPDF">导出 PDF</button>
+                  <button class="dropdown-item" @click="triggerImport">导入 CSV</button>
+                </div>
               </div>
+              <input ref="importInput" type="file" accept=".csv" style="display:none" @change="handleImport" />
             </div>
-            <input ref="importInput" type="file" accept=".csv" style="display:none" @change="handleImport" />
           </div>
-          <div v-if="store.ioMessage" class="io-message" :class="store.ioMessageClass">{{ store.ioMessage }}</div>
         </div>
+        <div v-if="store.ioMessage" class="io-message" :class="store.ioMessageClass">{{ store.ioMessage }}</div>
       </div>
 
       <!-- ── Error banner ── -->
