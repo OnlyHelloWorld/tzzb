@@ -44,7 +44,7 @@
         <!-- Ledger management page -->
         <div key="ledger-management" class="ledger-management">
         <!-- 所有账本汇总卡片 -->
-        <div class="summary-card all-ledgers-summary-card">
+        <div class="summary-card all-ledgers-summary-card" @click="toggleAllLedgersDetail">
           <div class="summary-top-row">
             <div>
               <div class="summary-label">所有账本总市值（人民币）</div>
@@ -60,6 +60,10 @@
               <PnLTag :val="store.allLedgersSummary.pnl" :pct="store.allLedgersSummary.pct" :size="14" />
               <span class="pnl-abs">{{ store.allLedgersSummary.pnl >= 0 ? '+' : '' }}¥{{ fmt(store.allLedgersSummary.pnl) }}</span>
             </div>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"
+              :style="{ flexShrink: 0, transition: 'transform .2s', transform: showAllLedgersDetail ? 'rotate(180deg)' : 'none' }">
+              <path d="M4 6l4 4 4-4" stroke="#bbb" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
           </div>
           <div class="ccy-row">
             <div v-for="item in allLedgersCcyBreakdown" :key="item.ccy" class="ccy-chip">
@@ -82,6 +86,32 @@
             </div>
           </div>
           <div v-if="store.ioMessage" class="io-message" :class="store.ioMessageClass">{{ store.ioMessage }}</div>
+          
+          <!-- 所有账本详情展开区域 -->
+          <transition name="expand" mode="out-in">
+            <div v-if="showAllLedgersDetail" key="all-ledgers-detail" class="all-ledgers-detail">
+              <div class="all-ledgers-detail-header">
+                <span class="detail-title">账本详情</span>
+              </div>
+              <div class="all-ledgers-detail-list">
+                <div v-for="summary in store.ledgerSummaries" :key="summary.id" class="all-ledgers-detail-item">
+                  <div class="detail-item-left">
+                    <div class="detail-item-color" :style="{ backgroundColor: summary.color }"></div>
+                    <div class="detail-item-info">
+                      <div class="detail-item-name">{{ summary.name }}</div>
+                      <div class="detail-item-holdings">{{ summary.holdingCount }} 只持仓</div>
+                    </div>
+                  </div>
+                  <div class="detail-item-right">
+                    <div class="detail-item-value">¥ {{ fmt(summary.totalCNY) }}</div>
+                    <div :class="['detail-item-pnl', summary.pnl >= 0 ? 'pnl-green' : 'pnl-red']">
+                      {{ summary.pnl >= 0 ? '+' : '' }}¥{{ fmt(summary.pnl) }} ({{ summary.pct >= 0 ? '+' : '' }}{{ fmt(summary.pct, 1) }}%)
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </transition>
         </div>
 
         <div class="ledgers-grid">
@@ -251,6 +281,7 @@ export default {
     const blessingEffectKey = ref(0)
     const loadingEffectKey = ref(0)
     const errorModal = ref({ visible: false, message: '', detail: '', expanded: false })
+    const showAllLedgersDetail = ref(false)
     
     // 定期更新loadingEffectKey，确保动画循环播放
     let loadingEffectInterval = null
@@ -448,6 +479,11 @@ export default {
       router.push('/login')
     }
     
+    // 切换所有账本详情展开/收起
+    const toggleAllLedgersDetail = () => {
+      showAllLedgersDetail.value = !showAllLedgersDetail.value
+    }
+    
     // 格式化错误详情
     const formatErrorDetail = (err) => {
       const detail = err?.detail
@@ -524,6 +560,8 @@ export default {
       handleAllLedgersImport,
       handleLogin,
       handleLogout,
+      toggleAllLedgersDetail,
+      showAllLedgersDetail,
       showErrorDetailModal,
       closeErrorModal,
       copyErrorDetail
