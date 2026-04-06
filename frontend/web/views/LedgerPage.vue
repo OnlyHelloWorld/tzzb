@@ -135,7 +135,7 @@
                 <span class="toggle-slider"></span>
               </label>
             </div>
-            <div class="io-btns">
+            <div class="io-btns io-btns-right">
               <div class="io-dropdown" @click.stop>
                 <button class="btn btn-ghost" style="font-size:11px" @click="toggleHoldingIOMenu">导入/导出</button>
                 <div v-if="showHoldingIOMenu" class="io-dropdown-menu">

@@ -67,7 +67,7 @@
               <span>{{ SYM[item.ccy] }}{{ fmt(item.val) }}</span>
               <span v-if="item.ccy !== 'CNY'" class="ccy-conv"> ≈ ¥{{ fmt(toCNY(item.val, item.ccy, store.fx)) }}</span>
             </div>
-            <div class="io-btns">
+            <div class="io-btns io-btns-right">
               <div class="io-dropdown" @click.stop>
                 <button class="btn btn-ink" style="font-size:11px" @click="showAllLedgerIOMenu = !showAllLedgerIOMenu">
                   导入/导出
