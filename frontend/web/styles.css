@@ -621,6 +621,57 @@ input:focus, select:focus { outline: none; }
 .ccy-chip { font-size: 12px; font-family: monospace; color: #888; display: flex; align-items: center; gap: 4px; }
 .ccy-chip span { color: #1a1814; font-weight: 600; }
 .ccy-conv { color: #bbb !important; font-weight: 400 !important; }
+.ccy-percentage { color: #999 !important; font-weight: 400 !important; }
+
+.all-ledgers-bottom-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #f0ece5;
+}
+
+.pagination-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #ede9e2;
+  background: #fff;
+  border-radius: 8px;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: #f9f7f3;
+  border-color: #d4cfc6;
+  color: #1a1814;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pagination-info {
+  font-size: 14px;
+  color: #666;
+  font-family: monospace;
+  min-width: 80px;
+  text-align: center;
+}
 
 .fx-section { margin-top: 14px; padding-top: 12px; border-top: 1px solid #f0ece5; }
 .fx-bar { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
