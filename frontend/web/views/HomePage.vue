@@ -71,7 +71,10 @@
               <span v-if="item.ccy !== 'CNY'" class="ccy-conv"> ≈ ¥{{ fmt(toCNY(item.val, item.ccy, store.fx)) }}</span>
               <span class="ccy-percentage"> ({{ fmt(getCcyPercentage(item.ccy), 1) }}%)</span>
             </div>
-            <div class="io-btns io-btns-right">
+          </div>
+          <div v-if="store.ioMessage" class="io-message" :class="store.ioMessageClass">{{ store.ioMessage }}</div>
+          <div class="all-ledgers-bottom-row">
+            <div class="io-btns">
               <div class="io-dropdown" @click.stop>
                 <button class="btn btn-ink" style="font-size:11px" @click="showAllLedgerIOMenu = !showAllLedgerIOMenu">
                   导入/导出
@@ -84,9 +87,8 @@
               </div>
               <input ref="allLedgersImportInput" type="file" accept=".csv" style="display:none" @change="handleAllLedgersImport" />
             </div>
+            <div class="all-ledgers-hint">点击查看详细分析</div>
           </div>
-          <div v-if="store.ioMessage" class="io-message" :class="store.ioMessageClass">{{ store.ioMessage }}</div>
-          <div class="all-ledgers-hint">点击查看详细分析</div>
         </div>
 
         <div class="ledgers-grid">

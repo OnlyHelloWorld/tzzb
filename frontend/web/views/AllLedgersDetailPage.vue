@@ -74,7 +74,7 @@
           <div class="holdings-ranking">
             <div v-for="(holding, index) in topHoldings" :key="`${holding.market}-${holding.code}`" class="holding-ranking-item">
               <div class="holding-ranking-left">
-                <div class="ranking-number">{{ index + 1 }}</div>
+                <div class="ranking-number">{{ (currentPage - 1) * 10 + index + 1 }}</div>
                 <div class="holding-info">
                   <div class="holding-name">{{ holding.name }}</div>
                   <div class="holding-code">{{ holding.market }} {{ holding.code }}</div>
@@ -88,6 +88,20 @@
                 <div class="holding-bar-fill" :style="{ width: `${holding.percentage * 3}%`, backgroundColor: getHoldingColor(index) }"></div>
               </div>
             </div>
+          </div>
+          <div v-if="totalPages > 1" class="pagination">
+            <button class="pagination-btn" :disabled="currentPage === 1" @click="prevPage">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M10 2.5 7 5.5 10 8.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+            <span class="pagination-info">{{ currentPage }} / {{ totalPages }}</span>
+            <button class="pagination-btn" :disabled="currentPage === totalPages" @click="nextPage">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M6 7.5 9 10.5 6 13.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M3 10H12.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+              </svg>
+            </button>
           </div>
         </div>
 
@@ -149,8 +163,11 @@ export default {
       { label: '美股', ccy: 'USD', val: store.allLedgersSummary.byCcy.USD }
     ])
 
+    const currentPage = ref(1)
+    const pageSize = 10
+
     // 所有持仓按市值排序
-    const topHoldings = computed(() => {
+    const allHoldingsSorted = computed(() => {
       const allHoldings = []
       const total = store.allLedgersSummary.totalCNY
 
@@ -169,8 +186,34 @@ export default {
         })
       })
 
-      return allHoldings.sort((a, b) => b.mvCNY - a.mvCNY).slice(0, 10)
+      return allHoldings.sort((a, b) => b.mvCNY - a.mvCNY)
     })
+
+    // 当前页的持仓
+    const topHoldings = computed(() => {
+      const start = (currentPage.value - 1) * pageSize
+      const end = start + pageSize
+      return allHoldingsSorted.value.slice(start, end)
+    })
+
+    // 总页数
+    const totalPages = computed(() => {
+      return Math.ceil(allHoldingsSorted.value.length / pageSize)
+    })
+
+    // 上一页
+    const prevPage = () => {
+      if (currentPage.value > 1) {
+        currentPage.value--
+      }
+    }
+
+    // 下一页
+    const nextPage = () => {
+      if (currentPage.value < totalPages.value) {
+        currentPage.value++
+      }
+    }
 
     // 账本按市值排序
     const sortedLedgers = computed(() => {
@@ -217,6 +260,10 @@ export default {
       allLedgersCcyBreakdown,
       topHoldings,
       sortedLedgers,
+      currentPage,
+      totalPages,
+      prevPage,
+      nextPage,
       fmt,
       toCNY,
       SYM,
