@@ -86,10 +86,10 @@
               </div>
               <div class="holding-ranking-right">
                 <div class="holding-value">¥ {{ fmt(holding.mvCNY) }}</div>
+                <span class="holding-tag percentage-tag">{{ fmt(holding.percentage, 1) }}%</span>
               </div>
               <div class="holding-bar">
                 <div class="holding-bar-fill" :style="{ width: `${holding.percentage * 3}%`, backgroundColor: getHoldingColor(index) }"></div>
-                <div class="holding-bar-percentage">{{ fmt(holding.percentage, 1) }}%</div>
               </div>
             </div>
           </div>
@@ -120,8 +120,11 @@
               <div class="ledger-ranking-left">
                 <div class="ranking-number">{{ index + 1 }}</div>
                 <div class="ledger-info">
-                  <div class="ledger-name" :style="{ color: ledger.color }">{{ ledger.name }}</div>
-                  <div class="ledger-holdings">{{ ledger.holdingCount }} 只持仓</div>
+                  <div class="ledger-name-row">
+                    <span class="ledger-name" :style="{ color: ledger.color }">{{ ledger.name }}</span>
+                    <span class="holding-tag holdings-tag">{{ ledger.holdingCount }} 只持仓</span>
+                    <span class="holding-tag percentage-tag">{{ fmt(ledger.percentage, 1) }}%</span>
+                  </div>
                 </div>
               </div>
               <div class="ledger-ranking-right">
@@ -129,7 +132,6 @@
               </div>
               <div class="ledger-bar">
                 <div class="ledger-bar-fill" :style="{ width: `${ledger.percentage * 3}%`, backgroundColor: ledger.color }"></div>
-                <div class="ledger-bar-percentage">{{ fmt(ledger.percentage, 1) }}%</div>
               </div>
             </div>
           </div>
