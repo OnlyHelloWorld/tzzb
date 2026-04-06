@@ -62,27 +62,7 @@
           </div>
         </div>
 
-        <!-- ── Market Distribution ── -->
-        <div class="chart-card">
-          <div class="chart-header">
-            <div class="chart-title">市场分布</div>
-            <div class="chart-subtitle">各市场市值占比</div>
-          </div>
-          <div class="market-distribution">
-            <div class="market-chart">
-              <canvas ref="marketChart" width="200" height="200"></canvas>
-            </div>
-            <div class="market-legend">
-              <div v-for="(item, index) in marketData" :key="item.ccy" class="legend-item">
-                <div class="legend-color" :style="{ backgroundColor: marketColors[index] }"></div>
-                <div class="legend-info">
-                  <div class="legend-label">{{ item.label }}</div>
-                  <div class="legend-value">¥ {{ fmt(item.value) }} ({{ fmt(item.percentage, 1) }}%)</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+
 
         <!-- ── Holdings by Market Value ── -->
         <div class="chart-card">
