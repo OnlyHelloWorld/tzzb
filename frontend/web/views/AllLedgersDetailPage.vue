@@ -85,8 +85,8 @@
                 </div>
               </div>
               <div class="holding-ranking-right">
-                <div class="holding-value">¥ {{ fmt(holding.mvCNY) }}</div>
                 <span class="holding-tag percentage-tag">{{ fmt(holding.percentage, 1) }}%</span>
+                <div class="holding-value">¥ {{ fmt(holding.mvCNY) }}</div>
               </div>
               <div class="holding-bar">
                 <div class="holding-bar-fill" :style="{ width: `${holding.percentage * 3}%`, backgroundColor: getHoldingColor(index) }"></div>
