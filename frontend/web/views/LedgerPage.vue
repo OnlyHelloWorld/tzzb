@@ -1383,8 +1383,16 @@ export default {
             const savedHoldings = await api.loadHoldings(ledger.id)
             store.holdings = savedHoldings || []
             if (savedHoldings && savedHoldings.length > 0) {
-              const maxId = Math.max(...savedHoldings.flatMap(h => (h.trades || []).map(t => t.id)), ...savedHoldings.map(h => h.id), 0)
-              _id = maxId + 1
+              // 使用兼容性更好的方式替代 flatMap
+              const allTradeIds = []
+              savedHoldings.forEach(h => {
+                if (h.trades && h.trades.length > 0) {
+                  h.trades.forEach(t => allTradeIds.push(t.id))
+                }
+              })
+              const maxTradeId = allTradeIds.length > 0 ? Math.max(...allTradeIds) : 0
+              const maxHoldingId = Math.max(...savedHoldings.map(h => h.id))
+              _id = Math.max(maxTradeId, maxHoldingId, 0) + 1
             } else {
               _id = 100
             }
