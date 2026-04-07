@@ -639,9 +639,9 @@ input:focus, select:focus { outline: none; }
   
   .holding-ranking-right,
   .ledger-ranking-right {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
   }
 }
 .ledger-donut-wrap {
