@@ -3,8 +3,10 @@ email_service.py — QQ 邮箱 SMTP 发送服务
 """
 import logging
 import smtplib
+import ssl
 import random
 import time
+import traceback
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
@@ -12,10 +14,9 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-# 内存存储验证码（生产环境建议用 Redis）
-_code_store: dict = {}  # { email: { code: str, expire: float, type: str } }
-CODE_EXPIRE_SECONDS = 300  # 5 分钟
-CODE_COOLDOWN_SECONDS = 60  # 60 秒冷却
+_code_store: dict = {}
+CODE_EXPIRE_SECONDS = 300
+CODE_COOLDOWN_SECONDS = 60
 
 
 def _generate_code() -> str:
@@ -27,32 +28,51 @@ def _send_email(to_email: str, subject: str, html_body: str):
     if not settings.SMTP_USER or not settings.SMTP_PASSWORD:
         raise ValueError("邮件服务未配置，请设置 SMTP_USER/SMTP_PASSWORD（或 QQ_EMAIL/QQ_AUTH_CODE）")
 
+    logger.info(f"SMTP配置: host={settings.SMTP_HOST}, port={settings.SMTP_PORT}, user={settings.SMTP_USER}")
+
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"] = settings.SMTP_USER
     msg["To"] = to_email
-
     msg.attach(MIMEText(html_body, "html", "utf-8"))
 
     last_error = None
     for attempt in range(3):
         try:
-            with smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30) as server:
+            logger.info(f"尝试连接SMTP服务器 (第{attempt+1}次)...")
+            
+            context = ssl.create_default_context()
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+            
+            with smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT, 
+                                   timeout=30, context=context) as server:
+                server.set_debuglevel(1)
                 server.ehlo()
+                logger.info("SMTP连接成功，正在登录...")
                 server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+                logger.info("SMTP登录成功，正在发送邮件...")
                 server.sendmail(settings.SMTP_USER, to_email, msg.as_string())
-            logger.info(f"邮件已发送: {to_email} - {subject}")
+                server.quit()
+            
+            logger.info(f"邮件发送成功: {to_email} - {subject}")
             return
+            
         except smtplib.SMTPException as e:
             last_error = e
-            logger.warning(f"SMTP发送失败(尝试{attempt+1}/3): {to_email}, 错误: {str(e)}")
-            time.sleep(1)
+            logger.warning(f"SMTP发送失败(尝试{attempt+1}/3): {to_email}")
+            logger.warning(f"错误类型: {type(e).__name__}, 错误信息: {str(e)}")
+            logger.warning(f"完整堆栈:\n{traceback.format_exc()}")
+            time.sleep(2)
         except Exception as e:
             last_error = e
-            logger.warning(f"SMTP连接失败(尝试{attempt+1}/3): {to_email}, 错误: {str(e)}")
-            time.sleep(1)
+            logger.warning(f"连接失败(尝试{attempt+1}/3): {to_email}")
+            logger.warning(f"错误类型: {type(e).__name__}, 错误信息: {str(e)}")
+            logger.warning(f"完整堆栈:\n{traceback.format_exc()}")
+            time.sleep(2)
 
-    logger.error(f"SMTP发送失败: {to_email}, 错误: {str(last_error)}")
+    logger.error(f"SMTP发送最终失败: {to_email}")
+    logger.error(f"最终错误: {type(last_error).__name__}: {str(last_error)}")
     raise ValueError("验证码发送失败，请稍后重试")
 
 
