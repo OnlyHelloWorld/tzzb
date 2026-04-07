@@ -73,14 +73,14 @@
     </div>
 
     <div class="main-content">
-      <div v-if="showBlessingEffect || store.isLoading" :class="['blessing-overlay', { 'blessing-overlay-loop': store.isLoading }]">
+      <div v-show="showBlessingEffect || store.isLoading" :class="['blessing-overlay', { 'blessing-overlay-loop': store.isLoading }]">
         <span
           v-for="(char, index) in blessingChars"
           :key="`${store.isLoading ? 'loading-' + loadingEffectKey : blessingEffectKey}-${index}`"
           :class="['blessing-char', store.isLoading ? 'blessing-char-loop' : 'blessing-char-pop']"
         >{{ char }}</span>
       </div>
-      <div v-if="store.isLoading" class="section-loading">
+      <div v-show="store.isLoading" class="section-loading">
         <div class="loading-wave">
           <div class="loading-bar"></div>
           <div class="loading-bar"></div>
@@ -225,7 +225,7 @@
         </div>
 
         <!-- 交易记录区域 -->
-        <div v-if="isHoldingExpanded(h)" class="trade-zone">
+        <div v-show="isHoldingExpanded(h)" class="trade-zone">
           <div class="trade-header">
             <span class="trade-title">买入记录</span>
             <div class="trade-actions">
