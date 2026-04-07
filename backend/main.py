@@ -24,23 +24,22 @@ def setup_logging():
     log_dir = Path(settings.LOG_DIR)
     log_dir.mkdir(parents=True, exist_ok=True)
 
-    # 根日志器
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.INFO)
 
-    # 日志格式
+    if root_logger.handlers:
+        return
+
     fmt = logging.Formatter(
         "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    # 1. 控制台输出
     console = logging.StreamHandler(sys.stdout)
     console.setLevel(logging.INFO)
     console.setFormatter(fmt)
     root_logger.addHandler(console)
 
-    # 2. 按大小滚动（单文件最大 10MB，保留 10 个备份）
     size_handler = RotatingFileHandler(
         log_dir / "app.log",
         maxBytes=settings.LOG_MAX_BYTES,
@@ -51,7 +50,6 @@ def setup_logging():
     size_handler.setFormatter(fmt)
     root_logger.addHandler(size_handler)
 
-    # 3. 按天滚动（保留 10 天），用于错误日志
     day_handler = TimedRotatingFileHandler(
         log_dir / "error.log",
         when="midnight",
@@ -63,7 +61,6 @@ def setup_logging():
     day_handler.setFormatter(fmt)
     root_logger.addHandler(day_handler)
 
-    # 降低第三方库日志级别
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
     logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 

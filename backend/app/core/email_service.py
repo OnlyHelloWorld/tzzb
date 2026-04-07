@@ -34,15 +34,26 @@ def _send_email(to_email: str, subject: str, html_body: str):
 
     msg.attach(MIMEText(html_body, "html", "utf-8"))
 
-    try:
-        with smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15) as server:
-            server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-            server.sendmail(settings.SMTP_USER, to_email, msg.as_string())
-    except smtplib.SMTPException as e:
-        logger.error(f"SMTP发送失败: {to_email}, 错误: {str(e)}")
-        raise ValueError("验证码发送失败，请检查邮箱配置后重试")
+    last_error = None
+    for attempt in range(3):
+        try:
+            with smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30) as server:
+                server.ehlo()
+                server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+                server.sendmail(settings.SMTP_USER, to_email, msg.as_string())
+            logger.info(f"邮件已发送: {to_email} - {subject}")
+            return
+        except smtplib.SMTPException as e:
+            last_error = e
+            logger.warning(f"SMTP发送失败(尝试{attempt+1}/3): {to_email}, 错误: {str(e)}")
+            time.sleep(1)
+        except Exception as e:
+            last_error = e
+            logger.warning(f"SMTP连接失败(尝试{attempt+1}/3): {to_email}, 错误: {str(e)}")
+            time.sleep(1)
 
-    logger.info(f"邮件已发送: {to_email} - {subject}")
+    logger.error(f"SMTP发送失败: {to_email}, 错误: {str(last_error)}")
+    raise ValueError("验证码发送失败，请稍后重试")
 
 
 def send_verify_code(email: str, code_type: str = "register") -> str:

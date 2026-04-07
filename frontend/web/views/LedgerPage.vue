@@ -584,6 +584,18 @@ export default {
     const showBlessingEffect = ref(false)
     const blessingEffectKey = ref(0)
     const loadingEffectKey = ref(0)
+    
+    let loadingEffectInterval = null
+    loadingEffectInterval = setInterval(() => {
+      if (store.isLoading) {
+        loadingEffectKey.value += 1
+      }
+    }, 1800)
+    
+    onUnmounted(() => {
+      if (loadingEffectInterval) clearInterval(loadingEffectInterval)
+    })
+    
     const openLedgerActionMenuId = ref(null)
     const openTradeActionMenuKey = ref(null)
     const showLedgerList = ref(false)
