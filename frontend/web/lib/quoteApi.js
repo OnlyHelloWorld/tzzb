@@ -2,9 +2,9 @@
  * quoteApi.js — 行情 API 多源兜底层
  *
  * 数据源优先级：
- *   1. 东方财富（主源，JSON/UTF-8）
- *   2. 腾讯财经（备源，GBK 编码，已用 TextDecoder 正确解码）
- *   3. 新浪财经（兜底，GBK 编码，已用 TextDecoder 正确解码）
+ *   1. 腾讯财经（主源，GBK 编码，已用 TextDecoder 正确解码）
+ *   2. 新浪财经（备源，GBK 编码，已用 TextDecoder 正确解码）
+ *   3. 东方财富（兜底，JSON/UTF-8）
  *
  * A股代码规则：
  *   沪市：6xx、5xx(ETF)、9xx(B股) → secid=1.x / sh / s_sh
@@ -152,9 +152,9 @@ export async function fetchQuote(market, code) {
   const normalizedCode = normalizeCode(market, code)
   
   const sources = [
-    { name: 'eastmoney', fn: fetchEastmoney },
     { name: 'tencent', fn: fetchTencent },
     { name: 'sina', fn: fetchSina },
+    { name: 'eastmoney', fn: fetchEastmoney },
   ]
 
   let lastError = null

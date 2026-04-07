@@ -351,7 +351,7 @@
             <input id="trade-date" name="trade-date" class="form-control" type="date" v-model="addTradeForm.date" />
           </div>
           <div class="form-row" style="grid-column:1/-1">
-            <div class="form-label">变动笔记（可选）</div>
+            <div class="form-label">笔记（可选）</div>
             <input id="trade-note" name="trade-note" class="form-control" placeholder="如 加仓、减仓、分红再投..." v-model="addTradeForm.note" />
           </div>
         </div>
@@ -403,7 +403,7 @@
             <input id="stock-date" name="stock-date" class="form-control" type="date" v-model="newForm.date" />
           </div>
           <div class="form-row" style="grid-column:1/-1">
-            <div class="form-label">板块（可选）</div>
+            <div class="form-label">笔记（可选）</div>
             <input id="stock-sector" name="stock-sector" class="form-control" placeholder="如 科技、消费" v-model="newForm.sector" />
           </div>
         </div>
