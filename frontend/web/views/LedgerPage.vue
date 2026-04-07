@@ -225,14 +225,7 @@
         </div>
 
         <!-- 交易记录区域 -->
-        <transition
-          :css="false"
-          @enter="onExpandEnter"
-          @after-enter="onExpandAfterEnter"
-          @leave="onExpandLeave"
-          @after-leave="onExpandAfterLeave"
-        >
-          <div v-if="isHoldingExpanded(h)" key="trade-zone" class="trade-zone" style="display:none;overflow:hidden">
+        <div v-if="isHoldingExpanded(h)" class="trade-zone">
           <div class="trade-header">
             <span class="trade-title">买入记录</span>
             <div class="trade-actions">
@@ -315,7 +308,6 @@
             </button>
           </div>
           </div>
-        </transition>
 
         <div v-if="deletingHoldings.includes(`${h.market}-${h.code}`)" class="delete-blessing">
           <span v-for="char in blessingChars" :key="char" class="blessing-char">{{ char }}</span>
@@ -1358,39 +1350,6 @@ export default {
       const holdingKey = `${holding.market}-${holding.code}`
       return expanded.value[holdingKey] || false
     }
-
-    const onExpandEnter = (el) => {
-      el.style.display = ''
-      el.style.maxHeight = '0'
-      el.style.opacity = '0'
-      requestAnimationFrame(() => {
-        el.style.transition = 'max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-        el.style.maxHeight = el.scrollHeight + 'px'
-        el.style.opacity = '1'
-      })
-    }
-
-    const onExpandAfterEnter = (el) => {
-      el.style.maxHeight = ''
-      el.style.overflow = ''
-      el.style.transition = ''
-      el.style.opacity = ''
-    }
-
-    const onExpandLeave = (el) => {
-      el.style.overflow = 'hidden'
-      el.style.maxHeight = el.scrollHeight + 'px'
-      el.style.opacity = '1'
-      requestAnimationFrame(() => {
-        el.style.transition = 'max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-        el.style.maxHeight = '0'
-        el.style.opacity = '0'
-      })
-    }
-
-    const onExpandAfterLeave = (el) => {
-      el.style.display = 'none'
-    }
     
     // 页面加载时
     onMounted(async () => {
@@ -1525,11 +1484,7 @@ export default {
       isHoldingMenuOpen,
       handleDeleteHoldingClick,
       handleHoldingClick,
-      isHoldingExpanded,
-      onExpandEnter,
-      onExpandAfterEnter,
-      onExpandLeave,
-      onExpandAfterLeave
+      isHoldingExpanded
     }
   }
 }
