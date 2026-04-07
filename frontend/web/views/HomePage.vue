@@ -314,7 +314,10 @@ export default {
       try {
         const newLedger = await api.createLedger(newLedgerName.value.trim(), newLedgerColor.value)
         createLedgerModal.value = false
-        await store.loadData()
+        // 只更新账本列表，不重新加载所有数据
+        store.ledgers.push(newLedger)
+        // 更新账本汇总（新账本没有持仓，汇总为0）
+        store.ledgerSummaries.push({ ...newLedger, totalCNY: 0, pnl: 0, pct: 0, holdingCount: 0 })
         triggerBlessingEffect()
         store.showMessage('账本创建成功')
       } catch (err) {
@@ -342,7 +345,15 @@ export default {
           color: editingLedger.value.color
         })
         editLedgerModal.value = false
-        await store.loadData()
+        // 只更新本地账本数据，不重新加载所有数据
+        const ledgerIndex = store.ledgers.findIndex(l => l.id === editingLedger.value.id)
+        if (ledgerIndex !== -1) {
+          store.ledgers[ledgerIndex] = { ...store.ledgers[ledgerIndex], ...editingLedger.value }
+        }
+        const summaryIndex = store.ledgerSummaries.findIndex(s => s.id === editingLedger.value.id)
+        if (summaryIndex !== -1) {
+          store.ledgerSummaries[summaryIndex] = { ...store.ledgerSummaries[summaryIndex], ...editingLedger.value }
+        }
         triggerBlessingEffect()
         store.showMessage('账本更新成功')
       } catch (err) {

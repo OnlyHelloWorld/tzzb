@@ -273,7 +273,10 @@ export default {
 
     // 页面加载时
     onMounted(async () => {
-      await store.loadData()
+      // 如果数据已加载过（从首页跳转过来），则不再重复加载
+      if (store.allLedgersHoldings.length === 0) {
+        await store.loadData()
+      }
     })
     
     // 页面卸载时

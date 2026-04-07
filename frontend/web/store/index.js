@@ -189,7 +189,9 @@ export const useAppStore = defineStore('app', {
     },
     
     // 刷新行情
-    async refreshQuotes() {
+    // options.skipSummaryCalc: 是否跳过计算所有账本汇总（账本页面使用时跳过）
+    async refreshQuotes(options = {}) {
+      const { skipSummaryCalc = false } = options
       this.quoteStatus = 'loading'
       this.quoteError = ''
 
@@ -240,8 +242,10 @@ export const useAppStore = defineStore('app', {
           const now = new Date()
           this.lastQuoteTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
           
-          // 重新计算所有账本的汇总信息
-          await this.calculateAllLedgerSummaries()
+          // 只有在首页（非跳过模式）才重新计算所有账本的汇总信息
+          if (!skipSummaryCalc) {
+            await this.calculateAllLedgerSummaries()
+          }
         } else {
           this.quoteStatus = 'error'
           this.quoteError = '所有数据源均无有效数据'
@@ -264,8 +268,10 @@ export const useAppStore = defineStore('app', {
       try {
         const savedHoldings = await api.saveHoldings(holdingsData, this.currentLedger.id)
         this.holdings = savedHoldings || []
-        // 更新 allLedgersHoldings
-        this.allLedgersHoldings = await api.loadHoldings() || []
+        // 只更新当前账本在 allLedgersHoldings 中的数据，不重新加载所有账本
+        const ledgerId = this.currentLedger.id
+        this.allLedgersHoldings = this.allLedgersHoldings.filter(h => h.ledger_id !== ledgerId)
+        this.allLedgersHoldings.push(...(savedHoldings || []).map(h => ({ ...h, ledger_id: ledgerId })))
         // 重新计算账本汇总
         await this.calculateAllLedgerSummaries()
         return savedHoldings
@@ -296,13 +302,17 @@ export const useAppStore = defineStore('app', {
     },
     
     // 刷新单个持仓价格
-    async refreshSingleHoldingPrice(holding) {
+    // options.skipSummaryCalc: 是否跳过计算所有账本汇总（账本页面使用时跳过）
+    async refreshSingleHoldingPrice(holding, options = {}) {
+      const { skipSummaryCalc = false } = options
       try {
         const { fetchQuote } = await import('../lib/quoteApi.js')
         const result = await fetchQuote(holding.market, holding.code)
         if (result.price > 0) {
           this.prices[holding.code] = result.price
-          await this.calculateAllLedgerSummaries()
+          if (!skipSummaryCalc) {
+            await this.calculateAllLedgerSummaries()
+          }
         }
         return result
       } catch (err) {

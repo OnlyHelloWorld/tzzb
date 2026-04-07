@@ -758,12 +758,12 @@ export default {
 
       try {
         await store.saveHoldings(store.holdings)
-        // 添加持仓成功后立即获取实时价格
+        // 添加持仓成功后立即获取实时价格（跳过计算所有账本汇总）
         try {
           await store.refreshSingleHoldingPrice({
             market: newForm.value.market,
             code: newForm.value.code
-          })
+          }, { skipSummaryCalc: true })
         } catch (priceErr) {
           console.warn('获取新持仓价格失败:', priceErr)
           // 不阻止添加成功的提示
@@ -803,9 +803,9 @@ export default {
 
       try {
         await store.saveHoldings(store.holdings)
-        // 添加交易成功后立即获取实时价格
+        // 添加交易成功后立即获取实时价格（跳过计算所有账本汇总）
         try {
-          await store.refreshSingleHoldingPrice({ market, code })
+          await store.refreshSingleHoldingPrice({ market, code }, { skipSummaryCalc: true })
         } catch (priceErr) {
           console.warn('获取价格失败:', priceErr)
         }
@@ -1122,7 +1122,10 @@ export default {
       try {
         const newLedger = await api.createLedger(newLedgerName.value.trim(), newLedgerColor.value)
         createLedgerModal.value = false
-        await store.loadData()
+        // 只更新账本列表，不重新加载所有数据
+        store.ledgers.push(newLedger)
+        // 更新账本汇总（新账本没有持仓，汇总为0）
+        store.ledgerSummaries.push({ ...newLedger, totalCNY: 0, pnl: 0, pct: 0, holdingCount: 0 })
         triggerBlessingEffect()
         store.showMessage('账本创建成功')
       } catch (err) {
@@ -1150,7 +1153,19 @@ export default {
           color: editingLedger.value.color
         })
         editLedgerModal.value = false
-        await store.loadData()
+        // 只更新本地账本数据，不重新加载所有数据
+        const ledgerIndex = store.ledgers.findIndex(l => l.id === editingLedger.value.id)
+        if (ledgerIndex !== -1) {
+          store.ledgers[ledgerIndex] = { ...store.ledgers[ledgerIndex], ...editingLedger.value }
+        }
+        const summaryIndex = store.ledgerSummaries.findIndex(s => s.id === editingLedger.value.id)
+        if (summaryIndex !== -1) {
+          store.ledgerSummaries[summaryIndex] = { ...store.ledgerSummaries[summaryIndex], ...editingLedger.value }
+        }
+        // 如果编辑的是当前账本，也更新 currentLedger
+        if (store.currentLedger && store.currentLedger.id === editingLedger.value.id) {
+          store.currentLedger = { ...store.currentLedger, ...editingLedger.value }
+        }
         triggerBlessingEffect()
         store.showMessage('账本更新成功')
       } catch (err) {
@@ -1272,7 +1287,7 @@ export default {
     
     // 处理刷新行情
     const handleRefreshQuotes = () => {
-      store.refreshQuotes()
+      store.refreshQuotes({ skipSummaryCalc: true })
       showDropdown.value = false
     }
     
@@ -1353,30 +1368,60 @@ export default {
     
     // 页面加载时
     onMounted(async () => {
-      // 加载账本数据
-      await store.loadData()
-      
-      // 找到当前账本
-      const ledger = store.ledgers.find(l => l.id.toString() === props.id)
-      if (ledger) {
-        store.setCurrentLedger(ledger)
-        // 加载当前账本的持仓
-        try {
-          const savedHoldings = await api.loadHoldings(ledger.id)
-          store.holdings = savedHoldings || []
-          if (savedHoldings && savedHoldings.length > 0) {
-            const maxId = Math.max(...savedHoldings.flatMap(h => (h.trades || []).map(t => t.id)), ...savedHoldings.map(h => h.id), 0)
-            _id = maxId + 1
-          } else {
-            _id = 100
+      store.isLoading = true
+      try {
+        // 只加载账本列表（轻量级操作）
+        const savedLedgers = await api.loadLedgers()
+        store.ledgers = savedLedgers || []
+        
+        // 找到当前账本
+        const ledger = store.ledgers.find(l => l.id.toString() === props.id)
+        if (ledger) {
+          store.setCurrentLedger(ledger)
+          // 只加载当前账本的持仓
+          try {
+            const savedHoldings = await api.loadHoldings(ledger.id)
+            store.holdings = savedHoldings || []
+            if (savedHoldings && savedHoldings.length > 0) {
+              const maxId = Math.max(...savedHoldings.flatMap(h => (h.trades || []).map(t => t.id)), ...savedHoldings.map(h => h.id), 0)
+              _id = maxId + 1
+            } else {
+              _id = 100
+            }
+            // 为当前账本持仓设置初始价格（使用成本价）
+            for (const h of store.holdings) {
+              if (!(h.code in store.prices)) {
+                const cost = avgCost(h.trades || [])
+                store.prices[h.code] = cost || 0
+              }
+            }
+          } catch (err) {
+            console.warn('加载持仓失败:', err)
+            store.holdings = []
           }
-        } catch (err) {
-          console.warn('加载持仓失败:', err)
-          store.holdings = []
+          
+          // 加载设置
+          try {
+            const savedSettings = await api.loadSettings()
+            if (savedSettings) {
+              store.fx.USD = savedSettings.fx_usd || store.fx.USD
+              store.fx.HKD = savedSettings.fx_hkd || store.fx.HKD
+              store.autoRefresh = savedSettings.auto_refresh !== false
+            }
+          } catch (err) {
+            console.warn('加载设置失败:', err)
+          }
+          
+          // 只刷新当前账本的行情（跳过计算所有账本汇总）
+          if (store.holdings.length > 0) {
+            await store.refreshQuotes({ skipSummaryCalc: true })
+          }
+        } else {
+          // 账本不存在，回到首页
+          goHome()
         }
-      } else {
-        // 账本不存在，回到首页
-        goHome()
+      } finally {
+        store.isLoading = false
       }
     })
     
