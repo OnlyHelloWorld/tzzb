@@ -225,7 +225,7 @@
         </div>
 
         <!-- 交易记录区域 -->
-        <transition name="expand" mode="out-in">
+        <transition name="expand">
           <div v-if="isHoldingExpanded(h)" key="trade-zone" class="trade-zone">
           <div class="trade-header">
             <span class="trade-title">买入记录</span>

@@ -1306,19 +1306,28 @@ input:focus, select:focus { outline: none; }
   transform: translateX(20px);
 }
 
-/* Expand transition */
+/* Expand transition - 使用 CSS Grid 方案提高兼容性 */
 .expand-enter-active,
 .expand-leave-active {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  max-height: 500px;
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.expand-enter-active > *,
+.expand-leave-active > * {
   overflow: hidden;
 }
 
 .expand-enter-from,
 .expand-leave-to {
+  grid-template-rows: 0fr;
   opacity: 0;
-  max-height: 0;
-  transform: translateY(-10px);
+}
+
+.expand-enter-from > *,
+.expand-leave-to > * {
   overflow: hidden;
 }
 .modal-title { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 600; margin-bottom: 20px; }

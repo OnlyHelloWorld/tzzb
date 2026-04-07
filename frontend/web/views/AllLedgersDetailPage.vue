@@ -176,10 +176,10 @@ export default {
     const currentPage = ref(1)
     const pageSize = 10
 
-    // 所有持仓按市值排序
+    // 所有持仓按市值排序（合并相同标的）
     const allHoldingsSorted = computed(() => {
-      const allHoldings = []
       const total = store.allLedgersSummary.totalCNY
+      const holdingsMap = new Map()
 
       store.allLedgersHoldings.forEach(holding => {
         const ccy = holding.market === 'A股' ? 'CNY' : holding.market === '港股' ? 'HKD' : 'USD'
@@ -188,13 +188,28 @@ export default {
         const mv = price * qty
         const mvCNY = toCNY(mv, ccy, store.fx)
 
-        allHoldings.push({
-          ...holding,
-          qty,
-          mv,
-          mvCNY,
-          percentage: total > 0 ? (mvCNY / total) * 100 : 0
-        })
+        const key = holding.code
+        if (holdingsMap.has(key)) {
+          const existing = holdingsMap.get(key)
+          existing.qty += qty
+          existing.mv += mv
+          existing.mvCNY += mvCNY
+        } else {
+          holdingsMap.set(key, {
+            market: holding.market,
+            code: holding.code,
+            name: holding.name,
+            qty,
+            mv,
+            mvCNY,
+            percentage: 0
+          })
+        }
+      })
+
+      const allHoldings = Array.from(holdingsMap.values())
+      allHoldings.forEach(h => {
+        h.percentage = total > 0 ? (h.mvCNY / total) * 100 : 0
       })
 
       return allHoldings.sort((a, b) => b.mvCNY - a.mvCNY)
