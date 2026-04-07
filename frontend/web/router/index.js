@@ -3,7 +3,7 @@ import HomePage from '../views/HomePage.vue'
 import LedgerPage from '../views/LedgerPage.vue'
 import AllLedgersDetailPage from '../views/AllLedgersDetailPage.vue'
 import LoginPage from '../components/LoginPage.vue'
-import { isLoggedIn } from '../lib/api.js'
+import { isLoggedIn, getMe } from '../lib/api.js'
 
 const routes = [
   {
@@ -38,12 +38,21 @@ const router = createRouter({
   routes
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const loggedIn = isLoggedIn()
   if (to.path !== '/login' && !loggedIn) {
     next('/login')
   } else if (to.path === '/login' && loggedIn) {
     next('/home')
+  } else if (to.path !== '/login' && loggedIn) {
+    try {
+      await getMe()
+    } catch (error) {
+      console.error('验证用户失败:', error)
+      next('/login')
+      return
+    }
+    next()
   } else {
     next()
   }

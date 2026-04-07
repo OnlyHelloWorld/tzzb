@@ -102,6 +102,15 @@ export async function resetPassword(email, code, newPassword) {
   })
 }
 
+export async function getMe() {
+  const data = await request('/auth/me')
+  if (data.access_token) {
+    console.log('刷新 token')
+    localStorage.setItem('investment-token', data.access_token)
+  }
+  return data
+}
+
 // ─── 账本 ─────────────────────────────────────────────────────
 export async function loadLedgers() {
   console.log('开始加载账本数据')

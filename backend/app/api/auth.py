@@ -75,10 +75,16 @@ async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
 
 @router.get("/me")
 async def get_me(user: User = Depends(get_current_user)):
-    """获取当前用户信息"""
+    """获取当前用户信息，并刷新 token 有效期"""
     logger.debug(f"用户获取个人信息: {user.username}")
     try:
-        return {"id": user.id, "username": user.username, "email": user.email}
+        new_token = create_access_token(user.id, user.username)
+        return {
+            "id": user.id, 
+            "username": user.username, 
+            "email": user.email,
+            "access_token": new_token
+        }
     except Exception as e:
         logger.error(f"用户获取个人信息失败: {user.username}, 错误: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail="获取用户信息失败")
