@@ -29,7 +29,7 @@ class Settings:
 
     # JWT
     JWT_SECRET: str = os.getenv("JWT_SECRET", "change-me-in-production")
-    JWT_EXPIRE_HOURS: int = int(os.getenv("JWT_EXPIRE_HOURS", "87600"))  # 10年 = 永久有效
+    JWT_EXPIRE_HOURS: int = int(os.getenv("JWT_EXPIRE_HOURS", "72"))  # 3天
 
     # 服务
     HOST: str = os.getenv("HOST", "0.0.0.0")
