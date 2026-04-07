@@ -90,8 +90,8 @@ export const useAppStore = defineStore('app', {
           this.allLedgersHoldings = []
         }
         
-        // 计算所有账本的汇总信息
-        await this.calculateAllLedgerSummaries()
+        // 计算所有账本的汇总信息（使用已有的 allLedgersHoldings 数据，避免重复请求）
+        this.calculateAllLedgerSummaries()
         
         // 加载当前账本的持仓数据
         if (this.currentLedger) {
@@ -139,52 +139,44 @@ export const useAppStore = defineStore('app', {
       }
     },
     
-    // 计算单个账本的汇总信息
-    async calculateLedgerSummary(ledger) {
-      try {
-        const holdings = await api.loadHoldings(ledger.id)
-        if (!holdings || holdings.length === 0) {
-          return { ...ledger, totalCNY: 0, pnl: 0, pct: 0, holdingCount: 0 }
-        }
-
-        let totalCostCNY = 0
-        let totalMVCNY = 0
-
-        for (const h of holdings) {
-          const ccy = h.market === 'A股' ? 'CNY' : h.market === '港股' ? 'HKD' : 'USD'
-          const cost = avgCost(h.trades || [])
-          const qty = totalQty(h.trades || [])
-          const price = this.prices[h.code] || cost || 0
-          const costBasis = cost * qty
-          const mv = price * qty
-          
-          totalCostCNY += toCNY(costBasis, ccy, this.fx)
-          totalMVCNY += toCNY(mv, ccy, this.fx)
-        }
-
-        const pnl = totalMVCNY - totalCostCNY
-        const pct = totalCostCNY > 0 ? pnl / totalCostCNY * 100 : 0
-
-        return {
-          ...ledger,
-          totalCNY: totalMVCNY,
-          pnl,
-          pct,
-          holdingCount: holdings.length
-        }
-      } catch (err) {
-        console.warn(`计算账本 ${ledger.name} 汇总失败:`, err)
+    // 计算单个账本的汇总信息（使用缓存的 allLedgersHoldings 数据，避免重复请求）
+    calculateLedgerSummary(ledger) {
+      // 从 allLedgersHoldings 中筛选当前账本的持仓
+      const holdings = this.allLedgersHoldings.filter(h => h.ledger_id === ledger.id)
+      if (!holdings || holdings.length === 0) {
         return { ...ledger, totalCNY: 0, pnl: 0, pct: 0, holdingCount: 0 }
+      }
+
+      let totalCostCNY = 0
+      let totalMVCNY = 0
+
+      for (const h of holdings) {
+        const ccy = h.market === 'A股' ? 'CNY' : h.market === '港股' ? 'HKD' : 'USD'
+        const cost = avgCost(h.trades || [])
+        const qty = totalQty(h.trades || [])
+        const price = this.prices[h.code] || cost || 0
+        const costBasis = cost * qty
+        const mv = price * qty
+        
+        totalCostCNY += toCNY(costBasis, ccy, this.fx)
+        totalMVCNY += toCNY(mv, ccy, this.fx)
+      }
+
+      const pnl = totalMVCNY - totalCostCNY
+      const pct = totalCostCNY > 0 ? pnl / totalCostCNY * 100 : 0
+
+      return {
+        ...ledger,
+        totalCNY: totalMVCNY,
+        pnl,
+        pct,
+        holdingCount: holdings.length
       }
     },
     
     // 计算所有账本的汇总信息
-    async calculateAllLedgerSummaries() {
-      const summaries = []
-      for (const ledger of this.ledgers) {
-        const summary = await this.calculateLedgerSummary(ledger)
-        summaries.push(summary)
-      }
+    calculateAllLedgerSummaries() {
+      const summaries = this.ledgers.map(ledger => this.calculateLedgerSummary(ledger))
       this.ledgerSummaries = summaries
     },
     
@@ -244,7 +236,7 @@ export const useAppStore = defineStore('app', {
           
           // 只有在首页（非跳过模式）才重新计算所有账本的汇总信息
           if (!skipSummaryCalc) {
-            await this.calculateAllLedgerSummaries()
+            this.calculateAllLedgerSummaries()
           }
         } else {
           this.quoteStatus = 'error'
@@ -273,7 +265,7 @@ export const useAppStore = defineStore('app', {
         this.allLedgersHoldings = this.allLedgersHoldings.filter(h => h.ledger_id !== ledgerId)
         this.allLedgersHoldings.push(...(savedHoldings || []).map(h => ({ ...h, ledger_id: ledgerId })))
         // 重新计算账本汇总
-        await this.calculateAllLedgerSummaries()
+        this.calculateAllLedgerSummaries()
         return savedHoldings
       } catch (err) {
         console.warn('保存持仓失败:', err)
@@ -281,16 +273,16 @@ export const useAppStore = defineStore('app', {
       }
     },
     
-    // 删除账本后更新数据
-    async updateAfterDeleteLedger(deletedLedgerId) {
+// 删除账本后更新数据
+    updateAfterDeleteLedger(deletedLedgerId) {
       // 更新 allLedgersHoldings，移除已删除账本的持仓
       this.allLedgersHoldings = this.allLedgersHoldings.filter(h => h.ledger_id !== deletedLedgerId)
       // 重新计算账本汇总
-      await this.calculateAllLedgerSummaries()
+      this.calculateAllLedgerSummaries()
     },
     
     // 删除持仓后更新数据
-    async updateAfterDeleteHolding(market, code, ledgerId) {
+    updateAfterDeleteHolding(market, code, ledgerId) {
       // 更新 holdings
       this.holdings = this.holdings.filter(h => h.market !== market || h.code !== code)
       // 更新 allLedgersHoldings
@@ -298,7 +290,7 @@ export const useAppStore = defineStore('app', {
         h => !(h.market === market && h.code === code && h.ledger_id === ledgerId)
       )
       // 重新计算账本汇总
-      await this.calculateAllLedgerSummaries()
+      this.calculateAllLedgerSummaries()
     },
     
     // 刷新单个持仓价格
@@ -311,7 +303,7 @@ export const useAppStore = defineStore('app', {
         if (result.price > 0) {
           this.prices[holding.code] = result.price
           if (!skipSummaryCalc) {
-            await this.calculateAllLedgerSummaries()
+            this.calculateAllLedgerSummaries()
           }
         }
         return result
