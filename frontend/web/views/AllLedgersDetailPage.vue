@@ -76,15 +76,15 @@
               <div class="holding-ranking-left">
                 <div class="ranking-number">{{ (currentPage - 1) * 10 + index + 1 }}</div>
                 <div class="holding-info">
-                  <div class="holding-value-row">
-                    <span class="holding-tag percentage-tag">{{ fmt(holding.percentage, 1) }}%</span>
-                    <div class="holding-value">¥ {{ fmt(holding.mvCNY) }}</div>
-                  </div>
                   <div class="holding-name-row">
                     <span class="holding-name">{{ holding.name }}</span>
                     <span class="holding-tag market-tag" :class="`market-${holding.market}`">{{ holding.market }}</span>
                     <span class="holding-tag code-tag">{{ holding.code }}</span>
                     <span class="holding-tag qty-tag">{{ holding.qty }}股</span>
+                  </div>
+                  <div class="holding-value-row">
+                    <span class="holding-tag percentage-tag">{{ fmt(holding.percentage, 1) }}%</span>
+                    <div class="holding-value">¥ {{ fmt(holding.mvCNY) }}</div>
                   </div>
                 </div>
               </div>
@@ -122,13 +122,13 @@
               <div class="ledger-ranking-left">
                 <div class="ranking-number">{{ index + 1 }}</div>
                 <div class="ledger-info">
-                  <div class="ledger-value-row">
-                    <span class="holding-tag percentage-tag">{{ fmt(ledger.percentage, 1) }}%</span>
-                    <div class="ledger-value">¥ {{ fmt(ledger.totalCNY) }}</div>
-                  </div>
                   <div class="ledger-name-row">
                     <span class="ledger-name" :style="{ color: ledger.color }">{{ ledger.name }}</span>
                     <span class="holding-tag holdings-tag">{{ ledger.holdingCount }} 只持仓</span>
+                  </div>
+                  <div class="ledger-value-row">
+                    <span class="holding-tag percentage-tag">{{ fmt(ledger.percentage, 1) }}%</span>
+                    <div class="ledger-value">¥ {{ fmt(ledger.totalCNY) }}</div>
                   </div>
                 </div>
               </div>
