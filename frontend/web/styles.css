@@ -1306,29 +1306,24 @@ input:focus, select:focus { outline: none; }
   transform: translateX(20px);
 }
 
-/* Expand transition - 使用 CSS Grid 方案提高兼容性 */
+/* Expand transition - max-height方案，兼容旧版浏览器 */
 .expand-enter-active,
 .expand-leave-active {
-  display: grid;
-  grid-template-rows: 1fr;
-  transition: grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.expand-enter-active > *,
-.expand-leave-active > * {
   overflow: hidden;
+  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .expand-enter-from,
 .expand-leave-to {
-  grid-template-rows: 0fr;
+  max-height: 0 !important;
   opacity: 0;
 }
 
-.expand-enter-from > *,
-.expand-leave-to > * {
-  overflow: hidden;
+.expand-enter-to,
+.expand-leave-from {
+  max-height: 2000px;
+  opacity: 1;
 }
 .modal-title { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 600; margin-bottom: 20px; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
