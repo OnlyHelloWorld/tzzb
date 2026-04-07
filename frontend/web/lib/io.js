@@ -466,8 +466,10 @@ function renderPdfPage({ title, subtitle, summary = [], headers = [], rows = [],
   y += rowHeight
 
   ctx.font = `400 18px ${PDF_FONT_FAMILY}`
-  rows.forEach((row, rowIndex) => {
-    if (y + rowHeight > canvas.height - 60) return
+  const renderedRows = []
+  for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+    const row = rows[rowIndex]
+    if (y + rowHeight > canvas.height - 60) break
     if (rowIndex % 2 === 0) {
       ctx.fillStyle = '#f9f7f3'
       ctx.fillRect(60, y, tableWidth, rowHeight)
@@ -480,9 +482,10 @@ function renderPdfPage({ title, subtitle, summary = [], headers = [], rows = [],
       if (index === 7 && text.startsWith('-')) ctx.fillStyle = '#c0392b'
       ctx.fillText(truncated, 66 + index * colWidth, y + 25)
     })
+    renderedRows.push(row)
     y += rowHeight
-  })
-  return canvas.toDataURL('image/png')
+  }
+  return { dataUrl: canvas.toDataURL('image/png'), renderedRows: renderedRows.length }
 }
 
 /**
@@ -528,7 +531,7 @@ export async function exportPDF(holdings = [], prices = {}, fx = { USD: 7.28, HK
     const pageRows = dataRows.slice(currentRow, endRow)
     
     // 渲染当前页
-    const page = renderPdfPage({
+    const result = renderPdfPage({
       title: '投资账本 - 持仓报告',
       subtitle: `导出时间 ${now.toLocaleString('zh-CN')} ｜ 持仓数量 ${holdings.length} ｜ 第 ${currentPage + 1} 页`,
       summary: currentPage === 0 ? summary : [], // 只在第一页显示汇总信息
@@ -541,10 +544,10 @@ export async function exportPDF(holdings = [], prices = {}, fx = { USD: 7.28, HK
     if (currentPage > 0) {
       doc.addPage('p', 'a4')
     }
-    doc.addImage(page, 'PNG', 0, 0, 210, 297)
+    doc.addImage(result.dataUrl, 'PNG', 0, 0, 210, 297)
     
     // 更新当前行和页码
-    currentRow = endRow
+    currentRow += result.renderedRows
     currentPage++
   }
 
@@ -627,7 +630,7 @@ export async function exportAllLedgersPDF(ledgers = [], ledgerHoldings = {}, pri
     const pageRows = allRows.slice(currentRow, endRow)
     
     // 渲染当前页
-    const page = renderPdfPage({
+    const result = renderPdfPage({
       title: '投资账本 - 所有账本汇总报告',
       subtitle: `导出时间 ${now.toLocaleString('zh-CN')} ｜ 第 ${currentPage + 1} 页`,
       summary: currentPage === 0 ? summary : [], // 只在第一页显示汇总信息
@@ -640,10 +643,10 @@ export async function exportAllLedgersPDF(ledgers = [], ledgerHoldings = {}, pri
     if (currentPage > 0) {
       doc.addPage('l', 'a4')
     }
-    doc.addImage(page, 'PNG', 0, 0, 297, 210)
+    doc.addImage(result.dataUrl, 'PNG', 0, 0, 297, 210)
     
     // 更新当前行和页码
-    currentRow = endRow
+    currentRow += result.renderedRows
     currentPage++
   }
 
