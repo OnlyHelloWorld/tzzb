@@ -136,9 +136,19 @@ class LedgerUpdate(BaseModel):
     color: Optional[str] = None
 
 
+class LedgerSortOrder(BaseModel):
+    id: int
+    sort_order: int
+
+
+class LedgerSortOrderUpdate(BaseModel):
+    ledgers: List[LedgerSortOrder]
+
+
 class LedgerResponse(LedgerBase):
     id: int
     user_id: int
+    sort_order: int = 0
 
     class Config:
         from_attributes = True

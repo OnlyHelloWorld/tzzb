@@ -151,14 +151,181 @@ input:focus, select:focus { outline: none; }
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 12px;
 }
-.list-density-switch {
+
+/* 账本列表工具栏 */
+.ledgers-toolbar {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  margin: 6px 0 14px;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding: 8px 0;
 }
-.density-label { font-size: 12px; color: #9e9687; }
+.toolbar-left, .toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.view-switch {
+  display: flex;
+  gap: 4px;
+  background: #f5f3ef;
+  border-radius: 8px;
+  padding: 3px;
+}
+.view-btn {
+  width: 32px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #888;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+.view-btn:hover {
+  color: #1a1814;
+}
+.view-btn.active {
+  background: #fff;
+  color: #1a1814;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.sort-direction-btn {
+  width: 32px !important;
+  padding: 0 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sort-direction-btn svg {
+  transition: transform 0.2s;
+}
+
+/* 列表视图 */
+.ledgers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ledger-list-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.ledger-list-item:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  transform: translateX(2px);
+}
+.ledger-list-item-dragging {
+  opacity: 0.5;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.ledger-list-item-deleting {
+  opacity: 0.4;
+  transform: scale(0.98);
+}
+.ledger-list-color {
+  width: 4px;
+  height: 32px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.ledger-list-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  color: #1a1814;
+}
+.ledger-list-value {
+  font-size: 13px;
+  color: #666;
+  min-width: 80px;
+  text-align: right;
+}
+.ledger-list-pnl {
+  font-weight: 500;
+}
+.ledger-list-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.ledger-list-item:hover .ledger-list-actions {
+  opacity: 1;
+}
+.list-action-btn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid #e4dfd6;
+  border-radius: 6px;
+  background: #fff;
+  color: #888;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+.list-action-btn:hover {
+  border-color: #1a1814;
+  color: #1a1814;
+}
+.list-action-btn-danger:hover {
+  border-color: #c0392b;
+  color: #c0392b;
+}
+
+/* 拖拽手柄 */
+.drag-handle {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  cursor: grab;
+  padding: 4px;
+}
+.ledger-card:hover .drag-handle {
+  opacity: 0.6;
+}
+.drag-handle:hover {
+  opacity: 1 !important;
+}
+.ledger-card-dragging {
+  opacity: 0.5;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+}
+
+/* 列表视图骨架屏 */
+.ledger-list-item-skeleton {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+}
+.skeleton-list-color {
+  width: 4px;
+  height: 32px;
+  border-radius: 2px;
+}
+.skeleton-list-name {
+  width: 100px;
+  height: 16px;
+}
+.skeleton-list-value {
+  width: 80px;
+  height: 14px;
+}
 .ledger-card {
   background: #fff;
   border-radius: 12px;
@@ -382,6 +549,7 @@ input:focus, select:focus { outline: none; }
   font-size: 14px;
   color: #666;
 }
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
@@ -474,6 +642,21 @@ input:focus, select:focus { outline: none; }
   font-weight: 600;
   color: #1a1814;
   margin-bottom: 4px;
+}
+
+.chart-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.chart-title-row .chart-title {
+  margin-bottom: 0;
+}
+
+.chart-title-row .sort-tabs {
+  margin: 0;
 }
 
 .chart-subtitle {
@@ -1432,3 +1615,299 @@ select.form-control { cursor: pointer; }
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-thumb { background: #d4cfc6; border-radius: 2px; }
+
+/* Skeleton loading */
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.skeleton-line {
+  background: linear-gradient(90deg, #f0ece5 25%, #e8e0d4 50%, #f0ece5 75%);
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.5s ease-in-out infinite;
+  border-radius: 4px;
+}
+
+@keyframes skeletonShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton-summary-top {
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.skeleton-title {
+  width: 180px;
+  height: 12px;
+}
+
+.skeleton-big-num {
+  width: 140px;
+  height: 32px;
+  margin-top: 8px;
+}
+
+.skeleton-row {
+  margin-bottom: 12px;
+}
+
+.skeleton-pnl {
+  width: 120px;
+  height: 20px;
+}
+
+.skeleton-ccy {
+  flex-direction: row;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.skeleton-ccy-item {
+  width: 100px;
+  height: 16px;
+}
+
+/* 新增骨架屏样式 */
+.skeleton-button {
+  height: 28px;
+  width: 80px;
+  margin: 4px;
+  border-radius: 4px;
+}
+
+.skeleton-fx-label {
+  height: 14px;
+  width: 60px;
+  margin-right: 8px;
+}
+
+.skeleton-fx-chip {
+  height: 20px;
+  width: 60px;
+  margin-right: 8px;
+  border-radius: 10px;
+}
+
+.skeleton-toggle {
+  height: 20px;
+  width: 40px;
+  margin-right: 12px;
+  border-radius: 10px;
+}
+
+.skeleton-tab {
+  height: 28px;
+  width: 80px;
+  margin-right: 8px;
+  border-radius: 4px;
+}
+
+.skeleton-tabs-count {
+  height: 20px;
+  width: 30px;
+  border-radius: 10px;
+}
+
+.skeleton-stock-name {
+  height: 16px;
+  width: 120px;
+  margin-right: 8px;
+  display: inline-block;
+}
+
+.skeleton-tag {
+  height: 16px;
+  width: 40px;
+  margin-right: 6px;
+  border-radius: 8px;
+  display: inline-block;
+}
+
+.skeleton-info-item {
+  height: 12px;
+  width: 80px;
+  margin-right: 12px;
+  display: inline-block;
+}
+
+.skeleton-desktop-col {
+  height: 16px;
+  width: 80px;
+  margin-bottom: 4px;
+}
+
+.skeleton-col-sub {
+  height: 12px;
+  width: 60px;
+}
+
+.skeleton-pnl-col {
+  height: 16px;
+  width: 100px;
+  margin-bottom: 4px;
+}
+
+.skeleton-arrow {
+  height: 12px;
+  width: 40px;
+}
+
+.skeleton-chart-title {
+  height: 18px;
+  width: 150px;
+  margin-bottom: 6px;
+}
+
+.skeleton-chart-subtitle {
+  height: 14px;
+  width: 200px;
+  margin-bottom: 12px;
+}
+
+.skeleton-sort-tab {
+  height: 28px;
+  width: 100px;
+  margin-right: 8px;
+  border-radius: 4px;
+}
+
+.skeleton-holding-name {
+  height: 16px;
+  width: 100px;
+  margin-right: 8px;
+  display: inline-block;
+}
+
+.skeleton-percentage-tag {
+  height: 14px;
+  width: 60px;
+  margin-right: 8px;
+  border-radius: 7px;
+  display: inline-block;
+}
+
+.skeleton-holding-value {
+  height: 14px;
+  width: 100px;
+  margin-right: 8px;
+  display: inline-block;
+}
+
+.skeleton-holding-pnl {
+  height: 14px;
+  width: 80px;
+  display: inline-block;
+}
+
+.skeleton-ledger-name {
+  height: 16px;
+  width: 120px;
+  margin-right: 8px;
+  display: inline-block;
+}
+
+.skeleton-ledger-value {
+  height: 14px;
+  width: 120px;
+  margin-right: 8px;
+  display: inline-block;
+}
+
+.skeleton-ledger-pnl {
+  height: 14px;
+  width: 80px;
+  display: inline-block;
+}
+
+/* 账本页面骨架屏容器 */
+.ledger-loading-skeleton {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.ledger-card-skeleton {
+  pointer-events: none;
+}
+
+.skeleton-card-title {
+  width: 60%;
+  height: 14px;
+  margin: 0 auto 12px;
+}
+
+.skeleton-card-item {
+  width: 100%;
+  height: 12px;
+  margin-bottom: 6px;
+}
+
+.skeleton-card-item:last-child {
+  margin-bottom: 0;
+}
+
+.skeleton-card-hint {
+  width: 70px;
+  height: 10px;
+  margin: 12px auto 0;
+}
+
+/* Sort tabs */
+.sort-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.sort-tab {
+  padding: 6px 14px;
+  border: 1px solid #e4dfd6;
+  border-radius: 16px;
+  background: #fff;
+  color: #888;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.sort-tab:hover {
+  border-color: #c4b9a8;
+  color: #666;
+}
+
+.sort-tab.active {
+  background: #1a1814;
+  border-color: #1a1814;
+  color: #f9f7f3;
+}
+
+/* Holding/Ledger PnL display */
+.holding-pnl,
+.ledger-pnl {
+  font-size: 12px;
+  font-family: monospace;
+  font-weight: 600;
+  margin-left: 8px;
+}
+
+.holding-pnl.pnl-green,
+.ledger-pnl.pnl-green {
+  color: #1a7a4a;
+}
+
+.holding-pnl.pnl-red,
+.ledger-pnl.pnl-red {
+  color: #c0392b;
+}
+
+/* Ledger tag for holdings list */
+.ledger-tag {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}

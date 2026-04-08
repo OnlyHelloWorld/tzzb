@@ -168,6 +168,21 @@ export async function deleteLedger(ledgerId) {
   }
 }
 
+export async function updateLedgerSortOrder(ledgers) {
+  console.log('开始更新账本排序:', ledgers)
+  try {
+    const result = await request('/ledgers/sort-order', {
+      method: 'PUT',
+      body: JSON.stringify({ ledgers }),
+    })
+    console.log('更新账本排序成功:', result)
+    return result
+  } catch (error) {
+    console.error('更新账本排序失败:', error)
+    throw error
+  }
+}
+
 // ─── 持仓 ─────────────────────────────────────────────────────
 export async function loadHoldings(ledgerId = null) {
   console.log('开始加载持仓数据, ledgerId:', ledgerId)

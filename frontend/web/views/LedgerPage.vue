@@ -77,28 +77,84 @@
     </div>
 
     <div class="main-content">
-      <div v-show="showBlessingEffect || store.isLoading" :class="['blessing-overlay', { 'blessing-overlay-loop': store.isLoading }]">
+      <div v-show="showBlessingEffect" :class="['blessing-overlay']">
         <span
           v-for="(char, index) in blessingChars"
-          :key="`${store.isLoading ? 'loading-' + loadingEffectKey : blessingEffectKey}-${index}`"
-          :class="['blessing-char', store.isLoading ? 'blessing-char-loop' : 'blessing-char-pop']"
+          :key="`${blessingEffectKey}-${index}`"
+          :class="['blessing-char', 'blessing-char-pop']"
         >{{ char }}</span>
       </div>
-      <div v-show="store.isLoading" class="section-loading">
-        <div class="loading-wave">
-          <div class="loading-bar"></div>
-          <div class="loading-bar"></div>
-          <div class="loading-bar"></div>
-          <div class="loading-bar"></div>
-          <div class="loading-bar"></div>
-        </div>
-        <div class="loading-text">正在刷新当前区域...</div>
-      </div>
       <transition name="page" mode="out-in">
-        <!-- 加载中状态 -->
-        <div v-if="ledgerLoading" key="loading" class="ledger-loading-placeholder">
-          <div class="loading-spinner"></div>
-          <div class="loading-text">正在加载账本...</div>
+        <!-- 加载中状态 - 骨架屏 -->
+        <div v-if="ledgerLoading" key="loading" class="ledger-loading-skeleton">
+          <!-- 汇总卡片骨架屏 -->
+          <div class="summary-card">
+            <div class="summary-card-header">
+              <div class="skeleton-line skeleton-title"></div>
+              <div class="skeleton-line skeleton-button"></div>
+            </div>
+            <div class="summary-row">
+              <div class="skeleton-line skeleton-big-num"></div>
+              <div class="skeleton-line skeleton-pnl"></div>
+            </div>
+            <div class="ccy-row">
+              <div class="skeleton-line skeleton-ccy-item"></div>
+              <div class="skeleton-line skeleton-ccy-item"></div>
+              <div class="skeleton-line skeleton-ccy-item"></div>
+            </div>
+            <div class="fx-section">
+              <div class="fx-bar">
+                <div class="skeleton-line skeleton-fx-label"></div>
+                <div class="skeleton-line skeleton-fx-chip"></div>
+                <div class="skeleton-line skeleton-fx-chip"></div>
+                <div class="skeleton-line skeleton-toggle"></div>
+                <div class="skeleton-line skeleton-button"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 标签栏骨架屏 -->
+          <div class="tabs-row">
+            <div class="skeleton-line skeleton-tab"></div>
+            <div class="skeleton-line skeleton-tab"></div>
+            <div class="skeleton-line skeleton-tab"></div>
+            <div class="skeleton-line skeleton-tab"></div>
+            <div class="skeleton-line skeleton-tabs-count"></div>
+          </div>
+
+          <!-- 持仓列表骨架屏 -->
+          <div class="holding-list">
+            <div v-for="i in 3" :key="`skeleton-holding-${i}`" class="row">
+              <div class="row-head">
+                <div>
+                  <div class="name-row">
+                    <div class="skeleton-line skeleton-stock-name"></div>
+                    <div class="skeleton-line skeleton-tag"></div>
+                    <div class="skeleton-line skeleton-tag"></div>
+                  </div>
+                  <div class="info-grid">
+                    <div class="skeleton-line skeleton-info-item"></div>
+                    <div class="skeleton-line skeleton-info-item"></div>
+                    <div class="skeleton-line skeleton-info-item"></div>
+                  </div>
+                </div>
+                <div class="desktop-col">
+                  <div class="skeleton-line skeleton-desktop-col"></div>
+                  <div class="skeleton-line skeleton-col-sub"></div>
+                </div>
+                <div class="desktop-col">
+                  <div class="skeleton-line skeleton-desktop-col"></div>
+                </div>
+                <div class="desktop-col">
+                  <div class="skeleton-line skeleton-desktop-col"></div>
+                </div>
+                <div class="pnl-col">
+                  <div class="skeleton-line skeleton-pnl-col"></div>
+                  <div class="skeleton-line skeleton-arrow"></div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
         <!-- 账本内容 -->
         <template v-else-if="store.currentLedger">
@@ -170,6 +226,26 @@
       <!-- ── Tabs ── -->
       <div class="tabs-row">
         <button v-for="t in TABS" :key="t" :class="['tab', { on: tab === t }]" @click="tab = t">{{ t }}</button>
+        <div class="sort-tabs">
+          <button 
+            :class="['sort-tab', { active: holdingSortBy === 'mv' }]" 
+            @click="holdingSortBy = 'mv'"
+          >按市值</button>
+          <button 
+            :class="['sort-tab', { active: holdingSortBy === 'pnl' }]" 
+            @click="holdingSortBy = 'pnl'"
+          >按盈亏</button>
+          <button 
+            :class="['sort-tab', 'sort-direction-btn', { active: true }]" 
+            @click="holdingSortAsc = !holdingSortAsc"
+            :title="holdingSortAsc ? '正序' : '倒序'"
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path v-if="!holdingSortAsc" d="M7 2v10M3 6l4-4 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <path v-else d="M7 12V2M3 8l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
         <span class="tabs-count">{{ filtered.length }} 只</span>
       </div>
 
@@ -239,7 +315,7 @@
           <div class="trade-header">
             <span class="trade-title">买入记录</span>
             <div class="trade-actions">
-              <button class="btn btn-ghost" style="font-size:11px" @click.stop="openAddTrade({ market: h.market, code: h.code })"">+ 新增一笔</button>
+              <button class="btn btn-ghost" style="font-size:11px" @click.stop="openAddTrade({ market: h.market, code: h.code })">+ 新增一笔</button>
               <button class="btn btn-warn" style="font-size:11px" @click.stop="toggleReset({ market: h.market, code: h.code })">
                 {{ resetTarget && resetTarget.market === h.market && resetTarget.code === h.code ? '取消' : '一键重置成本' }}
               </button>
@@ -645,7 +721,9 @@ export default {
       { label: 'HKD/CNY', key: 'HKD' },
     ]
     
-    // 账本颜色选项
+    const holdingSortBy = ref('mv')
+    const holdingSortAsc = ref(false)
+    
     const ledgerColors = [
       '#1a1814', '#1a7a4a', '#c0392b', '#1a6fa8', '#8e44ad',
       '#f39c12', '#e74c3c', '#3498db', '#27ae60', '#9b59b6'
@@ -664,9 +742,23 @@ export default {
     
     // 过滤后的持仓
     const filtered = computed(function() {
-      return tab.value === '全部' 
+      let result = tab.value === '全部' 
         ? enriched.value 
         : enriched.value.filter(function(h) { return h.market === tab.value })
+      
+      // 根据排序方式排序
+      if (holdingSortBy.value === 'pnl') {
+        result = result.sort((a, b) => b.pnl - a.pnl)
+      } else {
+        result = result.sort((a, b) => b.mv - a.mv)
+      }
+      
+      // 根据排序方向调整
+      if (holdingSortAsc.value) {
+        result = result.reverse()
+      }
+      
+      return result
     })
     
     // 汇总信息（使用后端计算结果）
@@ -1553,6 +1645,8 @@ export default {
       holdingExistsConfirm,
       ledgerLoading,
       fxList,
+      holdingSortBy,
+      holdingSortAsc,
       ledgerColors,
       TABS,
       MARKET_OPTIONS,

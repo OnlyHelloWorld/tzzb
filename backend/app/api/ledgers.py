@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.models import User, Ledger, Holding, Trade
-from app.core.schemas import LedgerCreate, LedgerResponse, LedgerUpdate
+from app.core.schemas import LedgerCreate, LedgerResponse, LedgerUpdate, LedgerSortOrderUpdate
 from app.api.auth import get_current_user
 
 logger = logging.getLogger(__name__)
@@ -27,7 +27,7 @@ async def get_ledgers(
         result = await db.execute(
             select(Ledger)
             .where(Ledger.user_id == user.id)
-            .order_by(Ledger.created_at)
+            .order_by(Ledger.sort_order, Ledger.created_at)
         )
         ledgers = result.scalars().all()
         logger.info(f"用户 {user.username} 获取到 {len(ledgers)} 个账本")
@@ -176,3 +176,32 @@ async def delete_ledger(
         logger.error(f"用户 {user.username} 删除账本失败: ID={ledger_id}, 错误: {str(e)}", exc_info=True)
         await db.rollback()
         raise HTTPException(status_code=500, detail={"message": "删除账本失败", "error": str(e)})
+
+
+@router.put("/sort-order")
+async def update_ledger_sort_order(
+    req: LedgerSortOrderUpdate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """批量更新账本排序"""
+    logger.info(f"用户 {user.username} 开始更新账本排序")
+    try:
+        # 获取用户所有账本
+        result = await db.execute(
+            select(Ledger).where(Ledger.user_id == user.id)
+        )
+        ledgers = {ledger.id: ledger for ledger in result.scalars().all()}
+        
+        # 更新排序
+        for item in req.ledgers:
+            if item.id in ledgers:
+                ledgers[item.id].sort_order = item.sort_order
+        
+        await db.commit()
+        logger.info(f"用户 {user.username} 更新账本排序成功")
+        return {"ok": True}
+    except Exception as e:
+        logger.error(f"用户 {user.username} 更新账本排序失败: {str(e)}", exc_info=True)
+        await db.rollback()
+        raise HTTPException(status_code=500, detail={"message": "更新账本排序失败", "error": str(e)})

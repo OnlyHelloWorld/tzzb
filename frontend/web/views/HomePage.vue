@@ -22,53 +22,57 @@
     </div>
 
     <div class="main-content">
-      <div v-if="showBlessingEffect || store.isLoading" :class="['blessing-overlay', { 'blessing-overlay-loop': store.isLoading }]">
+      <div v-if="showBlessingEffect" :class="['blessing-overlay']">
         <span
           v-for="(char, index) in blessingChars"
-          :key="`${store.isLoading ? 'loading-' + loadingEffectKey : blessingEffectKey}-${index}`"
-          :class="['blessing-char', store.isLoading ? 'blessing-char-loop' : 'blessing-char-pop']"
+          :key="`${blessingEffectKey}-${index}`"
+          :class="['blessing-char', 'blessing-char-pop']"
         >{{ char }}</span>
       </div>
-      <div v-if="store.isLoading" class="section-loading">
-        <div class="loading-wave">
-          <div class="loading-bar"></div>
-          <div class="loading-bar"></div>
-          <div class="loading-bar"></div>
-          <div class="loading-bar"></div>
-          <div class="loading-bar"></div>
-        </div>
-        <div class="loading-text">正在刷新当前区域...</div>
-      </div>
       <transition name="page" mode="out-in">
-        <template v-if="!store.isLoading">
-        <!-- Ledger management page -->
-        <div key="ledger-management" class="ledger-management">
+        <div :key="'ledger-management'" class="ledger-management">
         <!-- 所有账本汇总卡片 -->
         <div class="summary-card all-ledgers-summary-card">
-          <div class="summary-top-row">
-            <div>
-              <div class="summary-label">所有账本总市值（人民币）</div>
-              <div class="big-num" style="font-size: 28px;">¥ {{ fmt(store.allLedgersSummary.totalCNY) }}</div>
+          <template v-if="store.isLoading">
+            <div class="skeleton skeleton-summary-top">
+              <div class="skeleton-line skeleton-title"></div>
+              <div class="skeleton-line skeleton-big-num"></div>
             </div>
-            <div class="ledger-count-chip">
-              <span class="summary-label">账本数量</span>
-              <span class="ledger-count-num">{{ store.ledgers.length }}</span>
+            <div class="skeleton skeleton-row">
+              <div class="skeleton-line skeleton-pnl"></div>
             </div>
-          </div>
-          <div class="summary-row">
-            <div class="summary-pnl">
-              <PnLTag :val="store.allLedgersSummary.pnl" :pct="store.allLedgersSummary.pct" :size="14" />
-              <span class="pnl-abs">{{ store.allLedgersSummary.pnl >= 0 ? '+' : '' }}¥{{ fmt(store.allLedgersSummary.pnl) }}</span>
+            <div class="skeleton skeleton-ccy">
+              <div class="skeleton-line skeleton-ccy-item"></div>
+              <div class="skeleton-line skeleton-ccy-item"></div>
+              <div class="skeleton-line skeleton-ccy-item"></div>
             </div>
-          </div>
-          <div class="ccy-row">
-            <div v-for="item in allLedgersCcyBreakdown" :key="item.ccy" class="ccy-chip">
-              <Tag :market="item.label" /> &thinsp;
-              <span>{{ SYM[item.ccy] }}{{ fmt(item.val) }}</span>
-              <span v-if="item.ccy !== 'CNY'" class="ccy-conv"> ≈ ¥{{ fmt(toCNY(item.val, item.ccy, store.fx)) }}</span>
-              <span class="ccy-percentage"> ({{ fmt(getCcyPercentage(item.ccy), 1) }}%)</span>
+          </template>
+          <template v-else>
+            <div class="summary-top-row">
+              <div>
+                <div class="summary-label">所有账本总市值（人民币）</div>
+                <div class="big-num" style="font-size: 28px;">¥ {{ fmt(store.allLedgersSummary.totalCNY) }}</div>
+              </div>
+              <div class="ledger-count-chip">
+                <span class="summary-label">账本数量</span>
+                <span class="ledger-count-num">{{ store.ledgers.length }}</span>
+              </div>
             </div>
-          </div>
+            <div class="summary-row">
+              <div class="summary-pnl">
+                <PnLTag :val="store.allLedgersSummary.pnl" :pct="store.allLedgersSummary.pct" :size="14" />
+                <span class="pnl-abs">{{ store.allLedgersSummary.pnl >= 0 ? '+' : '' }}¥{{ fmt(store.allLedgersSummary.pnl) }}</span>
+              </div>
+            </div>
+            <div class="ccy-row">
+              <div v-for="item in allLedgersCcyBreakdown" :key="item.ccy" class="ccy-chip">
+                <Tag :market="item.label" /> &thinsp;
+                <span>{{ SYM[item.ccy] }}{{ fmt(item.val) }}</span>
+                <span v-if="item.ccy !== 'CNY'" class="ccy-conv"> ≈ ¥{{ fmt(toCNY(item.val, item.ccy, store.fx)) }}</span>
+                <span class="ccy-percentage"> ({{ fmt(getCcyPercentage(item.ccy), 1) }}%)</span>
+              </div>
+            </div>
+          </template>
           <div v-if="store.ioMessage" class="io-message" :class="store.ioMessageClass">{{ store.ioMessage }}</div>
           <div class="all-ledgers-bottom-row">
             <div class="io-btns">
@@ -88,37 +92,124 @@
           </div>
         </div>
 
-        <div class="ledgers-grid">
-          <div v-for="summary in store.ledgerSummaries" :key="summary.id" :class="['ledger-card', { 'ledger-card-deleting': deletingLedgers.includes(summary.id) }]" @click="switchLedger(summary)">
-            <div class="ledger-card-header" :style="{ backgroundColor: summary.color }"></div>
-            <div class="ledger-card-body">
-              <div class="ledger-card-title-row">
-                <h3>{{ summary.name }}</h3>
-                <div class="ledger-card-menu-wrap" @click.stop>
-                  <button class="ledger-card-menu-btn" @click.stop="toggleLedgerActionMenu(summary.id)">⋯</button>
-                  <div v-if="openLedgerActionMenuId === summary.id" class="ledger-card-menu">
-                    <button class="ledger-card-menu-item" @click.stop="editLedger(summary); closeLedgerActionMenu()">编辑账本</button>
-                    <button class="ledger-card-menu-item ledger-card-menu-item-danger" @click.stop="confirmDeleteLedger(summary); closeLedgerActionMenu()">删除账本</button>
-                  </div>
-                </div>
-              </div>
-              <div class="ledger-summary">
-                <div class="summary-item">
-                  <span class="summary-label">总市值</span>
-                  <span class="summary-value">¥ {{ fmt(summary.totalCNY) }}</span>
-                </div>
-                <div class="summary-item">
-                  <span class="summary-label">持仓</span>
-                  <span class="summary-value">{{ summary.holdingCount }} 只</span>
-                </div>
-                <div class="summary-item" :class="{ 'pnl-green': summary.pnl >= 0, 'pnl-red': summary.pnl < 0 }">
-                  <span class="summary-label">盈亏</span>
-                  <span class="summary-value">{{ summary.pnl >= 0 ? '+' : '' }}¥{{ fmt(summary.pnl) }} ({{ summary.pct >= 0 ? '+' : '' }}{{ fmt(summary.pct, 1) }}%)</span>
-                </div>
-              </div>
-              <p class="ledger-card-hint">点击进入账本</p>
+        <!-- 账本列表工具栏 -->
+        <div class="ledgers-toolbar">
+          <div class="toolbar-left">
+            <div class="sort-tabs">
+              <button 
+                :class="['sort-tab', { active: ledgerSortBy === 'mv' }]" 
+                @click="ledgerSortBy = 'mv'"
+              >按市值</button>
+              <button 
+                :class="['sort-tab', { active: ledgerSortBy === 'pnl' }]" 
+                @click="ledgerSortBy = 'pnl'"
+              >按盈亏</button>
+              <button 
+                :class="['sort-tab', 'sort-direction-btn', { active: true }]" 
+                @click="ledgerSortAsc = !ledgerSortAsc"
+                :title="ledgerSortAsc ? '正序' : '倒序'"
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path v-if="!ledgerSortAsc" d="M7 2v10M3 6l4-4 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path v-else d="M7 12V2M3 8l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
             </div>
           </div>
+          <div class="toolbar-right">
+            <div class="view-switch">
+              <button 
+                :class="['view-btn', { active: viewMode === 'card' }]" 
+                @click="viewMode = 'card'"
+                title="卡片视图"
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <rect x="1" y="1" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.2"/>
+                  <rect x="9" y="1" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.2"/>
+                  <rect x="1" y="9" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.2"/>
+                  <rect x="9" y="9" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.2"/>
+                </svg>
+              </button>
+              <button 
+                :class="['view-btn', { active: viewMode === 'list' }]" 
+                @click="viewMode = 'list'"
+                title="列表视图"
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M1 3h14M1 8h14M1 13h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 卡片视图 -->
+        <div v-if="viewMode === 'card'" class="ledgers-grid">
+          <template v-if="store.isLoading">
+            <div v-for="i in 3" :key="'skeleton-' + i" class="ledger-card ledger-card-skeleton">
+              <div class="ledger-card-header" style="background: #e8e0d4;"></div>
+              <div class="ledger-card-body">
+                <div class="skeleton-line skeleton-card-title"></div>
+                <div class="ledger-summary">
+                  <div class="skeleton-line skeleton-card-item"></div>
+                  <div class="skeleton-line skeleton-card-item"></div>
+                  <div class="skeleton-line skeleton-card-item"></div>
+                </div>
+                <div class="skeleton-line skeleton-card-hint"></div>
+              </div>
+            </div>
+          </template>
+          <template v-else>
+            <div 
+              v-for="(summary, index) in sortedLedgers" 
+              :key="summary.id" 
+              :class="['ledger-card', { 'ledger-card-deleting': deletingLedgers.includes(summary.id), 'ledger-card-dragging': draggedLedgerId === summary.id }]" 
+              draggable="true"
+              @dragstart="handleDragStart($event, summary, index)"
+              @dragend="handleDragEnd"
+              @dragover="handleDragOver($event, index)"
+              @drop="handleDrop($event, index)"
+              @click="switchLedger(summary)"
+            >
+              <div class="ledger-card-header" :style="{ backgroundColor: summary.color }">
+                <div class="drag-handle" @click.stop>
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <circle cx="3" cy="3" r="1" fill="rgba(255,255,255,0.6)"/>
+                    <circle cx="9" cy="3" r="1" fill="rgba(255,255,255,0.6)"/>
+                    <circle cx="3" cy="9" r="1" fill="rgba(255,255,255,0.6)"/>
+                    <circle cx="9" cy="9" r="1" fill="rgba(255,255,255,0.6)"/>
+                  </svg>
+                </div>
+              </div>
+              <div class="ledger-card-body">
+                <div class="ledger-card-title-row">
+                  <h3>{{ summary.name }}</h3>
+                  <div class="ledger-card-menu-wrap" @click.stop>
+                    <button class="ledger-card-menu-btn" @click.stop="toggleLedgerActionMenu(summary.id)">⋯</button>
+                    <div v-if="openLedgerActionMenuId === summary.id" class="ledger-card-menu">
+                      <button class="ledger-card-menu-item" @click.stop="editLedger(summary); closeLedgerActionMenu()">编辑账本</button>
+                      <button class="ledger-card-menu-item ledger-card-menu-item-danger" @click.stop="confirmDeleteLedger(summary); closeLedgerActionMenu()">删除账本</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="ledger-summary">
+                  <div class="summary-item">
+                    <span class="summary-label">总市值</span>
+                    <span class="summary-value">¥ {{ fmt(summary.totalCNY) }}</span>
+                  </div>
+                  <div class="summary-item">
+                    <span class="summary-label">持仓</span>
+                    <span class="summary-value">{{ summary.holdingCount }} 只</span>
+                  </div>
+                  <div class="summary-item" :class="{ 'pnl-green': summary.pnl >= 0, 'pnl-red': summary.pnl < 0 }">
+                    <span class="summary-label">盈亏</span>
+                    <span class="summary-value">{{ summary.pnl >= 0 ? '+' : '' }}¥{{ fmt(summary.pnl) }} ({{ summary.pct >= 0 ? '+' : '' }}{{ fmt(summary.pct, 1) }}%)</span>
+                  </div>
+                </div>
+                <p class="ledger-card-hint">点击进入账本</p>
+              </div>
+            </div>
+          </template>
           <div class="ledger-card ledger-card-empty" @click="openCreateLedger">
             <div class="ledger-card-empty-content">
               <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
@@ -129,8 +220,53 @@
             </div>
           </div>
         </div>
-      </div>
-      </template>
+
+        <!-- 列表视图 -->
+        <div v-else class="ledgers-list">
+          <template v-if="store.isLoading">
+            <div v-for="i in 3" :key="'skeleton-list-' + i" class="ledger-list-item ledger-list-item-skeleton">
+              <div class="skeleton-line skeleton-list-color"></div>
+              <div class="skeleton-line skeleton-list-name"></div>
+              <div class="skeleton-line skeleton-list-value"></div>
+              <div class="skeleton-line skeleton-list-value"></div>
+              <div class="skeleton-line skeleton-list-value"></div>
+            </div>
+          </template>
+          <template v-else>
+            <div 
+              v-for="(summary, index) in sortedLedgers" 
+              :key="summary.id" 
+              :class="['ledger-list-item', { 'ledger-list-item-deleting': deletingLedgers.includes(summary.id), 'ledger-list-item-dragging': draggedLedgerId === summary.id }]"
+              draggable="true"
+              @dragstart="handleDragStart($event, summary, index)"
+              @dragend="handleDragEnd"
+              @dragover="handleDragOver($event, index)"
+              @drop="handleDrop($event, index)"
+              @click="switchLedger(summary)"
+            >
+              <div class="ledger-list-color" :style="{ backgroundColor: summary.color }"></div>
+              <div class="ledger-list-name">{{ summary.name }}</div>
+              <div class="ledger-list-value">¥ {{ fmt(summary.totalCNY) }}</div>
+              <div class="ledger-list-value">{{ summary.holdingCount }} 只</div>
+              <div :class="['ledger-list-value', 'ledger-list-pnl', summary.pnl >= 0 ? 'pnl-green' : 'pnl-red']">
+                {{ summary.pnl >= 0 ? '+' : '' }}¥{{ fmt(summary.pnl) }}
+              </div>
+              <div class="ledger-list-actions" @click.stop>
+                <button class="list-action-btn" @click.stop="editLedger(summary)" title="编辑">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M10 2l2 2M1 11v2h2l7-7-2-2-7 7z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </button>
+                <button class="list-action-btn list-action-btn-danger" @click.stop="confirmDeleteLedger(summary)" title="删除">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M2 4h10M5 4V3a1 1 0 011-1h2a1 1 0 011 1v1M6 7v4M8 7v4M3 4l1 9h6l1-9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </template>
+        </div>
+        </div>
       </transition>
     </div>
 
@@ -253,19 +389,17 @@ export default {
     const blessingChars = ['恭', '喜', '发', '财']
     const showBlessingEffect = ref(false)
     const blessingEffectKey = ref(0)
-    const loadingEffectKey = ref(0)
     const errorModal = ref({ visible: false, message: '', detail: '', expanded: false })
     
-    // 定期更新loadingEffectKey，确保动画循环播放
-    let loadingEffectInterval = null
-    if (loadingEffectInterval) clearInterval(loadingEffectInterval)
-    loadingEffectInterval = setInterval(() => {
-      if (store.isLoading) {
-        loadingEffectKey.value += 1
-      }
-    }, 1800)
+    // 视图和排序状态
+    const viewMode = ref(localStorage.getItem('ledgerViewMode') || 'card')
+    const ledgerSortBy = ref(localStorage.getItem('ledgerSortBy') || 'mv')
+    const ledgerSortAsc = ref(localStorage.getItem('ledgerSortAsc') === 'true')
     
-    // 账本颜色选项
+    // 拖拽状态
+    const draggedLedgerId = ref(null)
+    const draggedIndex = ref(null)
+    
     const ledgerColors = [
       '#1a1814', '#1a7a4a', '#c0392b', '#1a6fa8', '#8e44ad',
       '#f39c12', '#e74c3c', '#3498db', '#27ae60', '#9b59b6'
@@ -277,6 +411,105 @@ export default {
       { label: '港股', ccy: 'HKD', val: store.allLedgersSummary.byCcy.HKD },
       { label: '美股', ccy: 'USD', val: store.allLedgersSummary.byCcy.USD }
     ])
+    
+    // 排序后的账本列表
+    const sortedLedgers = computed(() => {
+      let ledgers = [...store.ledgerSummaries]
+      
+      // 使用后端返回的 sort_order 排序，如果没有则按市值排序
+      const hasCustomOrder = ledgers.some(l => l.sort_order && l.sort_order > 0)
+      
+      if (hasCustomOrder) {
+        ledgers.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+      } else {
+        // 默认按市值或盈亏排序
+        if (ledgerSortBy.value === 'pnl') {
+          ledgers.sort((a, b) => b.pnl - a.pnl)
+        } else {
+          ledgers.sort((a, b) => b.totalCNY - a.totalCNY)
+        }
+        
+        // 根据排序方向调整
+        if (ledgerSortAsc.value) {
+          ledgers = ledgers.reverse()
+        }
+      }
+      
+      return ledgers
+    })
+    
+    // 拖拽开始
+    const handleDragStart = (event, ledger, index) => {
+      draggedLedgerId.value = ledger.id
+      draggedIndex.value = index
+      event.dataTransfer.effectAllowed = 'move'
+      event.dataTransfer.setData('text/plain', ledger.id)
+    }
+    
+    // 拖拽结束
+    const handleDragEnd = () => {
+      draggedLedgerId.value = null
+      draggedIndex.value = null
+    }
+    
+    // 拖拽经过
+    const handleDragOver = (event, index) => {
+      event.preventDefault()
+      event.dataTransfer.dropEffect = 'move'
+    }
+    
+    // 放置
+    const handleDrop = async (event, targetIndex) => {
+      event.preventDefault()
+      
+      if (draggedIndex.value === null || draggedIndex.value === targetIndex) return
+      
+      const currentOrder = sortedLedgers.value.map((l, idx) => ({
+        id: l.id,
+        sort_order: idx + 1
+      }))
+      
+      // 重新排序
+      const [removed] = currentOrder.splice(draggedIndex.value, 1)
+      currentOrder.splice(targetIndex, 0, removed)
+      
+      // 更新 sort_order
+      currentOrder.forEach((item, idx) => {
+        item.sort_order = idx + 1
+      })
+      
+      try {
+        await api.updateLedgerSortOrder(currentOrder)
+        // 更新本地数据
+        currentOrder.forEach(item => {
+          const ledger = store.ledgerSummaries.find(l => l.id === item.id)
+          if (ledger) {
+            ledger.sort_order = item.sort_order
+          }
+        })
+        store.showMessage('账本顺序已保存')
+      } catch (err) {
+        store.showMessage('保存账本顺序失败: ' + err.message, true)
+      }
+    }
+    
+    // 监听视图模式变化
+    const updateViewMode = (mode) => {
+      viewMode.value = mode
+      localStorage.setItem('ledgerViewMode', mode)
+    }
+    
+    // 监听排序方式变化
+    const updateSortBy = (sortBy) => {
+      ledgerSortBy.value = sortBy
+      localStorage.setItem('ledgerSortBy', sortBy)
+    }
+    
+    // 监听排序方向变化
+    const updateSortAsc = (asc) => {
+      ledgerSortAsc.value = asc
+      localStorage.setItem('ledgerSortAsc', asc.toString())
+    }
     
     // 触发祝福效果
     const triggerBlessingEffect = (duration = 1800) => {
@@ -511,10 +744,7 @@ export default {
     
     // 页面加载时加载数据
     onMounted(async () => {
-      // 只有在数据未加载时才加载
-      if (store.ledgers.length === 0) {
-        await store.loadData()
-      }
+      await store.loadData()
     })
     
     return {
@@ -532,10 +762,21 @@ export default {
       blessingChars,
       showBlessingEffect,
       blessingEffectKey,
-      loadingEffectKey,
       errorModal,
       ledgerColors,
+      sortedLedgers,
       allLedgersCcyBreakdown,
+      viewMode,
+      ledgerSortBy,
+      ledgerSortAsc,
+      draggedLedgerId,
+      handleDragStart,
+      handleDragEnd,
+      handleDragOver,
+      handleDrop,
+      updateViewMode,
+      updateSortBy,
+      updateSortAsc,
       fmt,
       toCNY,
       SYM,
