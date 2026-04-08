@@ -153,11 +153,13 @@ def create_app() -> FastAPI:
     from app.api.holdings import router as holdings_router
     from app.api.ledgers import router as ledgers_router
     from app.api.settings import router as settings_router
+    from app.api.quotes import router as quotes_router
 
     app.include_router(auth_router, prefix="/api")
     app.include_router(holdings_router, prefix="/api")
     app.include_router(ledgers_router, prefix="/api")
     app.include_router(settings_router, prefix="/api")
+    app.include_router(quotes_router, prefix="/api")
 
     @app.get("/api/health")
     async def health():
