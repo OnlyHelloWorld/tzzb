@@ -653,37 +653,21 @@ export default {
       return { '--ledger-theme': theme }
     })
     
-    // 计算持仓数据
-    const enriched = computed(() => store.holdings.map(h => {
-      const ccy = h.market === 'A股' ? 'CNY' : h.market === '港股' ? 'HKD' : 'USD'
-      const price = store.prices[h.code] || 0
-      const qty = totalQty(h.trades || [])
-      const cost = avgCost(h.trades || [])
-      const mv = price * qty
-      const costBasis = cost * qty
-      const pnl = mv - costBasis
-      const pct = costBasis > 0 ? pnl / costBasis * 100 : 0
-      return { ...h, ccy, price, qty, cost, mv, costBasis, pnl, pct }
-    }))
+    // 计算持仓数据（使用后端计算结果）
+    const enriched = computed(function() {
+      return store.calculatedHoldings || []
+    })
     
     // 过滤后的持仓
-    const filtered = computed(() =>
-      tab.value === '全部' ? enriched.value : enriched.value.filter(h => h.market === tab.value)
-    )
+    const filtered = computed(function() {
+      return tab.value === '全部' 
+        ? enriched.value 
+        : enriched.value.filter(function(h) { return h.market === tab.value })
+    })
     
-    // 汇总信息
-    const summary = computed(() => {
-      const byCcy = { CNY: 0, HKD: 0, USD: 0 }
-      const byCcyCost = { CNY: 0, HKD: 0, USD: 0 }
-      enriched.value.forEach(h => {
-        byCcy[h.ccy] += h.mv
-        byCcyCost[h.ccy] += h.costBasis
-      })
-      const totalCNY = toCNY(byCcy.CNY, 'CNY', store.fx) + toCNY(byCcy.HKD, 'HKD', store.fx) + toCNY(byCcy.USD, 'USD', store.fx)
-      const totalCostCNY = toCNY(byCcyCost.CNY, 'CNY', store.fx) + toCNY(byCcyCost.HKD, 'HKD', store.fx) + toCNY(byCcyCost.USD, 'USD', store.fx)
-      const pnl = totalCNY - totalCostCNY
-      const pct = totalCostCNY > 0 ? pnl / totalCostCNY * 100 : 0
-      return { byCcy, totalCNY, pnl, pct }
+    // 汇总信息（使用后端计算结果）
+    const summary = computed(function() {
+      return store.summary || { byCcy: { CNY: 0, HKD: 0, USD: 0 }, totalCNY: 0, pnl: 0, pct: 0 }
     })
     
     // 货币分类
@@ -790,16 +774,6 @@ export default {
 
       try {
         await store.saveHoldings(store.holdings)
-        // 添加持仓成功后立即获取实时价格（跳过计算所有账本汇总）
-        try {
-          await store.refreshSingleHoldingPrice({
-            market: newForm.value.market,
-            code: newForm.value.code
-          }, { skipSummaryCalc: true })
-        } catch (priceErr) {
-          console.warn('获取新持仓价格失败:', priceErr)
-          // 不阻止添加成功的提示
-        }
         addHolding.value = false
         triggerBlessingEffect()
         store.showMessage('持仓添加成功')
@@ -835,12 +809,6 @@ export default {
 
       try {
         await store.saveHoldings(store.holdings)
-        // 添加交易成功后立即获取实时价格（跳过计算所有账本汇总）
-        try {
-          await store.refreshSingleHoldingPrice({ market, code }, { skipSummaryCalc: true })
-        } catch (priceErr) {
-          console.warn('获取价格失败:', priceErr)
-        }
         addHolding.value = false
         holdingExistsConfirm.value = null
         triggerBlessingEffect()
@@ -1318,8 +1286,21 @@ export default {
     }
     
     // 处理刷新行情
-    const handleRefreshQuotes = () => {
-      store.refreshQuotes({ skipSummaryCalc: true })
+    const handleRefreshQuotes = async function() {
+      if (!store.currentLedger) return
+      store.isLoading = true
+      try {
+        const calculatedData = await api.loadCalculatedHoldings(store.currentLedger.id)
+        store.calculatedHoldings = calculatedData.holdings || []
+        store.summary = calculatedData.summary || { byCcy: { CNY: 0, HKD: 0, USD: 0 }, totalCNY: 0, pnl: 0, pct: 0 }
+        store.fx = calculatedData.fx || store.fx
+        store.showMessage('行情刷新成功')
+      } catch (err) {
+        console.warn('刷新行情失败:', err)
+        store.showMessage('刷新失败: ' + err.message, true)
+      } finally {
+        store.isLoading = false
+      }
       showDropdown.value = false
     }
     
@@ -1428,56 +1409,44 @@ export default {
         
         if (foundLedger) {
           store.setCurrentLedger(foundLedger)
-          // 只加载当前账本的持仓
+          
+          // 使用后端计算 API 获取持仓数据（包含价格、市值、盈亏等）
           try {
-            const savedHoldings = await api.loadHoldings(foundLedger.id)
-            store.holdings = savedHoldings || []
-            if (savedHoldings && savedHoldings.length > 0) {
-              // 使用兼容性更好的方式替代 flatMap
+            const calculatedData = await api.loadCalculatedHoldings(foundLedger.id)
+            // 存储计算后的持仓数据
+            store.calculatedHoldings = calculatedData.holdings || []
+            store.summary = calculatedData.summary || { byCcy: { CNY: 0, HKD: 0, USD: 0 }, totalCNY: 0, pnl: 0, pct: 0 }
+            store.fx = calculatedData.fx || { USD: 7.28, HKD: 0.925 }
+            
+            // 更新原始持仓数据（用于编辑）
+            store.holdings = (calculatedData.holdings || []).map(h => ({
+              id: h.id,
+              market: h.market,
+              code: h.code,
+              name: h.name,
+              sector: h.sector,
+              trades: h.trades
+            }))
+            
+            // 计算 _id
+            if (calculatedData.holdings && calculatedData.holdings.length > 0) {
               const allTradeIds = []
-              savedHoldings.forEach(h => {
+              calculatedData.holdings.forEach(function(h) {
                 if (h.trades && h.trades.length > 0) {
-                  h.trades.forEach(t => allTradeIds.push(t.id))
+                  h.trades.forEach(function(t) { allTradeIds.push(t.id) })
                 }
               })
               const maxTradeId = allTradeIds.length > 0 ? Math.max.apply(null, allTradeIds) : 0
-              const holdingIds = savedHoldings.map(h => h.id)
+              const holdingIds = calculatedData.holdings.map(function(h) { return h.id })
               const maxHoldingId = holdingIds.length > 0 ? Math.max.apply(null, holdingIds) : 0
               _id = Math.max(maxTradeId, maxHoldingId, 0) + 1
             } else {
               _id = 100
             }
-            // 为当前账本持仓设置初始价格（使用成本价）
-            for (const h of store.holdings) {
-              if (!(h.code in store.prices)) {
-                const cost = avgCost(h.trades || [])
-                store.prices[h.code] = cost || 0
-              }
-            }
           } catch (err) {
-            console.warn('加载持仓失败:', err)
+            console.warn('加载持仓数据失败:', err)
+            store.calculatedHoldings = []
             store.holdings = []
-          }
-          
-          // 加载设置
-          try {
-            const savedSettings = await api.loadSettings()
-            if (savedSettings) {
-              store.fx.USD = savedSettings.fx_usd || store.fx.USD
-              store.fx.HKD = savedSettings.fx_hkd || store.fx.HKD
-              store.autoRefresh = savedSettings.auto_refresh !== false
-            }
-          } catch (err) {
-            console.warn('加载设置失败:', err)
-          }
-          
-          // 只刷新当前账本的行情（跳过计算所有账本汇总）
-          if (store.holdings.length > 0) {
-            try {
-              await store.refreshQuotes({ skipSummaryCalc: true })
-            } catch (err) {
-              console.warn('刷新行情失败:', err)
-            }
           }
         } else {
           console.error('没有找到任何账本')

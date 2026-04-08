@@ -13,6 +13,8 @@ export const useAppStore = defineStore('app', {
     
     // 持仓相关
     holdings: [],
+    calculatedHoldings: [],  // 后端计算后的持仓数据
+    summary: { byCcy: { CNY: 0, HKD: 0, USD: 0 }, totalCNY: 0, pnl: 0, pct: 0 },  // 后端计算的汇总
     prices: {},
     fx: { USD: 7.28, HKD: 0.925 },
     autoRefresh: true,
@@ -275,12 +277,17 @@ export const useAppStore = defineStore('app', {
       try {
         const savedHoldings = await api.saveHoldings(holdingsData, this.currentLedger.id)
         this.holdings = savedHoldings || []
-        // 只更新当前账本在 allLedgersHoldings 中的数据，不重新加载所有账本
-        const ledgerId = this.currentLedger.id
-        this.allLedgersHoldings = this.allLedgersHoldings.filter(h => h.ledger_id !== ledgerId)
-        this.allLedgersHoldings.push(...(savedHoldings || []).map(h => ({ ...h, ledger_id: ledgerId })))
-        // 重新计算账本汇总
-        this.calculateAllLedgerSummaries()
+        
+        // 重新获取计算后的数据
+        try {
+          const calculatedData = await api.loadCalculatedHoldings(this.currentLedger.id)
+          this.calculatedHoldings = calculatedData.holdings || []
+          this.summary = calculatedData.summary || { byCcy: { CNY: 0, HKD: 0, USD: 0 }, totalCNY: 0, pnl: 0, pct: 0 }
+          this.fx = calculatedData.fx || this.fx
+        } catch (err) {
+          console.warn('重新获取计算数据失败:', err)
+        }
+        
         return savedHoldings
       } catch (err) {
         console.warn('保存持仓失败:', err)

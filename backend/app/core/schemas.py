@@ -82,6 +82,39 @@ class HoldingResponse(HoldingBase):
         from_attributes = True
 
 
+class HoldingCalculated(BaseModel):
+    """持仓计算结果"""
+    id: int
+    market: str
+    code: str
+    name: str
+    sector: str = ""
+    ccy: str
+    price: float
+    qty: float
+    cost: float
+    mv: float
+    costBasis: float
+    pnl: float
+    pct: float
+    trades: List[TradeResponse] = []
+
+
+class HoldingsSummary(BaseModel):
+    """持仓汇总"""
+    byCcy: dict
+    totalCNY: float
+    pnl: float
+    pct: float
+
+
+class HoldingsWithSummary(BaseModel):
+    """持仓列表 + 汇总"""
+    holdings: List[HoldingCalculated]
+    summary: HoldingsSummary
+    fx: dict
+
+
 class HoldingBulkUpdate(BaseModel):
     """批量保存持仓（前端全量覆盖）"""
     ledger_id: int

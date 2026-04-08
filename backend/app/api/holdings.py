@@ -2,7 +2,7 @@
 holdings.py — 持仓路由
 """
 import logging
-from typing import List
+from typing import List, Dict, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,12 +12,90 @@ from app.core.database import get_db
 from app.core.models import User, Holding, Trade
 from app.core.schemas import (
     HoldingCreate, HoldingResponse, HoldingBulkUpdate,
-    TradeCreate, TradeResponse,
+    TradeCreate, TradeResponse, HoldingCalculated, 
+    HoldingsSummary, HoldingsWithSummary,
 )
 from app.api.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/holdings", tags=["持仓"])
+
+
+# ─── 计算辅助函数 ──────────────────────────────────────────────────
+MARKET_CCY = {'A股': 'CNY', '港股': 'HKD', '美股': 'USD'}
+
+
+def avg_cost(trades: list) -> float:
+    """计算平均成本"""
+    if not trades:
+        return 0.0
+    total_qty = sum(t.qty for t in trades)
+    if total_qty == 0:
+        return 0.0
+    return sum(t.qty * t.price for t in trades) / total_qty
+
+
+def total_qty(trades: list) -> float:
+    """计算总数量"""
+    return sum(t.qty for t in trades) if trades else 0.0
+
+
+def to_cny(val: float, ccy: str, fx: dict) -> float:
+    """转换为人民币"""
+    if ccy == 'CNY':
+        return val
+    return val * fx.get(ccy, 1.0)
+
+
+def calculate_holdings(holdings: list, prices: dict, fx: dict) -> tuple:
+    """计算持仓数据和汇总"""
+    calculated = []
+    by_ccy = {'CNY': 0.0, 'HKD': 0.0, 'USD': 0.0}
+    by_ccy_cost = {'CNY': 0.0, 'HKD': 0.0, 'USD': 0.0}
+    
+    for h in holdings:
+        ccy = MARKET_CCY.get(h.market, 'CNY')
+        price = prices.get(h.code, 0.0)
+        qty = total_qty(h.trades)
+        cost = avg_cost(h.trades)
+        mv = price * qty
+        cost_basis = cost * qty
+        pnl = mv - cost_basis
+        pct = (pnl / cost_basis * 100) if cost_basis > 0 else 0.0
+        
+        calculated.append(HoldingCalculated(
+            id=h.id,
+            market=h.market,
+            code=h.code,
+            name=h.name,
+            sector=h.sector or "",
+            ccy=ccy,
+            price=price,
+            qty=qty,
+            cost=cost,
+            mv=mv,
+            costBasis=cost_basis,
+            pnl=pnl,
+            pct=pct,
+            trades=[TradeResponse(id=t.id, date=t.date, qty=t.qty, price=t.price, note=t.note or "") for t in h.trades]
+        ))
+        
+        by_ccy[ccy] += mv
+        by_ccy_cost[ccy] += cost_basis
+    
+    total_cny = sum(to_cny(by_ccy[ccy], ccy, fx) for ccy in ['CNY', 'HKD', 'USD'])
+    total_cost_cny = sum(to_cny(by_ccy_cost[ccy], ccy, fx) for ccy in ['CNY', 'HKD', 'USD'])
+    pnl = total_cny - total_cost_cny
+    pct = (pnl / total_cost_cny * 100) if total_cost_cny > 0 else 0.0
+    
+    summary = HoldingsSummary(
+        byCcy=by_ccy,
+        totalCNY=total_cny,
+        pnl=pnl,
+        pct=pct
+    )
+    
+    return calculated, summary
 
 
 @router.get("", response_model=List[HoldingResponse])
@@ -248,3 +326,84 @@ async def delete_holding(
         logger.error(f"用户 {user.username} 删除持仓失败: {market}/{code}, 错误: {str(e)}", exc_info=True)
         await db.rollback()
         raise HTTPException(status_code=500, detail={"message": "删除持仓失败", "error": str(e)})
+
+
+# ─── 计算后的持仓数据 API ───────────────────────────────────────────────────
+@router.get("/calculated", response_model=HoldingsWithSummary)
+async def get_calculated_holdings(
+    ledger_id: int = None,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """获取计算后的持仓数据（包含价格、市值、盈亏等）"""
+    from app.api.quotes import get_client
+    import asyncio
+    
+    logger.info(f"用户 {user.username} 获取计算后的持仓数据, ledger_id={ledger_id}")
+    
+    try:
+        # 1. 获取持仓数据
+        query = select(Holding).options(selectinload(Holding.trades)).where(Holding.user_id == user.id)
+        if ledger_id:
+            query = query.where(Holding.ledger_id == ledger_id)
+        query = query.order_by(Holding.market, Holding.code)
+        result = await db.execute(query)
+        holdings = result.scalars().all()
+        
+        if not holdings:
+            return HoldingsWithSummary(
+                holdings=[],
+                summary=HoldingsSummary(byCcy={'CNY': 0.0, 'HKD': 0.0, 'USD': 0.0}, totalCNY=0.0, pnl=0.0, pct=0.0),
+                fx={'USD': 7.28, 'HKD': 0.925}
+            )
+        
+        # 2. 获取行情价格（通过后端代理）
+        client = get_client()
+        prices = {}
+        
+        # 构建请求列表
+        items = [{'market': h.market, 'code': h.code} for h in holdings]
+        
+        # 使用腾讯批量接口
+        from app.api.quotes import fetch_tencent_batch, fetch_eastmoney_single
+        tencent_results = await fetch_tencent_batch(client, items)
+        prices.update({code: r['price'] for code, r in tencent_results.items()})
+        
+        # 对失败的用东方财富补充
+        failed_items = [item for item in items if item['code'] not in prices]
+        if failed_items:
+            semaphore = asyncio.Semaphore(10)
+            
+            async def fetch_with_semaphore(item):
+                async with semaphore:
+                    return await fetch_eastmoney_single(client, item['market'], item['code'])
+            
+            tasks = [fetch_with_semaphore(item) for item in failed_items]
+            em_results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            for item, em_result in zip(failed_items, em_results):
+                if isinstance(em_result, dict) and em_result.get('price'):
+                    prices[item['code']] = em_result['price']
+        
+        # 3. 获取汇率
+        from app.api.quotes import get_fx_rates
+        try:
+            fx_data = await get_fx_rates()
+            fx = {'USD': fx_data['USD'], 'HKD': fx_data['HKD']}
+        except:
+            fx = {'USD': 7.28, 'HKD': 0.925}
+        
+        # 4. 计算持仓数据
+        calculated, summary = calculate_holdings(holdings, prices, fx)
+        
+        logger.info(f"用户 {user.username} 计算持仓完成: {len(calculated)} 个持仓, 总市值={summary.totalCNY:.2f}")
+        
+        return HoldingsWithSummary(
+            holdings=calculated,
+            summary=summary,
+            fx=fx
+        )
+        
+    except Exception as e:
+        logger.error(f"用户 {user.username} 获取计算持仓失败: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail={"message": "获取计算持仓失败", "error": str(e)})

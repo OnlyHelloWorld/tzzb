@@ -218,6 +218,20 @@ export async function deleteHolding(market, code, ledgerId) {
   return request(url, { method: 'DELETE' })
 }
 
+// ─── 计算后的持仓数据 ─────────────────────────────────────────
+export async function loadCalculatedHoldings(ledgerId) {
+  console.log('开始加载计算后的持仓数据, ledgerId:', ledgerId)
+  try {
+    const url = ledgerId ? `/holdings/calculated?ledger_id=${ledgerId}` : '/holdings/calculated'
+    const data = await request(url)
+    console.log('加载计算后的持仓数据成功:', data)
+    return data
+  } catch (error) {
+    console.error('加载计算后的持仓数据失败:', error)
+    throw error
+  }
+}
+
 // ─── 设置 ─────────────────────────────────────────────────────
 export async function loadSettings() {
   return request('/settings')
