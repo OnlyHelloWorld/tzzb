@@ -91,7 +91,7 @@
         <div class="loading-text">正在刷新当前区域...</div>
       </div>
       <transition name="page" mode="out-in">
-        <template v-if="!store.isLoading && store.currentLedger">
+        <template v-if="!ledgerLoading && store.currentLedger">
         <!-- Holding management -->
         <div key="holding-management">
 
@@ -616,6 +616,7 @@ export default {
     const openHoldingActionMenuKey = ref(null)
     const isAddingHolding = ref(false)
     const holdingExistsConfirm = ref(null)
+    const ledgerLoading = ref(true)
     const fxList = [
       { label: 'USD/CNY', key: 'USD' },
       { label: 'HKD/CNY', key: 'HKD' },
@@ -1381,6 +1382,7 @@ export default {
     // 页面加载时
     onMounted(async () => {
       store.isLoading = true
+      ledgerLoading.value = true
       try {
         // 只加载账本列表（轻量级操作）
         const savedLedgers = await api.loadLedgers()
@@ -1442,6 +1444,7 @@ export default {
         }
       } finally {
         store.isLoading = false
+        ledgerLoading.value = false
       }
     })
     
@@ -1484,6 +1487,7 @@ export default {
       errorModal,
       isAddingHolding,
       holdingExistsConfirm,
+      ledgerLoading,
       fxList,
       ledgerColors,
       TABS,
