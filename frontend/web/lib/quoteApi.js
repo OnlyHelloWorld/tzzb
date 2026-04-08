@@ -179,16 +179,15 @@ export async function fetchQuotes(holdings) {
   const result = {}
   const errors = []
 
-  const promises = holdings.map(async (h) => {
+  // 使用兼容性更好的方式替代 Promise.allSettled
+  for (const h of holdings) {
     try {
       const quote = await fetchQuote(h.market, h.code)
       result[h.code] = quote.price
     } catch (err) {
       errors.push({ market: h.market, code: h.code, name: h.name, error: err.message })
     }
-  })
-
-  await Promise.allSettled(promises)
+  }
 
   if (errors.length > 0) {
     console.warn(`[quoteApi] ${errors.length} quotes failed:`, errors)
@@ -203,8 +202,8 @@ async function fetchFxFromExchangeApi() {
   const res = await fetch('https://api.exchangerate-api.com/v4/latest/USD', { mode: 'cors' })
   if (!res.ok) throw new Error(`ExchangeRate API HTTP ${res.status}`)
   const json = await res.json()
-  const cny = json.rates?.CNY || 0
-  const hkd = json.rates?.HKD || 0
+  const cny = (json.rates && json.rates.CNY) || 0
+  const hkd = (json.rates && json.rates.HKD) || 0
   if (cny > 0 && hkd > 0) {
     return { USD: cny, HKD: cny / hkd }
   }
@@ -218,8 +217,8 @@ async function fetchFxFromEastmoney() {
   ])
   const json1 = await res1.json()
   const json2 = await res2.json()
-  const usd = json1?.data?.f43 ? json1.data.f43 / 100 : 0
-  const hkd = json2?.data?.f43 ? json2.data.f43 / 100 : 0
+  const usd = (json1 && json1.data && json1.data.f43) ? json1.data.f43 / 100 : 0
+  const hkd = (json2 && json2.data && json2.data.f43) ? json2.data.f43 / 100 : 0
   if (usd > 0 && hkd > 0) return { USD: usd, HKD: hkd }
   throw new Error('Eastmoney fx parse error')
 }

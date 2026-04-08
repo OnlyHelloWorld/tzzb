@@ -478,17 +478,17 @@ export default {
 
     // 格式化错误详情
     const formatErrorDetail = (err) => {
-      const detail = err?.detail
+      const detail = err && err.detail
       if (typeof detail === 'string') return detail
       if (detail && typeof detail === 'object') return JSON.stringify(detail, null, 2)
-      return err?.stack || err?.message || String(err)
+      return (err && err.stack) || (err && err.message) || String(err)
     }
     
     // 显示错误详情模态框
     const showErrorDetailModal = (fallbackMessage, err) => {
       errorModal.value = {
         visible: true,
-        message: err?.message || fallbackMessage,
+        message: (err && err.message) || fallbackMessage,
         detail: formatErrorDetail(err),
         expanded: false,
       }

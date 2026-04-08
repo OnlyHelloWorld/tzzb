@@ -40,11 +40,11 @@ async function request(url, options = {}) {
   }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: '请求失败' }))
-    const detail = err?.detail
+    const detail = err && err.detail
     const message =
       typeof detail === 'string'
         ? detail
-        : detail?.message || detail?.error || `HTTP ${res.status}`
+        : (detail && detail.message) || (detail && detail.error) || `HTTP ${res.status}`
     const error = new Error(message)
     error.status = res.status
     error.detail = detail

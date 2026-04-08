@@ -196,16 +196,31 @@ export const useAppStore = defineStore('app', {
           holdingsForQuotes = this.allLedgersHoldings
         }
 
-        // 并行获取汇率和行情
-        const [fxResult, quoteResult] = await Promise.allSettled([
-          fetchFxRates(),
-          holdingsForQuotes.length > 0 ? fetchQuotes(holdingsForQuotes) : Promise.resolve({ prices: {}, errors: [] })
-        ])
+        // 并行获取汇率和行情（使用兼容性更好的方式）
+        let fxResult, quoteResult
+        let fxError = null, quoteError = null
+        
+        try {
+          fxResult = await fetchFxRates()
+        } catch (e) {
+          fxError = e
+          console.warn('获取汇率失败:', e)
+        }
+        
+        try {
+          quoteResult = holdingsForQuotes.length > 0 
+            ? await fetchQuotes(holdingsForQuotes) 
+            : { prices: {}, errors: [] }
+        } catch (e) {
+          quoteError = e
+          console.warn('获取行情失败:', e)
+          quoteResult = { prices: {}, errors: [] }
+        }
 
         // 更新汇率
-        if (fxResult.status === 'fulfilled' && fxResult.value) {
-          this.fx.USD = Math.round(fxResult.value.USD * 100) / 100
-          this.fx.HKD = Math.round(fxResult.value.HKD * 100) / 100
+        if (fxResult && !fxError) {
+          this.fx.USD = Math.round(fxResult.USD * 100) / 100
+          this.fx.HKD = Math.round(fxResult.HKD * 100) / 100
           // 保存汇率设置
           await api.saveSettings({ 
             fx_usd: this.fx.USD, 
@@ -215,7 +230,7 @@ export const useAppStore = defineStore('app', {
         }
 
         // 更新行情
-        const quoteData = quoteResult.status === 'fulfilled' ? quoteResult.value : { prices: {}, errors: [] }
+        const quoteData = quoteResult || { prices: {}, errors: [] }
         if (quoteData.prices && Object.keys(quoteData.prices).length > 0) {
           Object.assign(this.prices, quoteData.prices)
         }
@@ -226,7 +241,7 @@ export const useAppStore = defineStore('app', {
           this.quoteError = `以下标的行情获取失败：${failedList.join('、')}`
         }
 
-        const hasFx = fxResult.status === 'fulfilled' && fxResult.value
+        const hasFx = fxResult && !fxError
         const hasQuotes = holdingsForQuotes.length === 0 || (quoteData.prices && Object.keys(quoteData.prices).length > 0)
 
         if (hasFx || hasQuotes) {
