@@ -1391,6 +1391,15 @@ export default {
         const savedLedgers = await api.loadLedgers()
         store.ledgers = savedLedgers || []
         
+        // 如果没有任何账本，跳转到主页
+        if (!store.ledgers || store.ledgers.length === 0) {
+          console.warn('没有任何账本，跳转到主页')
+          store.isLoading = false
+          ledgerLoading.value = false
+          router.push('/')
+          return
+        }
+        
         // 使用更健壮的 ID 比较方式（支持多种类型）
         const targetId = props.id || (route.params && route.params.id)
         if (targetId && store.ledgers && store.ledgers.length > 0) {
@@ -1401,10 +1410,12 @@ export default {
           })
         }
         
-        // 如果找不到，但有账本列表，使用第一个账本
+        // 如果找不到指定账本，使用第一个账本并更新 URL
         if (!foundLedger && store.ledgers && store.ledgers.length > 0) {
           foundLedger = store.ledgers[0]
           console.warn('未找到指定 ID 的账本，使用第一个账本')
+          // 更新 URL 为正确的账本 ID
+          router.replace('/ledger/' + foundLedger.id)
         }
         
         if (foundLedger) {

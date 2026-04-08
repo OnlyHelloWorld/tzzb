@@ -511,7 +511,10 @@ export default {
     
     // 页面加载时加载数据
     onMounted(async () => {
-      await store.loadData()
+      // 只有在数据未加载时才加载
+      if (store.ledgers.length === 0) {
+        await store.loadData()
+      }
     })
     
     return {
