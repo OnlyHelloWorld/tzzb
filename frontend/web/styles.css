@@ -83,10 +83,26 @@ input:focus, select:focus { outline: none; }
   align-items: center;
   padding: 12px 16px;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: background-color 0.15s;
 }
 .ledger-item:hover {
-  background-color: #f9f7f3;
+  background: #f9f7f3;
+}
+.ledger-item-active {
+  background: #f5f0e6;
+}
+.ledger-item-active .ledger-name {
+  font-weight: 600;
+}
+/* Dropdown transition */
+.dropdown-enter-active,
+.dropdown-leave-active {
+  transition: all 0.2s ease;
+}
+.dropdown-enter-from,
+.dropdown-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
 }
 .ledger-color {
   width: 16px;

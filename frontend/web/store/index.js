@@ -79,33 +79,9 @@ export const useAppStore = defineStore('app', {
         try {
           const allHoldings = await api.loadHoldings()
           this.allLedgersHoldings = allHoldings || []
-          
-          // 为所有持仓设置价格
-          for (const h of this.allLedgersHoldings) {
-            if (!(h.code in this.prices)) {
-              const cost = avgCost(h.trades || [])
-              this.prices[h.code] = cost || 0
-            }
-          }
         } catch (err) {
           console.warn('加载所有持仓失败:', err)
           this.allLedgersHoldings = []
-        }
-        
-        // 计算所有账本的汇总信息（使用已有的 allLedgersHoldings 数据，避免重复请求）
-        this.calculateAllLedgerSummaries()
-        
-        // 加载当前账本的持仓数据
-        if (this.currentLedger) {
-          try {
-            const savedHoldings = await api.loadHoldings(this.currentLedger.id)
-            this.holdings = savedHoldings || []
-          } catch (err) {
-            console.warn('加载持仓失败:', err)
-            this.holdings = []
-          }
-        } else {
-          this.holdings = []
         }
         
         // 加载设置
@@ -120,16 +96,26 @@ export const useAppStore = defineStore('app', {
           console.warn('加载设置失败:', err)
         }
         
-        // 为当前账本持仓设置价格
-        for (const h of this.holdings) {
-          if (!(h.code in this.prices)) {
-            const cost = avgCost(h.trades || [])
-            this.prices[h.code] = cost || 0
+        // 使用后端 API 获取所有账本的汇总数据
+        try {
+          const allCalculatedData = await api.loadCalculatedHoldings()
+          // 更新 prices 用于前端计算
+          if (allCalculatedData.holdings) {
+            for (const h of allCalculatedData.holdings) {
+              this.prices[h.code] = h.price
+            }
           }
+          // 更新汇率
+          if (allCalculatedData.fx) {
+            this.fx = allCalculatedData.fx
+          }
+        } catch (err) {
+          console.warn('获取汇总数据失败:', err)
         }
         
-        // 刷新行情
-        await this.refreshQuotes()
+        // 计算所有账本的汇总信息
+        this.calculateAllLedgerSummaries()
+        
       } catch (err) {
         console.warn('加载数据失败:', err)
         this.ledgers = []
@@ -304,15 +290,29 @@ export const useAppStore = defineStore('app', {
     },
     
     // 删除持仓后更新数据
-    updateAfterDeleteHolding(market, code, ledgerId) {
+    async updateAfterDeleteHolding(market, code, ledgerId) {
       // 更新 holdings
       this.holdings = this.holdings.filter(h => h.market !== market || h.code !== code)
       // 更新 allLedgersHoldings
       this.allLedgersHoldings = this.allLedgersHoldings.filter(
         h => !(h.market === market && h.code === code && h.ledger_id === ledgerId)
       )
-      // 重新计算账本汇总
-      this.calculateAllLedgerSummaries()
+      // 更新 calculatedHoldings
+      this.calculatedHoldings = this.calculatedHoldings.filter(
+        h => !(h.market === market && h.code === code)
+      )
+      
+      // 重新获取计算后的数据
+      if (this.currentLedger) {
+        try {
+          const calculatedData = await api.loadCalculatedHoldings(this.currentLedger.id)
+          this.calculatedHoldings = calculatedData.holdings || []
+          this.summary = calculatedData.summary || { byCcy: { CNY: 0, HKD: 0, USD: 0 }, totalCNY: 0, pnl: 0, pct: 0 }
+          this.fx = calculatedData.fx || this.fx
+        } catch (err) {
+          console.warn('重新获取计算数据失败:', err)
+        }
+      }
     },
     
     // 刷新单个持仓价格

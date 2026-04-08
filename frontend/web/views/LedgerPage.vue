@@ -58,18 +58,22 @@
       </div>
       
       <!-- Ledger dropdown -->
-      <div v-if="store.currentLedger && showLedgerList" class="ledger-dropdown">
-        <div v-for="ledger in store.ledgers" :key="ledger.id" class="ledger-item" @click="handleSwitchLedger(ledger)">
-          <div class="ledger-color" :style="{ backgroundColor: ledger.color }"></div>
-          <div class="ledger-info">
-            <div class="ledger-name">{{ ledger.name }}</div>
-          </div>
-          <div class="ledger-actions">
-            <button class="btn btn-ghost btn-sm" @click.stop="handleEditLedger(ledger)">编辑</button>
-            <button class="btn btn-warn btn-sm" @click.stop="handleDeleteLedger(ledger)">删除</button>
+      <transition name="dropdown">
+        <div v-if="store.currentLedger && showLedgerList" class="ledger-dropdown">
+          <div v-for="ledger in store.ledgers" :key="ledger.id" 
+               :class="['ledger-item', { 'ledger-item-active': store.currentLedger && store.currentLedger.id === ledger.id }]" 
+               @click="handleSwitchLedger(ledger)">
+            <div class="ledger-color" :style="{ backgroundColor: ledger.color }"></div>
+            <div class="ledger-info">
+              <div class="ledger-name">{{ ledger.name }}</div>
+            </div>
+            <div class="ledger-actions" @click.stop>
+              <button class="btn btn-ghost btn-sm" @click="handleEditLedger(ledger)">编辑</button>
+              <button class="btn btn-warn btn-sm" @click="handleDeleteLedger(ledger)">删除</button>
+            </div>
           </div>
         </div>
-      </div>
+      </transition>
     </div>
 
     <div class="main-content">
@@ -1208,9 +1212,47 @@ export default {
     }
     
     // 切换账本
-    const switchLedger = (ledger) => {
+    const switchLedger = async (ledger) => {
+      // 如果是当前账本，不做任何操作
+      if (store.currentLedger && store.currentLedger.id === ledger.id) {
+        return
+      }
+      
+      store.isLoading = true
       store.setCurrentLedger(ledger)
-      router.push(`/ledger/${ledger.id}`)
+      
+      // 更新 URL（不触发页面重新加载）
+      router.replace('/ledger/' + ledger.id)
+      
+      try {
+        // 直接加载新账本的数据
+        const calculatedData = await api.loadCalculatedHoldings(ledger.id)
+        store.calculatedHoldings = calculatedData.holdings || []
+        store.summary = calculatedData.summary || { byCcy: { CNY: 0, HKD: 0, USD: 0 }, totalCNY: 0, pnl: 0, pct: 0 }
+        store.fx = calculatedData.fx || { USD: 7.28, HKD: 0.925 }
+        
+        // 更新原始持仓数据（用于编辑）
+        store.holdings = (calculatedData.holdings || []).map(function(h) {
+          return {
+            id: h.id,
+            market: h.market,
+            code: h.code,
+            name: h.name,
+            sector: h.sector,
+            trades: h.trades
+          }
+        })
+        
+        // 重置展开状态
+        expanded.value = {}
+        tab.value = '全部'
+      } catch (err) {
+        console.warn('加载账本数据失败:', err)
+        store.calculatedHoldings = []
+        store.holdings = []
+      } finally {
+        store.isLoading = false
+      }
     }
     
     // 回到首页
