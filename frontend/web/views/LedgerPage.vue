@@ -327,6 +327,19 @@
 
         </div>
         </template>
+        <!-- 兜底显示，确保页面永远不会完全空白 -->
+        <div v-else key="fallback" class="ledger-fallback">
+          <div class="fallback-message">
+            <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+              <rect width="64" height="64" rx="16" fill="#1a1814"/>
+              <path d="M16 20h32M16 32h24M16 44h28" stroke="#f9f7f3" stroke-width="3" stroke-linecap="round"/>
+              <circle cx="48" cy="44" r="5" fill="#c4a050"/>
+            </svg>
+            <p class="fallback-title">加载账本</p>
+            <p class="fallback-subtitle">正在加载账本数据，请稍候...</p>
+            <button class="btn btn-ink" @click="window.location.reload()">刷新页面</button>
+          </div>
+        </div>
       </transition>
     </div>
 
@@ -1389,18 +1402,35 @@ export default {
     onMounted(async () => {
       store.isLoading = true
       ledgerLoading.value = true
+      
+      let foundLedger = null
+      
       try {
         // 只加载账本列表（轻量级操作）
         const savedLedgers = await api.loadLedgers()
         store.ledgers = savedLedgers || []
         
-        // 找到当前账本
-        const ledger = store.ledgers.find(l => l.id.toString() === props.id)
-        if (ledger) {
-          store.setCurrentLedger(ledger)
+        // 使用更健壮的 ID 比较方式（支持多种类型）
+        const targetId = props.id || (route.params && route.params.id)
+        if (targetId && store.ledgers && store.ledgers.length > 0) {
+          foundLedger = store.ledgers.find(l => {
+            const ledgerId = String(l.id)
+            const paramId = String(targetId)
+            return ledgerId === paramId
+          })
+        }
+        
+        // 如果找不到，但有账本列表，使用第一个账本
+        if (!foundLedger && store.ledgers && store.ledgers.length > 0) {
+          foundLedger = store.ledgers[0]
+          console.warn('未找到指定 ID 的账本，使用第一个账本')
+        }
+        
+        if (foundLedger) {
+          store.setCurrentLedger(foundLedger)
           // 只加载当前账本的持仓
           try {
-            const savedHoldings = await api.loadHoldings(ledger.id)
+            const savedHoldings = await api.loadHoldings(foundLedger.id)
             store.holdings = savedHoldings || []
             if (savedHoldings && savedHoldings.length > 0) {
               // 使用兼容性更好的方式替代 flatMap
@@ -1410,8 +1440,9 @@ export default {
                   h.trades.forEach(t => allTradeIds.push(t.id))
                 }
               })
-              const maxTradeId = allTradeIds.length > 0 ? Math.max(...allTradeIds) : 0
-              const maxHoldingId = Math.max(...savedHoldings.map(h => h.id))
+              const maxTradeId = allTradeIds.length > 0 ? Math.max.apply(null, allTradeIds) : 0
+              const holdingIds = savedHoldings.map(h => h.id)
+              const maxHoldingId = holdingIds.length > 0 ? Math.max.apply(null, holdingIds) : 0
               _id = Math.max(maxTradeId, maxHoldingId, 0) + 1
             } else {
               _id = 100
@@ -1442,12 +1473,17 @@ export default {
           
           // 只刷新当前账本的行情（跳过计算所有账本汇总）
           if (store.holdings.length > 0) {
-            await store.refreshQuotes({ skipSummaryCalc: true })
+            try {
+              await store.refreshQuotes({ skipSummaryCalc: true })
+            } catch (err) {
+              console.warn('刷新行情失败:', err)
+            }
           }
         } else {
-          // 账本不存在，回到首页
-          goHome()
+          console.error('没有找到任何账本')
         }
+      } catch (err) {
+        console.error('加载账本数据时出错:', err)
       } finally {
         store.isLoading = false
         ledgerLoading.value = false

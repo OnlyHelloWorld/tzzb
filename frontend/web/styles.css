@@ -370,6 +370,32 @@ input:focus, select:focus { outline: none; }
   to { transform: rotate(360deg); }
 }
 
+/* Ledger fallback display */
+.ledger-fallback {
+  min-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+.fallback-message {
+  text-align: center;
+  max-width: 320px;
+}
+.fallback-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin-top: 20px;
+  margin-bottom: 8px;
+  color: #1a1814;
+}
+.fallback-subtitle {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+
 /* Summary */
 .summary-card {
   background: #fff; border-radius: 14px; border: 1px solid #ede9e2;
