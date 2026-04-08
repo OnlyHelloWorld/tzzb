@@ -1,6 +1,6 @@
 /**
- * quoteApi.js — 行情 API（通过后端代理）
- * 将所有行情请求代理到后端，解决 WebView CORS 问题
+ * quoteApi.js — 行情 API（通过后端代理，优化版）
+ * 使用批量请求加速
  */
 
 const BASE_URL = import.meta.env.VITE_API_URL || '/api'
@@ -33,29 +33,43 @@ export async function fetchQuote(market, code) {
   return res.json()
 }
 
-// ─── 批量获取行情 ───────────────────────────────────────
+// ─── 批量获取行情（优化版，使用后端批量 API）─────────────────
 export async function fetchQuotes(holdings) {
   if (!holdings || holdings.length === 0) return { prices: {}, errors: [] }
 
-  const result = {}
-  const errors = []
-
-  // 逐个请求（避免批量请求过大）
-  for (let i = 0; i < holdings.length; i++) {
-    const h = holdings[i]
-    try {
-      const quote = await fetchQuote(h.market, h.code)
-      result[h.code] = quote.price
-    } catch (err) {
-      errors.push({ market: h.market, code: h.code, name: h.name, error: err.message })
+  // 使用后端批量 API（一次请求所有行情）
+  const url = `${BASE_URL}/quotes/batch`
+  
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(holdings.map(function(h) {
+        return {
+          market: h.market,
+          code: normalizeCode(h.market, h.code),
+          name: h.name || ''
+        }
+      }))
+    })
+    
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`)
     }
+    
+    const data = await res.json()
+    
+    if (data.errors && data.errors.length > 0) {
+      console.warn('[quoteApi] 部分行情获取失败:', data.errors)
+    }
+    
+    return { prices: data.prices || {}, errors: data.errors || [] }
+  } catch (err) {
+    console.error('[quoteApi] 批量请求失败:', err)
+    return { prices: {}, errors: holdings.map(function(h) {
+      return { market: h.market, code: h.code, name: h.name, error: err.message }
+    })}
   }
-
-  if (errors.length > 0) {
-    console.warn(`[quoteApi] ${errors.length} quotes failed:`, errors)
-  }
-
-  return { prices: result, errors }
 }
 
 // ─── 获取汇率 ──────────────────────────────────────────
