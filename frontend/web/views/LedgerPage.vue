@@ -91,7 +91,7 @@
         <div class="loading-text">正在刷新当前区域...</div>
       </div>
       <transition name="page" mode="out-in">
-        <template v-if="!store.isLoading && store.currentLedger">
+        <template v-if="!ledgerLoading && store.currentLedger">
         <!-- Holding management -->
         <div key="holding-management">
 
@@ -606,6 +606,7 @@ export default {
     const openHoldingActionMenuKey = ref(null)
     const isAddingHolding = ref(false)
     const holdingExistsConfirm = ref(null)
+    const ledgerLoading = ref(true)
     const fxList = [
       { label: 'USD/CNY', key: 'USD' },
       { label: 'HKD/CNY', key: 'HKD' },
@@ -1355,30 +1356,35 @@ export default {
     
     // 页面加载时
     onMounted(async () => {
-      // 加载账本数据
-      await store.loadData()
-      
-      // 找到当前账本
-      const ledger = store.ledgers.find(l => l.id.toString() === props.id)
-      if (ledger) {
-        store.setCurrentLedger(ledger)
-        // 加载当前账本的持仓
-        try {
-          const savedHoldings = await api.loadHoldings(ledger.id)
-          store.holdings = savedHoldings || []
-          if (savedHoldings && savedHoldings.length > 0) {
-            const maxId = Math.max(...savedHoldings.flatMap(h => (h.trades || []).map(t => t.id)), ...savedHoldings.map(h => h.id), 0)
-            _id = maxId + 1
-          } else {
-            _id = 100
+      ledgerLoading.value = true
+      try {
+        // 加载账本数据
+        await store.loadData()
+        
+        // 找到当前账本
+        const ledger = store.ledgers.find(l => l.id.toString() === props.id)
+        if (ledger) {
+          store.setCurrentLedger(ledger)
+          // 加载当前账本的持仓
+          try {
+            const savedHoldings = await api.loadHoldings(ledger.id)
+            store.holdings = savedHoldings || []
+            if (savedHoldings && savedHoldings.length > 0) {
+              const maxId = Math.max(...savedHoldings.flatMap(h => (h.trades || []).map(t => t.id)), ...savedHoldings.map(h => h.id), 0)
+              _id = maxId + 1
+            } else {
+              _id = 100
+            }
+          } catch (err) {
+            console.warn('加载持仓失败:', err)
+            store.holdings = []
           }
-        } catch (err) {
-          console.warn('加载持仓失败:', err)
-          store.holdings = []
+        } else {
+          // 账本不存在，回到首页
+          goHome()
         }
-      } else {
-        // 账本不存在，回到首页
-        goHome()
+      } finally {
+        ledgerLoading.value = false
       }
     })
     
@@ -1421,6 +1427,7 @@ export default {
       errorModal,
       isAddingHolding,
       holdingExistsConfirm,
+      ledgerLoading,
       fxList,
       ledgerColors,
       TABS,
