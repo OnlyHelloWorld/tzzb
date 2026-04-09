@@ -33,6 +33,9 @@ async def get_settings(
             fx_usd=setting.fx_usd,
             fx_hkd=setting.fx_hkd,
             auto_refresh=setting.auto_refresh,
+            ledger_view_mode=setting.ledger_view_mode,
+            ledger_sort_by=setting.ledger_sort_by,
+            ledger_sort_asc=setting.ledger_sort_asc,
         )
     except Exception as e:
         logger.error(f"用户 {user.username} 获取设置失败: {str(e)}", exc_info=True)
@@ -63,6 +66,12 @@ async def update_settings(
             setting.fx_hkd = req.fx_hkd
         if req.auto_refresh is not None:
             setting.auto_refresh = req.auto_refresh
+        if req.ledger_view_mode is not None:
+            setting.ledger_view_mode = req.ledger_view_mode
+        if req.ledger_sort_by is not None:
+            setting.ledger_sort_by = req.ledger_sort_by
+        if req.ledger_sort_asc is not None:
+            setting.ledger_sort_asc = req.ledger_sort_asc
 
         await db.commit()
         logger.info(f"用户 {user.username} 更新设置成功: 新建={is_new}")

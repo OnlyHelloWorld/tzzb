@@ -159,9 +159,15 @@ class SettingsResponse(BaseModel):
     fx_usd: float = 7.28
     fx_hkd: float = 0.925
     auto_refresh: bool = True
+    ledger_view_mode: str = "card"
+    ledger_sort_by: str = "mv"
+    ledger_sort_asc: bool = False
 
 
 class SettingsUpdate(BaseModel):
     fx_usd: Optional[float] = None
     fx_hkd: Optional[float] = None
     auto_refresh: Optional[bool] = None
+    ledger_view_mode: Optional[str] = None
+    ledger_sort_by: Optional[str] = None
+    ledger_sort_asc: Optional[bool] = None

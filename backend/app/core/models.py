@@ -91,6 +91,9 @@ class UserSetting(Base):
     fx_usd = Column(Float, default=7.28)
     fx_hkd = Column(Float, default=0.925)
     auto_refresh = Column(Boolean, default=True)
+    ledger_view_mode = Column(String, default="card")
+    ledger_sort_by = Column(String, default="mv")
+    ledger_sort_asc = Column(Boolean, default=False)
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # 关系 - 不使用级联删除
