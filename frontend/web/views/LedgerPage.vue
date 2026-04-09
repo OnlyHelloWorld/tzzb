@@ -748,14 +748,14 @@ export default {
       
       // 根据排序方式排序
       if (holdingSortBy.value === 'pnl') {
-        result = result.sort((a, b) => b.pnl - a.pnl)
+        result = result.slice().sort((a, b) => b.pnl - a.pnl)
       } else {
-        result = result.sort((a, b) => b.mv - a.mv)
+        result = result.slice().sort((a, b) => b.mv - a.mv)
       }
       
-      // 根据排序方向调整
+      // 根据排序方向调整（使用 slice 创建新数组避免修改原数组）
       if (holdingSortAsc.value) {
-        result = result.reverse()
+        result = result.slice().reverse()
       }
       
       return result

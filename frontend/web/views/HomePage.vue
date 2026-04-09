@@ -429,9 +429,9 @@ export default {
           ledgers.sort((a, b) => b.totalCNY - a.totalCNY)
         }
         
-        // 根据排序方向调整
+        // 根据排序方向调整（使用 slice 创建新数组避免修改原数组）
         if (ledgerSortAsc.value) {
-          ledgers = ledgers.reverse()
+          ledgers = ledgers.slice().reverse()
         }
       }
       
