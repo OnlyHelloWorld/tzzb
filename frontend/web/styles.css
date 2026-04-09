@@ -157,8 +157,8 @@ input:focus, select:focus { outline: none; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
-  padding: 8px 0;
+  margin-bottom: 8px;
+  padding: 4px 0;
 }
 .toolbar-left, .toolbar-right {
   display: flex;
@@ -1211,7 +1211,7 @@ input:focus, select:focus { outline: none; }
 }
 
 /* Tabs */
-.tabs-row { display: flex; gap: 4px; margin-bottom: 14px; }
+.tabs-row { display: flex; gap: 4px; margin-bottom: 10px; flex-wrap: wrap; align-items: center; }
 .tabs-density { margin-left: auto; display: flex; gap: 6px; }
 .tab { background: none; border: none; cursor: pointer; font-size: 13px; padding: 6px 14px; border-radius: 20px; color: #888; transition: all .2s cubic-bezier(0.4, 0, 0.2, 1); font-family: inherit; position: relative; overflow: hidden; }
 .tab.on { background: var(--ledger-theme, #1a1814); color: #f9f7f3; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,.15); }
@@ -1861,11 +1861,15 @@ select.form-control { cursor: pointer; }
 .sort-tabs {
   display: flex;
   gap: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
+}
+
+.sort-tabs.gap-sm {
+  gap: 4px;
 }
 
 .sort-tab {
-  padding: 6px 14px;
+  padding: 5px 12px;
   border: 1px solid #e4dfd6;
   border-radius: 16px;
   background: #fff;

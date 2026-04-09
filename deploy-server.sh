@@ -90,7 +90,7 @@ if [ -z "${DB_NAME}" ]; then
 fi
 
 # 数据库初始化/更新
-log_info "初始化/更新数据库..."
+log_info "初始化/更新数据库（保留现有数据）..."
 
 log_info "检查并安装 MySQL..."
 if ! command -v mysql >/dev/null 2>&1; then
@@ -99,7 +99,6 @@ if ! command -v mysql >/dev/null 2>&1; then
     apt-get install -y mysql-server
 fi
 
-# 尝试多种可能的 MySQL/MariaDB 服务名
 MYSQL_SERVICE_NAMES=("mysql" "mysqld" "mariadb")
 MYSQL_SERVICE_FOUND=""
 
@@ -114,13 +113,12 @@ if [ -n "${MYSQL_SERVICE_FOUND}" ]; then
     log_info "找到 MySQL/MariaDB 服务: ${MYSQL_SERVICE_FOUND}"
     systemctl enable "${MYSQL_SERVICE_FOUND}" || true
     systemctl restart "${MYSQL_SERVICE_FOUND}" || true
-    # 等待服务启动
     sleep 5
 else
     log_warn "未找到标准的 MySQL/MariaDB 服务，尝试继续..."
 fi
 
-log_info "重建 MySQL 数据库 ${DB_NAME}..."
+log_info "确保数据库存在（不删除现有数据）..."
 if mysql --protocol=socket -uroot -e "SELECT 1;" >/dev/null 2>&1; then
     log_info "通过 socket 连接 MySQL root，设置 root 密码..."
     mysql --protocol=socket -uroot <<EOF
@@ -153,19 +151,19 @@ if [ -z "${MYSQL_PORT}" ]; then MYSQL_PORT="3306"; fi
 if [ -z "${MYSQL_USER}" ]; then MYSQL_USER="root"; fi
 
 mysql --host="${MYSQL_HOST}" --port="${MYSQL_PORT}" --user="${MYSQL_USER}" "${MYSQL_PWD_OPT[@]}" \
-  -e "DROP DATABASE IF EXISTS \`${DB_NAME}\`; CREATE DATABASE \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+  -e "CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
 cat > init_db.py << 'EOF'
 """
-数据库初始化脚本 - 确保表结构与模型一致
+数据库初始化脚本 - 使用 create_all 确保表存在，不删除现有数据
 """
 import asyncio
 from app.core.database import init_db
 
 async def main():
-    print("正在初始化数据库...")
+    print("正在检查/更新数据库表结构...")
     await init_db()
-    print("数据库初始化完成")
+    print("数据库表结构检查完成")
 
 if __name__ == "__main__":
     asyncio.run(main())
