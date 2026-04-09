@@ -95,26 +95,6 @@
         <!-- 账本列表工具栏 -->
         <div class="ledgers-toolbar">
           <div class="toolbar-left">
-            <div class="sort-tabs">
-              <button 
-                :class="['sort-tab', { active: ledgerSortBy === 'mv' }]" 
-                @click="ledgerSortBy = 'mv'"
-              >按市值</button>
-              <button 
-                :class="['sort-tab', { active: ledgerSortBy === 'pnl' }]" 
-                @click="ledgerSortBy = 'pnl'"
-              >按盈亏</button>
-              <button 
-                :class="['sort-tab', 'sort-direction-btn', { active: true }]" 
-                @click="ledgerSortAsc = !ledgerSortAsc"
-                :title="ledgerSortAsc ? '正序' : '倒序'"
-              >
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path v-if="!ledgerSortAsc" d="M7 2v10M3 6l4-4 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                  <path v-else d="M7 12V2M3 8l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              </button>
-            </div>
           </div>
           <div class="toolbar-right">
             <div class="view-switch">
