@@ -28,8 +28,17 @@ class Settings:
         )
 
     # JWT
-    JWT_SECRET: str = os.getenv("JWT_SECRET", "change-me-in-production")
+    JWT_SECRET: str = os.getenv("JWT_SECRET", "")
     JWT_EXPIRE_HOURS: int = int(os.getenv("JWT_EXPIRE_HOURS", "72"))  # 3天
+
+    def validate_jwt_secret(self) -> None:
+        if not self.JWT_SECRET:
+            raise ValueError(
+                "JWT_SECRET 环境变量必须设置！\n"
+                "请运行以下命令生成强密钥：\n"
+                "  openssl rand -hex 32\n"
+                "然后将其设置到 .env 文件中"
+            )
 
     # 服务
     HOST: str = os.getenv("HOST", "0.0.0.0")
@@ -62,11 +71,11 @@ class Settings:
     LOG_BACKUP_COUNT: int = int(os.getenv("LOG_BACKUP_COUNT", "10"))
     LOG_RETENTION_DAYS: int = int(os.getenv("LOG_RETENTION_DAYS", "10"))
 
-    # SMTP 邮件（QQ 邮箱）
+    # SMTP 邮件
     SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.qq.com")
     SMTP_PORT: int = int(os.getenv("SMTP_PORT", "465"))
-    SMTP_USER: str = "191678946@qq.com"
-    SMTP_PASSWORD: str = "ljaqystelllfcadb"
+    SMTP_USER: str = os.getenv("SMTP_USER", "")
+    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
 
 
 settings = Settings()

@@ -72,6 +72,9 @@ async def lifespan(app: FastAPI):
     logger = logging.getLogger(__name__)
     logger.info("=" * 50)
     logger.info("投资账本后端服务启动中...")
+    
+    settings.validate_jwt_secret()
+    
     logger.info(f"数据库: {settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}")
 
     await init_db()

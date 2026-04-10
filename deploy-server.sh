@@ -45,34 +45,47 @@ fi
 source venv/bin/activate
 pip install -r requirements.txt
 
+log_info "配置环境变量..."
+
 if [ ! -f ".env" ]; then
     log_info "创建 .env 文件..."
-    cat > .env << EOF
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=11110000aaa!
-DB_NAME=tzzb
-JWT_SECRET=$(openssl rand -hex 32)
-HOST=127.0.0.1
-PORT=8000
-SMTP_HOST=smtp.qq.com
-SMTP_PORT=465
-SMTP_USER=
-SMTP_PASSWORD=
-EOF
+    touch .env
 fi
 
-# 优先使用 SMTP_*，兼容 QQ_* 旧变量
-SMTP_USER_VAL="${SMTP_USER:-${QQ_EMAIL:-}}"
-SMTP_PASSWORD_VAL="${SMTP_PASSWORD:-${QQ_AUTH_CODE:-}}"
+upsert_env_var "DB_HOST" "${DB_HOST:-127.0.0.1}" ".env"
+upsert_env_var "DB_PORT" "${DB_PORT:-3306}" ".env"
+upsert_env_var "DB_USER" "${DB_USER:-root}" ".env"
+upsert_env_var "DB_NAME" "${DB_NAME:-tzzb}" ".env"
+upsert_env_var "HOST" "127.0.0.1" ".env"
+upsert_env_var "PORT" "8000" ".env"
+upsert_env_var "SMTP_HOST" "smtp.qq.com" ".env"
+upsert_env_var "SMTP_PORT" "465" ".env"
 
-if [ -n "${SMTP_USER_VAL}" ]; then
-    upsert_env_var "SMTP_USER" "${SMTP_USER_VAL}" ".env"
+if [ -n "${JWT_SECRET}" ]; then
+    upsert_env_var "JWT_SECRET" "${JWT_SECRET}" ".env"
+    log_info "已更新 JWT_SECRET"
+else
+    if ! grep -q "^JWT_SECRET=." .env; then
+        log_warn "JWT_SECRET 未设置，生成随机密钥..."
+        upsert_env_var "JWT_SECRET" "$(openssl rand -hex 32)" ".env"
+    fi
 fi
 
-if [ -n "${SMTP_PASSWORD_VAL}" ]; then
-    upsert_env_var "SMTP_PASSWORD" "${SMTP_PASSWORD_VAL}" ".env"
+if [ -n "${DB_PASSWORD}" ]; then
+    upsert_env_var "DB_PASSWORD" "${DB_PASSWORD}" ".env"
+    log_info "已更新 DB_PASSWORD"
+else
+    log_warn "DB_PASSWORD 未从 GitHub Secrets 获取，请确保已在 GitHub 中配置 DB_PASSWORD"
+fi
+
+if [ -n "${SMTP_USER}" ]; then
+    upsert_env_var "SMTP_USER" "${SMTP_USER}" ".env"
+    log_info "已更新 SMTP_USER"
+fi
+
+if [ -n "${SMTP_PASSWORD}" ]; then
+    upsert_env_var "SMTP_PASSWORD" "${SMTP_PASSWORD}" ".env"
+    log_info "已更新 SMTP_PASSWORD"
 fi
 
 set -a
@@ -252,7 +265,6 @@ log_info "   部署完成！"
 log_info "=========================================="
 echo ""
 log_info "访问地址: http://$(curl -s ifconfig.me 2>/dev/null || echo 'localhost')"
-log_info "默认账号: admin / admin"
 echo ""
 log_info "常用命令:"
 log_info "  后端状态: systemctl status tzzb-backend"
