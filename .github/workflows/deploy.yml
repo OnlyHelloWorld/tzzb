@@ -33,16 +33,17 @@ jobs:
 
       - name: Deploy to Google Cloud
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         with:
           host: ${{ secrets.GCP_HOST }}
           username: ${{ secrets.GCP_USER }}
           password: ${{ secrets.GCP_PASSWORD }}
           envs: JWT_SECRET,SMTP_USER,SMTP_PASSWORD,DB_PASSWORD
-          env: |
-            JWT_SECRET=${{ secrets.JWT_SECRET }}
-            SMTP_USER=${{ secrets.SMTP_USER }}
-            SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
-            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          allenvs: true
           script: |
             set -e
             
