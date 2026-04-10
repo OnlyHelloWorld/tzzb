@@ -100,7 +100,7 @@
             <div class="view-switch">
               <button 
                 :class="['view-btn', { active: viewMode === 'card' }]" 
-                @click="viewMode = 'card'"
+                @click="updateViewMode('card')"
                 title="卡片视图"
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -112,7 +112,7 @@
               </button>
               <button 
                 :class="['view-btn', { active: viewMode === 'list' }]" 
-                @click="viewMode = 'list'"
+                @click="updateViewMode('list')"
                 title="列表视图"
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -216,7 +216,7 @@
             <div 
               v-for="(summary, index) in sortedLedgers" 
               :key="summary.id" 
-              :class="['ledger-list-item', { 'ledger-list-item-deleting': deletingLedgers.includes(summary.id), 'ledger-list-item-dragging': draggedLedgerId === summary.id }]"
+              :class="['ledger-list-item', { 'ledger-list-item-deleting': deletingLedgers.includes(summary.id), 'ledger-list-item-dragging': draggedLedgerId === summary.id, 'ledger-list-item-menu-open': openLedgerActionMenuId === summary.id }]"
               draggable="true"
               @dragstart="handleDragStart($event, summary, index)"
               @dragend="handleDragEnd"
@@ -367,9 +367,9 @@ export default {
     const errorModal = ref({ visible: false, message: '', detail: '', expanded: false })
     
     // 视图和排序状态
-    const viewMode = ref(localStorage.getItem('ledgerViewMode') || 'card')
-    const ledgerSortBy = ref(localStorage.getItem('ledgerSortBy') || 'mv')
-    const ledgerSortAsc = ref(localStorage.getItem('ledgerSortAsc') === 'true')
+    const viewMode = ref('card')
+    const ledgerSortBy = ref('mv')
+    const ledgerSortAsc = ref(false)
     
     // 拖拽状态
     const draggedLedgerId = ref(null)
@@ -469,21 +469,36 @@ export default {
     }
     
     // 监听视图模式变化
-    const updateViewMode = (mode) => {
+    const updateViewMode = async (mode) => {
       viewMode.value = mode
-      localStorage.setItem('ledgerViewMode', mode)
+      store.ledgerViewMode = mode
+      try {
+        await api.saveSettings({ ledger_view_mode: mode })
+      } catch (err) {
+        console.warn('保存视图模式失败:', err)
+      }
     }
     
     // 监听排序方式变化
-    const updateSortBy = (sortBy) => {
+    const updateSortBy = async (sortBy) => {
       ledgerSortBy.value = sortBy
-      localStorage.setItem('ledgerSortBy', sortBy)
+      store.ledgerSortBy = sortBy
+      try {
+        await api.saveSettings({ ledger_sort_by: sortBy })
+      } catch (err) {
+        console.warn('保存排序方式失败:', err)
+      }
     }
     
     // 监听排序方向变化
-    const updateSortAsc = (asc) => {
+    const updateSortAsc = async (asc) => {
       ledgerSortAsc.value = asc
-      localStorage.setItem('ledgerSortAsc', asc.toString())
+      store.ledgerSortAsc = asc
+      try {
+        await api.saveSettings({ ledger_sort_asc: asc })
+      } catch (err) {
+        console.warn('保存排序方向失败:', err)
+      }
     }
     
     // 触发祝福效果
@@ -720,6 +735,9 @@ export default {
     // 页面加载时加载数据
     onMounted(async () => {
       await store.loadData()
+      viewMode.value = store.ledgerViewMode
+      ledgerSortBy.value = store.ledgerSortBy
+      ledgerSortAsc.value = store.ledgerSortAsc
       document.addEventListener('click', closeLedgerActionMenu)
     })
     

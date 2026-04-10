@@ -18,6 +18,9 @@ export const useAppStore = defineStore('app', {
     prices: {},
     fx: { USD: 7.28, HKD: 0.925 },
     autoRefresh: true,
+    ledgerViewMode: 'card',
+    ledgerSortBy: 'mv',
+    ledgerSortAsc: false,
     
     // 行情相关
     quoteStatus: 'idle',
@@ -91,6 +94,9 @@ export const useAppStore = defineStore('app', {
             this.fx.USD = savedSettings.fx_usd || this.fx.USD
             this.fx.HKD = savedSettings.fx_hkd || this.fx.HKD
             this.autoRefresh = savedSettings.auto_refresh !== false
+            this.ledgerViewMode = savedSettings.ledger_view_mode || this.ledgerViewMode
+            this.ledgerSortBy = savedSettings.ledger_sort_by || this.ledgerSortBy
+            this.ledgerSortAsc = savedSettings.ledger_sort_asc || this.ledgerSortAsc
           }
         } catch (err) {
           console.warn('加载设置失败:', err)

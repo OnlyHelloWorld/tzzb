@@ -235,6 +235,9 @@ input:focus, select:focus { outline: none; }
   opacity: 0.4;
   transform: scale(0.98);
 }
+.ledger-list-item-menu-open {
+  z-index: 50;
+}
 .ledger-list-color {
   width: 4px;
   height: 32px;
@@ -246,17 +249,16 @@ input:focus, select:focus { outline: none; }
   font-size: 14px;
   font-weight: 500;
   color: #1a1814;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  min-width: 80px;
   white-space: nowrap;
 }
 .ledger-list-value {
   font-size: 13px;
   color: #666;
-  min-width: 60px;
   text-align: right;
-  flex-shrink: 0;
+  flex-shrink: 1;
+  min-width: 0;
+  white-space: nowrap;
 }
 .ledger-list-pnl {
   font-weight: 500;
