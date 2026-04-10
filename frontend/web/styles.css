@@ -631,6 +631,7 @@ input:focus, select:focus { outline: none; }
   transition: all 0.2s;
   position: relative;
   overflow: visible;
+  z-index: 200;
 }
 
 .all-ledgers-summary-card:hover {
