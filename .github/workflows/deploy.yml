@@ -45,6 +45,12 @@ jobs:
           envs: JWT_SECRET SMTP_USER SMTP_PASSWORD DB_PASSWORD
           script: |
             set -e
+            # 导出环境变量供脚本使用
+            export JWT_SECRET="${JWT_SECRET}"
+            export SMTP_USER="${SMTP_USER}"
+            export SMTP_PASSWORD="${SMTP_PASSWORD}"
+            export DB_PASSWORD="${DB_PASSWORD}"
+            
             # 创建项目目录
             mkdir -p /opt/tzzb
             cd /opt/tzzb

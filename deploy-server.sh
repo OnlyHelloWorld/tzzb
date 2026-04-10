@@ -47,6 +47,35 @@ pip install -r requirements.txt
 
 log_info "配置环境变量..."
 
+# 调试：显示接收到的环境变量（隐藏敏感值）
+log_info "检查环境变量..."
+if [ -n "${JWT_SECRET}" ]; then
+    log_info "JWT_SECRET: 已设置 (${#JWT_SECRET} 字符)"
+else
+    log_warn "JWT_SECRET: 未设置"
+fi
+if [ -n "${SMTP_USER}" ]; then
+    log_info "SMTP_USER: 已设置 (${SMTP_USER})"
+else
+    log_warn "SMTP_USER: 未设置"
+fi
+if [ -n "${SMTP_PASSWORD}" ]; then
+    log_info "SMTP_PASSWORD: 已设置 (${#SMTP_PASSWORD} 字符)"
+else
+    log_warn "SMTP_PASSWORD: 未设置"
+fi
+if [ -n "${DB_PASSWORD}" ]; then
+    log_info "DB_PASSWORD: 已设置 (${#DB_PASSWORD} 字符)"
+else
+    log_warn "DB_PASSWORD: 未设置"
+fi
+
+# 清理旧的无效配置
+if [ -f ".env" ]; then
+    log_info "清理旧的无效配置..."
+    sed -i '/^DB_DRIVER=/d' .env
+fi
+
 if [ ! -f ".env" ]; then
     log_info "创建 .env 文件..."
     touch .env

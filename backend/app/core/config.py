@@ -13,7 +13,6 @@ load_dotenv(dotenv_path=BASE_DIR / ".env")
 
 class Settings:
     # 数据库
-    DB_DRIVER: str = "mysql"
     DB_HOST: str = os.getenv("DB_HOST", "localhost")
     DB_PORT: int = int(os.getenv("DB_PORT", "3306"))
     DB_USER: str = os.getenv("DB_USER", "root")
