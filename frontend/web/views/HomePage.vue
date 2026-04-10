@@ -462,6 +462,7 @@ export default {
             ledger.sort_order = item.sort_order
           }
         })
+        triggerBlessingEffect()
         store.showMessage('账本顺序已保存')
       } catch (err) {
         store.showMessage('保存账本顺序失败: ' + err.message, true)
@@ -630,11 +631,15 @@ export default {
     // 处理导出所有账本 CSV
     const handleExportAllLedgersCSV = () => {
       exportAllLedgersCSV(store.ledgers, store.allLedgersHoldings, store.prices, store.fx)
+      triggerBlessingEffect()
+      store.showMessage('CSV 导出成功')
     }
     
     // 处理导出所有账本 PDF
     const handleExportAllLedgersPDF = () => {
       exportAllLedgersPDF(store.ledgers, store.allLedgersHoldings, store.prices, store.fx)
+      triggerBlessingEffect()
+      store.showMessage('PDF 导出成功')
     }
     
     // 触发导入所有账本
@@ -658,6 +663,7 @@ export default {
             }
           }
           await store.loadData()
+          triggerBlessingEffect()
           store.showMessage(`导入成功，共 ${data.ledgers.length} 个账本`)
         } else {
           store.showMessage('请先选择一个账本再导入', true)

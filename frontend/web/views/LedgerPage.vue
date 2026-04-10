@@ -1164,12 +1164,16 @@ export default {
     // 处理导出 CSV
     const handleExportCSV = () => {
       exportCSV(store.holdings, store.prices, store.fx)
+      triggerBlessingEffect()
+      store.showMessage('CSV 导出成功')
       showHoldingIOMenu.value = false
     }
     
     // 处理导出 PDF
     const handleExportPDF = () => {
       exportPDF(store.holdings, store.prices, store.fx)
+      triggerBlessingEffect()
+      store.showMessage('PDF 导出成功')
       showHoldingIOMenu.value = false
     }
     
@@ -1189,6 +1193,7 @@ export default {
         if (!data.isMultiLedger) {
           store.holdings = data.holdings
           await store.saveHoldings(store.holdings)
+          triggerBlessingEffect()
           store.showMessage(`导入成功，共 ${data.holdings.length} 条持仓`)
         } else {
           store.showMessage('请先选择一个账本再导入', true)
@@ -1428,6 +1433,7 @@ export default {
         store.calculatedHoldings = calculatedData.holdings || []
         store.summary = calculatedData.summary || { byCcy: { CNY: 0, HKD: 0, USD: 0 }, totalCNY: 0, pnl: 0, pct: 0 }
         store.fx = calculatedData.fx || store.fx
+        triggerBlessingEffect()
         store.showMessage('行情刷新成功')
       } catch (err) {
         console.warn('刷新行情失败:', err)

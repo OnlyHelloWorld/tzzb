@@ -629,6 +629,8 @@ input:focus, select:focus { outline: none; }
   padding-right: 22px;
   cursor: pointer;
   transition: all 0.2s;
+  position: relative;
+  overflow: visible;
 }
 
 .all-ledgers-summary-card:hover {
@@ -1042,18 +1044,18 @@ input:focus, select:focus { outline: none; }
 
 /* Import/Export */
 .io-section { margin-top: 14px; padding-top: 12px; border-top: 1px solid #f0ece5; }
-.io-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.io-btns { display: flex; gap: 8px; flex-wrap: wrap; position: relative; z-index: 100; }
 .io-btns-right { justify-content: flex-end; }
-.io-dropdown { position: relative; }
+.io-dropdown { position: relative; z-index: 600; }
 .io-dropdown-menu {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
-  z-index: 500;
+  z-index: 1000;
   background: #fff;
   border: 1px solid #ece7de;
   border-radius: 8px;
-  box-shadow: 0 8px 18px rgba(26, 24, 20, .12);
+  box-shadow: 0 12px 28px rgba(26, 24, 20, .18);
   min-width: 170px;
   padding: 4px;
 }
