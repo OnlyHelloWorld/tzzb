@@ -19,6 +19,20 @@ log_info "=========================================="
 log_info "   tzzb - 服务器部署脚本"
 log_info "=========================================="
 
+# 检查环境变量是否已设置（从 GitHub Actions 传递）
+if [ -z "${JWT_SECRET}" ]; then
+    echo "[WARN] JWT_SECRET 环境变量未设置"
+fi
+if [ -z "${SMTP_USER}" ]; then
+    echo "[WARN] SMTP_USER 环境变量未设置"
+fi
+if [ -z "${SMTP_PASSWORD}" ]; then
+    echo "[WARN] SMTP_PASSWORD 环境变量未设置"
+fi
+if [ -z "${DB_PASSWORD}" ]; then
+    echo "[WARN] DB_PASSWORD 环境变量未设置"
+fi
+
 log_step "1/7 创建项目目录..."
 mkdir -p ${PROJECT_DIR}
 mkdir -p ${WEB_DIR}
@@ -48,27 +62,13 @@ pip install -r requirements.txt
 log_info "配置环境变量..."
 
 # 调试：显示接收到的环境变量（隐藏敏感值）
+echo ""
 log_info "检查环境变量..."
-if [ -n "${JWT_SECRET}" ]; then
-    log_info "JWT_SECRET: 已设置 (${#JWT_SECRET} 字符)"
-else
-    log_warn "JWT_SECRET: 未设置"
-fi
-if [ -n "${SMTP_USER}" ]; then
-    log_info "SMTP_USER: 已设置 (${SMTP_USER})"
-else
-    log_warn "SMTP_USER: 未设置"
-fi
-if [ -n "${SMTP_PASSWORD}" ]; then
-    log_info "SMTP_PASSWORD: 已设置 (${#SMTP_PASSWORD} 字符)"
-else
-    log_warn "SMTP_PASSWORD: 未设置"
-fi
-if [ -n "${DB_PASSWORD}" ]; then
-    log_info "DB_PASSWORD: 已设置 (${#DB_PASSWORD} 字符)"
-else
-    log_warn "DB_PASSWORD: 未设置"
-fi
+echo "JWT_SECRET: ${JWT_SECRET:+已设置 (${#JWT_SECRET} 字符):-未设置}"
+echo "SMTP_USER: ${SMTP_USER:+已设置 (${SMTP_USER}):-未设置}"
+echo "SMTP_PASSWORD: ${SMTP_PASSWORD:+已设置 (${#SMTP_PASSWORD} 字符):-未设置}"
+echo "DB_PASSWORD: ${DB_PASSWORD:+已设置 (${#DB_PASSWORD} 字符):-未设置}"
+echo ""
 
 # 清理旧的无效配置
 if [ -f ".env" ]; then
