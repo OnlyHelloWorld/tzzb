@@ -221,7 +221,7 @@ input:focus, select:focus { outline: none; }
   cursor: pointer;
   transition: all 0.2s;
   max-width: 100%;
-  overflow: hidden;
+  position: relative;
 }
 .ledger-list-item:hover {
   box-shadow: 0 2px 8px rgba(0,0,0,0.12);
@@ -275,11 +275,11 @@ input:focus, select:focus { outline: none; }
   cursor: pointer;
   line-height: 1;
   font-size: 14px;
-  opacity: 0;
-  transition: opacity 0.2s;
+  transition: all 0.2s;
 }
-.ledger-list-item:hover .ledger-list-menu-btn {
-  opacity: 1;
+.ledger-list-menu-btn:hover {
+  border-color: #1a1814;
+  color: #1a1814;
 }
 .ledger-list-menu {
   position: absolute;
@@ -290,7 +290,7 @@ input:focus, select:focus { outline: none; }
   border: 1px solid #ede9e2;
   border-radius: 8px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
-  z-index: 20;
+  z-index: 100;
 }
 .ledger-list-menu-item {
   width: 100%;
