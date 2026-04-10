@@ -213,13 +213,15 @@ input:focus, select:focus { outline: none; }
 .ledger-list-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
+  gap: 10px;
+  padding: 12px 14px;
   background: #fff;
   border-radius: 10px;
   box-shadow: 0 1px 4px rgba(0,0,0,0.08);
   cursor: pointer;
   transition: all 0.2s;
+  max-width: 100%;
+  overflow: hidden;
 }
 .ledger-list-item:hover {
   box-shadow: 0 2px 8px rgba(0,0,0,0.12);
@@ -244,44 +246,65 @@ input:focus, select:focus { outline: none; }
   font-size: 14px;
   font-weight: 500;
   color: #1a1814;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .ledger-list-value {
   font-size: 13px;
   color: #666;
-  min-width: 80px;
+  min-width: 60px;
   text-align: right;
+  flex-shrink: 0;
 }
 .ledger-list-pnl {
   font-weight: 500;
 }
-.ledger-list-actions {
-  display: flex;
-  gap: 4px;
-  opacity: 0;
-  transition: opacity 0.2s;
+.ledger-list-menu-wrap {
+  position: relative;
+  flex-shrink: 0;
 }
-.ledger-list-item:hover .ledger-list-actions {
-  opacity: 1;
-}
-.list-action-btn {
-  width: 28px;
-  height: 28px;
+.ledger-list-menu-btn {
+  width: 24px;
+  height: 24px;
   border: 1px solid #e4dfd6;
   border-radius: 6px;
   background: #fff;
-  color: #888;
+  color: #6c6458;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
+  line-height: 1;
+  font-size: 14px;
+  opacity: 0;
+  transition: opacity 0.2s;
 }
-.list-action-btn:hover {
-  border-color: #1a1814;
-  color: #1a1814;
+.ledger-list-item:hover .ledger-list-menu-btn {
+  opacity: 1;
 }
-.list-action-btn-danger:hover {
-  border-color: #c0392b;
+.ledger-list-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 104px;
+  background: #fff;
+  border: 1px solid #ede9e2;
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  z-index: 20;
+}
+.ledger-list-menu-item {
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 8px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.ledger-list-menu-item:hover {
+  background: #f9f7f3;
+}
+.ledger-list-menu-item-danger {
   color: #c0392b;
 }
 

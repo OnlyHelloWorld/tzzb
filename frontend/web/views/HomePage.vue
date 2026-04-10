@@ -231,17 +231,12 @@
               <div :class="['ledger-list-value', 'ledger-list-pnl', summary.pnl >= 0 ? 'pnl-green' : 'pnl-red']">
                 {{ summary.pnl >= 0 ? '+' : '' }}¥{{ fmt(summary.pnl) }}
               </div>
-              <div class="ledger-list-actions" @click.stop>
-                <button class="list-action-btn" @click.stop="editLedger(summary)" title="编辑">
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <path d="M10 2l2 2M1 11v2h2l7-7-2-2-7 7z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
-                  </svg>
-                </button>
-                <button class="list-action-btn list-action-btn-danger" @click.stop="confirmDeleteLedger(summary)" title="删除">
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <path d="M2 4h10M5 4V3a1 1 0 011-1h2a1 1 0 011 1v1M6 7v4M8 7v4M3 4l1 9h6l1-9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
-                  </svg>
-                </button>
+              <div class="ledger-list-menu-wrap" @click.stop>
+                <button class="ledger-list-menu-btn" @click.stop="toggleLedgerActionMenu(summary.id)">⋯</button>
+                <div v-if="openLedgerActionMenuId === summary.id" class="ledger-list-menu">
+                  <button class="ledger-list-menu-item" @click.stop="editLedger(summary); closeLedgerActionMenu()">编辑账本</button>
+                  <button class="ledger-list-menu-item ledger-list-menu-item-danger" @click.stop="confirmDeleteLedger(summary); closeLedgerActionMenu()">删除账本</button>
+                </div>
               </div>
             </div>
           </template>
@@ -340,7 +335,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import PnLTag from '../components/PnLTag.vue'
 import Tag from '../components/Tag.vue'
@@ -725,6 +720,11 @@ export default {
     // 页面加载时加载数据
     onMounted(async () => {
       await store.loadData()
+      document.addEventListener('click', closeLedgerActionMenu)
+    })
+    
+    onUnmounted(() => {
+      document.removeEventListener('click', closeLedgerActionMenu)
     })
     
     return {
