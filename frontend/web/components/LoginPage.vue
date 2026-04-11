@@ -1,19 +1,19 @@
 <template>
   <div class="login-page">
     <div class="login-card">
+      <div class="login-topbar">
+        <router-link to="/about" class="about-link">了解产品</router-link>
+      </div>
       <div class="login-header">
         <div class="login-logo">
-          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+          <svg width="34" height="34" viewBox="0 0 28 28" fill="none">
             <rect width="28" height="28" rx="7" fill="#1a1814"/>
             <path d="M7 9h14M7 14h10M7 19h12" stroke="#f9f7f3" stroke-width="1.8" stroke-linecap="round"/>
             <circle cx="21" cy="19" r="3.5" fill="#c4a050"/>
           </svg>
         </div>
-        <div class="login-about">
-          <router-link to="/about" class="about-link">关于</router-link>
-        </div>
+        <h1 class="login-title">投资账本</h1>
       </div>
-      <h1 class="login-title">投资账本</h1>
 
       <!-- ── 登录 ── -->
       <template v-if="view === 'login'">
@@ -268,26 +268,32 @@ onMounted(() => {
   text-align: center;
 }
 
+.login-topbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
 .login-header {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
   margin-bottom: 12px;
+  gap: 10px;
 }
 
 .login-logo { display: flex; align-items: center; justify-content: center; }
 
-.login-about {
-  margin-left: auto;
-}
-
 .about-link {
-  color: #888;
+  color: #70695b;
   text-decoration: none;
-  font-size: 14px;
+  font-size: 13px;
   padding: 6px 12px;
-  border-radius: 6px;
+  border-radius: 999px;
+  border: 1px solid #e3ddd2;
   transition: all 0.2s;
+  background: #faf8f3;
 }
 
 .about-link:hover {
@@ -297,7 +303,7 @@ onMounted(() => {
 
 .login-title {
   font-family: 'Source Serif 4', serif;
-  font-size: 24px;
+  font-size: 25px;
   font-weight: 600;
   color: #1a1814;
   margin: 0 0 4px;
