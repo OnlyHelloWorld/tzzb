@@ -2,41 +2,51 @@
   <div class="about-page">
     <header class="about-header">
       <h1>投资账本</h1>
-      <p>一个用于记录持仓、管理账本和查看汇总数据的网页应用。</p>
+      <p>投资账本帮助你快速查看总资产、管理账本与持仓，并跟踪盈亏变化。</p>
+      <div class="header-actions">
+        <RouterLink class="btn" to="/login">去登录页</RouterLink>
+        <RouterLink class="btn btn-light" to="/home">去首页</RouterLink>
+      </div>
     </header>
 
     <main class="about-content">
-      <section>
-        <h2>项目主要功能</h2>
-        <ul>
-          <li>登录后使用账本功能，未登录可查看本说明页。</li>
-          <li>支持创建、编辑、删除、排序多个账本，并可切换卡片/列表视图查看账本。</li>
-          <li>支持按账本维护持仓，包含新增、编辑、删除、重置成本等操作。</li>
-          <li>持仓支持 A股、港股、美股，可按市场查看持仓与汇总。</li>
-          <li>支持查看总市值、盈亏、持仓占比等汇总数据，并支持按币种换算为人民币展示。</li>
-          <li>支持导入导出：单账本或多账本 CSV，及账本报告 PDF 导出。</li>
-        </ul>
+      <section v-for="item in sections" :key="item.title">
+        <p class="section-title">{{ item.title }}</p>
+        <img class="shot" :src="item.src" :alt="item.title" />
       </section>
 
-      <section>
-        <h2>主要页面</h2>
-        <ul>
-          <li>登录页：账号登录与会话校验。</li>
-          <li>首页：展示所有账本汇总、账本列表与导入导出入口。</li>
-          <li>账本页：管理单个账本内的持仓与交易记录。</li>
-          <li>所有账本详情页：查看跨账本的详细汇总数据。</li>
-        </ul>
-      </section>
-
-      <section>
-        <h2>说明</h2>
-        <p>
-          本页仅根据当前代码中已实现的界面与功能进行描述，不包含未实现能力。
-        </p>
+      <section class="footer-entry">
+        <p>如果你需要重新登录，可以随时点击下方入口返回登录页。</p>
+        <RouterLink class="btn" to="/login">返回登录页</RouterLink>
       </section>
     </main>
   </div>
 </template>
+
+<script setup>
+const sections = [
+  {
+    title: '这个页面的主要功能：按市值查看账本排行，快速看到每个账本的占比和盈亏。',
+    src: '/guide-images/01-ledger-rank.svg'
+  },
+  {
+    title: '这个页面的主要功能：查看首页总览，包含总市值、各市场分布和账本列表。',
+    src: '/guide-images/02-home-overview.svg'
+  },
+  {
+    title: '这个页面的主要功能：查看单个账本详情，按市场筛选持仓并自动刷新行情。',
+    src: '/guide-images/03-ledger-detail.svg'
+  },
+  {
+    title: '这个页面的主要功能：按标的市值排行，快速识别仓位最大的个股或ETF。',
+    src: '/guide-images/04-holding-rank.svg'
+  },
+  {
+    title: '这个页面的主要功能：添加持仓，填写市场、代码、数量和成本后确认保存。',
+    src: '/guide-images/05-add-holding.svg'
+  }
+]
+</script>
 
 <style scoped>
 .about-page {
@@ -62,27 +72,53 @@
   line-height: 1.7;
 }
 
+.header-actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 10px;
+}
+
 section {
   background: #fff;
   border: 1px solid #e7e1d7;
   border-radius: 12px;
-  padding: 18px;
+  padding: 16px;
   margin-bottom: 16px;
 }
 
-h2 {
+.section-title {
   margin: 0 0 10px;
-  font-size: 20px;
+  font-size: 16px;
+  line-height: 1.7;
 }
 
-ul {
-  margin: 0;
-  padding-left: 20px;
-  line-height: 1.8;
+.shot {
+  width: 100%;
+  border: 1px solid #e6e2db;
+  border-radius: 10px;
+  background: #fafafa;
 }
 
-p {
-  margin: 0;
-  line-height: 1.8;
+.footer-entry p {
+  margin: 0 0 10px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 100px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid #1b1812;
+  background: #1b1812;
+  color: #fff;
+  text-decoration: none;
+}
+
+.btn-light {
+  background: #fff;
+  color: #1b1812;
 }
 </style>
