@@ -2,6 +2,7 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 import HomePage from '../views/HomePage.vue'
 import LedgerPage from '../views/LedgerPage.vue'
 import AllLedgersDetailPage from '../views/AllLedgersDetailPage.vue'
+import AboutPage from '../views/AboutPage.vue'
 import LoginPage from '../components/LoginPage.vue'
 import { isLoggedIn, getMe } from '../lib/api.js'
 
@@ -10,6 +11,11 @@ const routes = [
     path: '/login',
     name: 'Login',
     component: LoginPage
+  },
+  {
+    path: '/about',
+    name: 'About',
+    component: AboutPage
   },
   {
     path: '/home',
@@ -40,11 +46,13 @@ const router = createRouter({
 
 router.beforeEach(async (to, from, next) => {
   const loggedIn = isLoggedIn()
-  if (to.path !== '/login' && !loggedIn) {
+  // 允许未登录访问的页面
+  const publicPages = ['/login', '/about']
+  if (!publicPages.includes(to.path) && !loggedIn) {
     next('/login')
   } else if (to.path === '/login' && loggedIn) {
     next('/home')
-  } else if (to.path !== '/login' && loggedIn) {
+  } else if (!publicPages.includes(to.path) && loggedIn) {
     try {
       await getMe()
     } catch (error) {
