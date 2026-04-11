@@ -10,6 +10,7 @@ input:focus, select:focus { outline: none; }
   background: #f9f7f3;
   font-family: 'Source Serif 4', Georgia, serif;
   color: #1a1814;
+  overflow-x: hidden;
 }
 
 /* Header */
@@ -148,7 +149,7 @@ input:focus, select:focus { outline: none; }
 }
 .ledgers-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 12px;
 }
 
@@ -358,6 +359,10 @@ input:focus, select:focus { outline: none; }
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
+  display: flex;
+  flex-direction: column;
+  min-height: 220px;
+  height: 100%;
 }
 .ledger-card:hover {
   transform: translateY(-2px);
@@ -374,6 +379,9 @@ input:focus, select:focus { outline: none; }
 .ledger-card-body {
   padding: 18px 14px;
   text-align: center;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 .ledger-card-title-row {
   display: flex;
@@ -431,6 +439,7 @@ input:focus, select:focus { outline: none; }
   padding: 10px;
   background: #f9f7f3;
   border-radius: 8px;
+  flex: 1;
 }
 
 .summary-item {
@@ -466,6 +475,7 @@ input:focus, select:focus { outline: none; }
 .ledger-card-hint {
   font-size: 12px;
   color: #999;
+  margin-top: auto;
 }
 .ledger-card-empty {
   border: 2px dashed #ddd;
@@ -949,7 +959,9 @@ input:focus, select:focus { outline: none; }
   justify-content: space-between;
   align-items: flex-start;
   gap: 12px;
+  flex-wrap: wrap;
 }
+.summary-top-row > div { min-width: 0; }
 .ledger-count-chip {
   display: flex;
   flex-direction: column;
@@ -968,7 +980,7 @@ input:focus, select:focus { outline: none; }
 .pnl-red { color: #c0392b; }
 
 .ccy-row { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px; }
-.ccy-chip { font-size: 12px; font-family: monospace; color: #888; display: flex; align-items: center; gap: 4px; }
+.ccy-chip { font-size: 12px; font-family: monospace; color: #888; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; word-break: break-word; }
 .ccy-chip span { color: #1a1814; font-weight: 600; }
 .ccy-conv { color: #bbb !important; font-weight: 400 !important; }
 .ccy-percentage { color: #999 !important; font-weight: 400 !important; }
@@ -978,6 +990,38 @@ input:focus, select:focus { outline: none; }
   justify-content: space-between;
   align-items: center;
   margin-top: 12px;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .main-content {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .ledgers-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .big-num {
+    font-size: clamp(24px, 9vw, 32px);
+    line-height: 1.15;
+    word-break: break-all;
+  }
+
+  .ledger-count-chip {
+    align-items: flex-start;
+  }
+
+  .all-ledgers-bottom-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .all-ledgers-bottom-row .btn {
+    width: 100%;
+  }
 }
 
 .pagination {
