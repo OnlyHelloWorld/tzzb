@@ -1,357 +1,186 @@
 <template>
   <div class="about-page">
-    <!-- 导航栏 -->
-    <nav class="about-nav">
-      <div class="about-nav-left">
-        <span class="about-logo">
-          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-            <rect width="28" height="28" rx="7" fill="#1a1814"/>
-            <path d="M7 9h14M7 14h10M7 19h12" stroke="#f9f7f3" stroke-width="1.8" stroke-linecap="round"/>
-            <circle cx="21" cy="19" r="3.5" fill="#c4a050"/>
+    <header class="about-header">
+      <div class="brand">
+        <div class="brand-logo" aria-hidden="true">
+          <svg width="30" height="30" viewBox="0 0 28 28" fill="none">
+            <rect width="28" height="28" rx="7" fill="#13110d"/>
+            <path d="M7 9h14M7 14h10M7 19h12" stroke="#f7f3ea" stroke-width="1.8" stroke-linecap="round"/>
+            <circle cx="21" cy="19" r="3.5" fill="#d4af61"/>
           </svg>
-        </span>
-        <h1 class="about-title">投资账本</h1>
+        </div>
+        <div>
+          <h1>投资账本</h1>
+          <p>更专业的个人投资组合管理工具</p>
+        </div>
       </div>
-      <div class="about-nav-right">
-        <button class="about-btn" @click="goToLogin">登录</button>
-      </div>
-    </nav>
+      <button class="primary-btn" @click="goToLogin">立即登录</button>
+    </header>
 
-    <!-- 英雄区域 -->
-    <section class="hero-section">
-      <div class="hero-content">
-        <h2 class="hero-title">智能投资管理工具</h2>
-        <p class="hero-subtitle">多账本、多市场、实时分析，助您轻松管理投资组合</p>
-        <button class="hero-btn" @click="goToLogin">开始使用</button>
-      </div>
-      <div class="hero-image">
-        <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=modern%20investment%20dashboard%20with%20charts%20and%20portfolio%20analysis%20on%20mobile%20device&image_size=landscape_16_9" alt="投资账本界面">
-      </div>
-    </section>
+    <main class="about-content">
+      <section class="hero">
+        <div class="hero-copy">
+          <span class="pill">多市场 · 多账本 · 实时分析</span>
+          <h2>让投资记录、分析与复盘更清晰</h2>
+          <p>
+            支持 A 股、港股、美股统一管理，自动换算人民币总资产，
+            让每个账本的持仓、盈亏、仓位结构一目了然。
+          </p>
+          <div class="hero-actions">
+            <button class="primary-btn" @click="goToLogin">开始使用</button>
+            <button class="ghost-btn" @click="scrollToPreview">查看界面</button>
+          </div>
+        </div>
+        <div class="hero-panel" role="img" aria-label="总览示意图">
+          <div class="panel-top">
+            <strong>所有账本总市值（人民币）</strong>
+            <span>6 个账本</span>
+          </div>
+          <div class="value-row">
+            <em>¥ 574,235.46</em>
+            <b>-5.81%</b>
+          </div>
+          <ul>
+            <li><span>A股</span><span>¥295,759.80（51.5%）</span></li>
+            <li><span>港股</span><span>HK$139,905.00 ≈ ¥122,215.86</span></li>
+            <li><span>美股</span><span>$22,845.00 ≈ ¥156,259.80</span></li>
+          </ul>
+        </div>
+      </section>
 
-    <!-- 功能特性 -->
-    <section class="features-section">
-      <h3 class="section-title">核心功能</h3>
-      <div class="features-grid">
-        <div class="feature-card">
-          <div class="feature-icon">📋</div>
-          <h4 class="feature-title">多账本管理</h4>
-          <p class="feature-desc">创建多个独立账本，实现资产分类管理，数据完全隔离</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">🌍</div>
-          <h4 class="feature-title">多市场支持</h4>
-          <p class="feature-desc">支持A股、港股、美股三大市场，统一管理全球投资</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">📈</div>
-          <h4 class="feature-title">实时分析</h4>
-          <p class="feature-desc">实时获取行情数据，自动计算市值、盈亏和收益率</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">💱</div>
-          <h4 class="feature-title">汇率转换</h4>
-          <p class="feature-desc">自动汇率转换，统一以人民币计算总市值</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">📊</div>
-          <h4 class="feature-title">数据导出</h4>
-          <p class="feature-desc">支持JSON、CSV、PDF三种格式导入导出</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">🔒</div>
-          <h4 class="feature-title">安全认证</h4>
-          <p class="feature-desc">JWT认证机制，保障您的投资数据安全</p>
-        </div>
-      </div>
-    </section>
+      <section class="capability">
+        <article>
+          <h3>专业账本体系</h3>
+          <p>分策略、分账户管理，账本隔离清晰，便于长期跟踪投资决策。</p>
+        </article>
+        <article>
+          <h3>实时盈亏追踪</h3>
+          <p>市值、浮动盈亏、持仓占比自动计算，日常复盘更高效。</p>
+        </article>
+        <article>
+          <h3>结构化持仓录入</h3>
+          <p>支持市场类型、代码、成本、日期、备注等完整字段输入。</p>
+        </article>
+      </section>
 
-    <!-- 界面展示 -->
-    <section class="demo-section">
-      <h3 class="section-title">界面展示</h3>
-      <div class="demo-grid">
-        <div class="demo-card">
-          <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=investment%20portfolio%20dashboard%20showing%20total%20value%20and%20market%20distribution%20on%20mobile&image_size=square" alt="总览界面">
-          <p class="demo-caption">投资总览</p>
+      <section ref="previewSection" class="preview">
+        <h3>界面预览</h3>
+        <p>以下为产品核心页面布局示意，全部使用本地样式渲染，不依赖外部图片链接。</p>
+        <div class="preview-grid">
+          <div class="phone-card">
+            <h4>首页总览</h4>
+            <div class="mock-box">
+              <div class="mock-line w-70"></div>
+              <div class="mock-line w-40 red"></div>
+              <div class="mock-tag-row">
+                <span class="tag red">A股</span>
+                <span class="tag blue">港股</span>
+                <span class="tag green">美股</span>
+              </div>
+            </div>
+          </div>
+          <div class="phone-card">
+            <h4>持仓列表</h4>
+            <div class="mock-box">
+              <div class="item" v-for="i in 3" :key="`holding-${i}`">
+                <div class="mock-line w-30"></div>
+                <div class="mock-line w-20 red"></div>
+              </div>
+            </div>
+          </div>
+          <div class="phone-card">
+            <h4>添加持仓</h4>
+            <div class="mock-box">
+              <div class="input-row" v-for="i in 4" :key="`input-${i}`"></div>
+              <div class="btn-row">
+                <span></span>
+                <span class="solid"></span>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="demo-card">
-          <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=investment%20ledger%20detail%20page%20showing%20individual%20stocks%20and%20performance%20on%20mobile&image_size=square" alt="账本详情">
-          <p class="demo-caption">账本详情</p>
-        </div>
-        <div class="demo-card">
-          <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=adding%20new%20investment%20holding%20form%20on%20mobile%20app&image_size=square" alt="添加持仓">
-          <p class="demo-caption">添加持仓</p>
-        </div>
-      </div>
-    </section>
+      </section>
+    </main>
 
-    <!-- 底部 -->
-    <footer class="about-footer">
-      <p class="footer-text">投资账本 © 2026 | 专业的个人投资组合管理工具</p>
+    <footer>
+      <p>投资账本 © 2026 · 专注于长期、可复盘的个人投资管理</p>
     </footer>
   </div>
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
+const previewSection = ref(null)
 
 function goToLogin() {
   router.push('/login')
 }
+
+function scrollToPreview() {
+  previewSection.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
 </script>
 
 <style scoped>
-.about-page {
-  min-height: 100vh;
-  background: #f9f7f3;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+.about-page { background: #f4f2ee; min-height: 100vh; color: #1b1812; }
+.about-header {
+  position: sticky; top: 0; z-index: 5; backdrop-filter: blur(8px);
+  background: rgba(244,242,238,.86); border-bottom: 1px solid #e4dfd5;
+  padding: 16px 24px; display: flex; justify-content: space-between; align-items: center;
 }
+.brand { display: flex; gap: 12px; align-items: center; }
+.brand h1 { margin: 0; font-size: 20px; }
+.brand p { margin: 2px 0 0; color: #6f685b; font-size: 13px; }
+.about-content { max-width: 1080px; margin: 0 auto; padding: 32px 20px 56px; }
+.hero { display: grid; grid-template-columns: 1.1fr 1fr; gap: 22px; align-items: stretch; }
+.pill { background: #e8e2d4; color: #7b6326; padding: 6px 12px; border-radius: 999px; font-size: 13px; }
+.hero-copy h2 { margin: 16px 0 12px; font-size: 34px; line-height: 1.2; }
+.hero-copy p { color: #4f4a41; line-height: 1.7; margin: 0; }
+.hero-actions { margin-top: 24px; display: flex; gap: 12px; }
+.primary-btn, .ghost-btn { border-radius: 10px; border: 1px solid transparent; padding: 10px 18px; cursor: pointer; font-weight: 600; }
+.primary-btn { background: #14120e; color: #fff; }
+.ghost-btn { background: #fff; border-color: #d8d2c7; color: #1b1812; }
+.hero-panel { background: #fff; border-radius: 18px; padding: 20px; border: 1px solid #ece6dc; box-shadow: 0 10px 28px rgba(26,24,20,.08); }
+.panel-top { display: flex; justify-content: space-between; color: #7e776a; font-size: 14px; }
+.value-row { margin: 14px 0 16px; display: flex; gap: 12px; align-items: baseline; }
+.value-row em { font-style: normal; font-size: 36px; font-weight: 700; }
+.value-row b { color: #bb433b; font-size: 28px; }
+.hero-panel ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.hero-panel li { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; border-top: 1px dashed #ece6db; padding-top: 8px; }
+.capability { margin: 28px 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.capability article { background: #fff; border: 1px solid #ece6dc; border-radius: 14px; padding: 18px; }
+.capability h3 { margin: 0 0 8px; font-size: 18px; }
+.capability p { margin: 0; color: #595348; line-height: 1.6; }
+.preview { margin-top: 36px; }
+.preview h3 { margin: 0 0 8px; font-size: 24px; }
+.preview p { margin: 0 0 20px; color: #6d665a; }
+.preview-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.phone-card { background: #fff; border: 1px solid #ece6dc; border-radius: 14px; padding: 14px; }
+.phone-card h4 { margin: 0 0 12px; }
+.mock-box { background: #f8f6f1; border-radius: 10px; padding: 12px; }
+.mock-line { height: 10px; border-radius: 6px; background: #dad3c8; margin-bottom: 10px; }
+.w-70 { width: 70%; } .w-40 { width: 40%; } .w-30 { width: 30%; } .w-20 { width: 20%; }
+.red { background: #db857d; }
+.mock-tag-row { display: flex; gap: 8px; }
+.tag { font-size: 12px; border-radius: 6px; padding: 4px 8px; }
+.tag.red { background: #fdeeed; color: #be4a43; }
+.tag.blue { background: #e8f1fb; color: #1a74b8; }
+.tag.green { background: #e7f6ee; color: #1f8a54; }
+.item { display: flex; justify-content: space-between; margin-bottom: 12px; }
+.input-row { height: 34px; border-radius: 8px; background: #ece8de; margin-bottom: 10px; }
+.btn-row { display: flex; justify-content: flex-end; gap: 8px; }
+.btn-row span { width: 66px; height: 30px; border-radius: 8px; background: #efeade; }
+.btn-row .solid { background: #16130f; }
+footer { border-top: 1px solid #e4dfd5; padding: 24px 16px; text-align: center; color: #6f685b; font-size: 13px; }
 
-/* 导航栏 */
-.about-nav {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 32px;
-  background: #fff;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-
-.about-nav-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.about-logo {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.about-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #1a1814;
-  margin: 0;
-}
-
-.about-nav-right {
-  display: flex;
-  gap: 12px;
-}
-
-.about-btn {
-  padding: 8px 16px;
-  background: #1a1814;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.about-btn:hover {
-  opacity: 0.85;
-}
-
-/* 英雄区域 */
-.hero-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 60px 20px;
-  text-align: center;
-  background: linear-gradient(135deg, #f9f7f3 0%, #f0ede7 100%);
-}
-
-.hero-content {
-  max-width: 600px;
-  margin-bottom: 40px;
-}
-
-.hero-title {
-  font-size: 32px;
-  font-weight: 700;
-  color: #1a1814;
-  margin: 0 0 16px;
-  line-height: 1.2;
-}
-
-.hero-subtitle {
-  font-size: 16px;
-  color: #666;
-  margin: 0 0 32px;
-  line-height: 1.5;
-}
-
-.hero-btn {
-  padding: 14px 32px;
-  background: #1a1814;
-  color: #fff;
-  border: none;
-  border-radius: 10px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity 0.2s, transform 0.2s;
-}
-
-.hero-btn:hover {
-  opacity: 0.85;
-  transform: translateY(-2px);
-}
-
-.hero-image {
-  width: 100%;
-  max-width: 800px;
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-}
-
-.hero-image img {
-  width: 100%;
-  height: auto;
-  display: block;
-}
-
-/* 功能特性 */
-.features-section {
-  padding: 80px 20px;
-  background: #fff;
-}
-
-.section-title {
-  font-size: 24px;
-  font-weight: 600;
-  color: #1a1814;
-  text-align: center;
-  margin: 0 0 48px;
-}
-
-.features-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 24px;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.feature-card {
-  background: #f9f7f3;
-  border-radius: 16px;
-  padding: 32px;
-  text-align: center;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.feature-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
-}
-
-.feature-icon {
-  font-size: 40px;
-  margin-bottom: 16px;
-}
-
-.feature-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #1a1814;
-  margin: 0 0 12px;
-}
-
-.feature-desc {
-  font-size: 14px;
-  color: #666;
-  margin: 0;
-  line-height: 1.5;
-}
-
-/* 界面展示 */
-.demo-section {
-  padding: 80px 20px;
-  background: #f9f7f3;
-}
-
-.demo-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 24px;
-  max-width: 1000px;
-  margin: 0 auto;
-}
-
-.demo-card {
-  background: #fff;
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.demo-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
-}
-
-.demo-card img {
-  width: 100%;
-  height: 200px;
-  object-fit: cover;
-  display: block;
-}
-
-.demo-caption {
-  padding: 16px;
-  text-align: center;
-  font-size: 14px;
-  font-weight: 500;
-  color: #1a1814;
-  margin: 0;
-}
-
-/* 底部 */
-.about-footer {
-  background: #1a1814;
-  color: #fff;
-  text-align: center;
-  padding: 32px 20px;
-}
-
-.footer-text {
-  font-size: 14px;
-  opacity: 0.8;
-  margin: 0;
-}
-
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .hero-title {
-    font-size: 24px;
-  }
-  
-  .hero-subtitle {
-    font-size: 14px;
-  }
-  
-  .features-section,
-  .demo-section {
-    padding: 60px 20px;
-  }
-  
-  .features-grid,
-  .demo-grid {
-    grid-template-columns: 1fr;
-  }
+@media (max-width: 900px) {
+  .hero { grid-template-columns: 1fr; }
+  .capability, .preview-grid { grid-template-columns: 1fr; }
+  .hero-copy h2 { font-size: 28px; }
+  .about-header { padding: 14px 16px; }
+  .brand p { display: none; }
 }
 </style>
