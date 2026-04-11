@@ -11,7 +11,7 @@
         </div>
         <div>
           <h1>投资账本</h1>
-          <p>更专业的个人投资组合管理工具</p>
+          <p>面向个人投资记录与汇总的账本工具</p>
         </div>
       </div>
       <button class="primary-btn" @click="goToLogin">立即登录</button>
@@ -21,10 +21,10 @@
       <section class="hero">
         <div class="hero-copy">
           <span class="pill">多市场 · 多账本 · 实时分析</span>
-          <h2>让投资记录、分析与复盘更清晰</h2>
+          <h2>清楚记录持仓，方便日常查看与汇总</h2>
           <p>
-            支持 A 股、港股、美股统一管理，自动换算人民币总资产，
-            让每个账本的持仓、盈亏、仓位结构一目了然。
+            支持 A 股、港股、美股统一管理，并换算人民币总资产。
+            页面信息按模块展示，重点数据清晰、留白充足，便于日常使用。
           </p>
           <div class="hero-actions">
             <button class="primary-btn" @click="goToLogin">开始使用</button>
@@ -50,22 +50,22 @@
 
       <section class="capability">
         <article>
-          <h3>专业账本体系</h3>
-          <p>分策略、分账户管理，账本隔离清晰，便于长期跟踪投资决策。</p>
+          <h3>账本分类清晰</h3>
+          <p>可按策略或账户分别管理，数据边界明确，方便聚合查看。</p>
         </article>
         <article>
-          <h3>实时盈亏追踪</h3>
-          <p>市值、浮动盈亏、持仓占比自动计算，日常复盘更高效。</p>
+          <h3>盈亏自动聚合</h3>
+          <p>市值、浮动盈亏、持仓占比自动汇总，减少手工统计。</p>
         </article>
         <article>
-          <h3>结构化持仓录入</h3>
-          <p>支持市场类型、代码、成本、日期、备注等完整字段输入。</p>
+          <h3>持仓录入完整</h3>
+          <p>支持市场、代码、成本、日期、备注等常用字段。</p>
         </article>
       </section>
 
       <section ref="previewSection" class="preview">
         <h3>界面预览</h3>
-        <p>以下为产品核心页面布局示意，全部使用本地样式渲染，不依赖外部图片链接。</p>
+        <p>以下为核心页面布局示意。整体风格简洁大气，信息层级清楚，视觉不过度拥挤。</p>
         <div class="preview-grid">
           <div class="phone-card">
             <h4>首页总览</h4>
@@ -103,7 +103,7 @@
     </main>
 
     <footer>
-      <p>投资账本 © 2026 · 专注于长期、可复盘的个人投资管理</p>
+      <p>投资账本 © 2026 · 专注于清晰记录与汇总的个人投资管理</p>
     </footer>
   </div>
 </template>
@@ -134,8 +134,8 @@ function scrollToPreview() {
 .brand { display: flex; gap: 12px; align-items: center; }
 .brand h1 { margin: 0; font-size: 20px; }
 .brand p { margin: 2px 0 0; color: #6f685b; font-size: 13px; }
-.about-content { max-width: 1080px; margin: 0 auto; padding: 32px 20px 56px; }
-.hero { display: grid; grid-template-columns: 1.1fr 1fr; gap: 22px; align-items: stretch; }
+.about-content { max-width: 1080px; margin: 0 auto; padding: 40px 24px 64px; }
+.hero { display: grid; grid-template-columns: 1.1fr 1fr; gap: 28px; align-items: stretch; }
 .pill { background: #e8e2d4; color: #7b6326; padding: 6px 12px; border-radius: 999px; font-size: 13px; }
 .hero-copy h2 { margin: 16px 0 12px; font-size: 34px; line-height: 1.2; }
 .hero-copy p { color: #4f4a41; line-height: 1.7; margin: 0; }
@@ -150,15 +150,15 @@ function scrollToPreview() {
 .value-row b { color: #bb433b; font-size: 28px; }
 .hero-panel ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
 .hero-panel li { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; border-top: 1px dashed #ece6db; padding-top: 8px; }
-.capability { margin: 28px 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-.capability article { background: #fff; border: 1px solid #ece6dc; border-radius: 14px; padding: 18px; }
+.capability { margin: 36px 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.capability article { background: #fff; border: 1px solid #ece6dc; border-radius: 14px; padding: 22px; }
 .capability h3 { margin: 0 0 8px; font-size: 18px; }
 .capability p { margin: 0; color: #595348; line-height: 1.6; }
-.preview { margin-top: 36px; }
+.preview { margin-top: 44px; }
 .preview h3 { margin: 0 0 8px; font-size: 24px; }
 .preview p { margin: 0 0 20px; color: #6d665a; }
-.preview-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-.phone-card { background: #fff; border: 1px solid #ece6dc; border-radius: 14px; padding: 14px; }
+.preview-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.phone-card { background: #fff; border: 1px solid #ece6dc; border-radius: 14px; padding: 18px; }
 .phone-card h4 { margin: 0 0 12px; }
 .mock-box { background: #f8f6f1; border-radius: 10px; padding: 12px; }
 .mock-line { height: 10px; border-radius: 6px; background: #dad3c8; margin-bottom: 10px; }
