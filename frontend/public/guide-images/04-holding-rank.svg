@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1600" viewBox="0 0 900 1600">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f8f8f8"/>
+      <stop offset="100%" stop-color="#ececec"/>
+    </linearGradient>
+  </defs>
+  <rect width="100%" height="100%" fill="#f4f2ee"/>
+  <rect x="40" y="40" width="820" height="1520" rx="26" fill="url(#g)" stroke="#ddd7cb"/>
+  <rect x="80" y="110" width="740" height="90" rx="16" fill="#ffffff" stroke="#e5e1d9"/>
+  <rect x="80" y="240" width="740" height="300" rx="20" fill="#ffffff" stroke="#e5e1d9"/>
+  <rect x="80" y="580" width="740" height="190" rx="20" fill="#ffffff" stroke="#e5e1d9"/>
+  <rect x="80" y="800" width="740" height="190" rx="20" fill="#ffffff" stroke="#e5e1d9"/>
+  <rect x="80" y="1020" width="740" height="190" rx="20" fill="#ffffff" stroke="#e5e1d9"/>
+  <text x="450" y="1460" text-anchor="middle" font-size="46" fill="#2d2d2d">标的市值排行</text>
+  <text x="450" y="1510" text-anchor="middle" font-size="28" fill="#7c7c7c">界面示意图</text>
+</svg>
