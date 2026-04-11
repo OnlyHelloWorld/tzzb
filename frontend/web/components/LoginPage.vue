@@ -1,7 +1,12 @@
 <template>
   <div class="login-page">
     <div class="login-card">
-      <div class="login-logo">📊</div>
+      <div class="login-header">
+        <div class="login-logo">📊</div>
+        <div class="login-about">
+          <router-link to="/about" class="about-link">关于</router-link>
+        </div>
+      </div>
       <h1 class="login-title">投资账本</h1>
 
       <!-- ── 登录 ── -->
@@ -257,7 +262,32 @@ onMounted(() => {
   text-align: center;
 }
 
-.login-logo { font-size: 48px; margin-bottom: 12px; }
+.login-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.login-logo { font-size: 48px; }
+
+.login-about {
+  margin-left: auto;
+}
+
+.about-link {
+  color: #888;
+  text-decoration: none;
+  font-size: 14px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.about-link:hover {
+  color: #1a1814;
+  background: #f0ede7;
+}
 
 .login-title {
   font-family: 'Source Serif 4', serif;
