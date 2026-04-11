@@ -2,7 +2,13 @@
   <div class="login-page">
     <div class="login-card">
       <div class="login-header">
-        <div class="login-logo">📊</div>
+        <div class="login-logo">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+            <rect width="28" height="28" rx="7" fill="#1a1814"/>
+            <path d="M7 9h14M7 14h10M7 19h12" stroke="#f9f7f3" stroke-width="1.8" stroke-linecap="round"/>
+            <circle cx="21" cy="19" r="3.5" fill="#c4a050"/>
+          </svg>
+        </div>
         <div class="login-about">
           <router-link to="/about" class="about-link">关于</router-link>
         </div>
@@ -269,7 +275,7 @@ onMounted(() => {
   margin-bottom: 12px;
 }
 
-.login-logo { font-size: 48px; }
+.login-logo { display: flex; align-items: center; justify-content: center; }
 
 .login-about {
   margin-left: auto;

@@ -3,7 +3,13 @@
     <!-- 导航栏 -->
     <nav class="about-nav">
       <div class="about-nav-left">
-        <span class="about-logo">📊</span>
+        <span class="about-logo">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+            <rect width="28" height="28" rx="7" fill="#1a1814"/>
+            <path d="M7 9h14M7 14h10M7 19h12" stroke="#f9f7f3" stroke-width="1.8" stroke-linecap="round"/>
+            <circle cx="21" cy="19" r="3.5" fill="#c4a050"/>
+          </svg>
+        </span>
         <h1 class="about-title">投资账本</h1>
       </div>
       <div class="about-nav-right">
@@ -123,7 +129,9 @@ function goToLogin() {
 }
 
 .about-logo {
-  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .about-title {
