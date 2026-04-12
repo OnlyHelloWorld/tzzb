@@ -11,13 +11,13 @@
         <span class="app-title">投资账本</span>
       </div>
       <div class="header-right">
+        <span class="username">{{ store.user?.username || '用户' }}</span>
         <button class="icon-btn" title="退出登录" @click="handleLogout">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path d="M6 2.5H3.5A1.5 1.5 0 0 0 2 4v8a1.5 1.5 0 0 0 1.5 1.5H6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
             <path d="M10 11.5 13 8l-3-3.5M13 8H6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
-        <button class="btn btn-ink" @click="openCreateLedger">+ 新建账本</button>
       </div>
     </div>
 
@@ -87,14 +87,15 @@
                 </div>
               </div>
               <input ref="allLedgersImportInput" type="file" accept=".csv" style="display:none" @change="handleAllLedgersImport" />
+              <button class="btn btn-ink" style="font-size:11px" @click="navigateToAllLedgersDetail">查看详细分析</button>
             </div>
-            <button class="btn btn-ink" @click="navigateToAllLedgersDetail">查看详细分析</button>
           </div>
         </div>
 
         <!-- 账本列表工具栏 -->
         <div class="ledgers-toolbar">
           <div class="toolbar-left">
+            <button class="btn btn-ink" @click="openCreateLedger">+ 新建账本</button>
           </div>
           <div class="toolbar-right">
             <div class="view-switch">

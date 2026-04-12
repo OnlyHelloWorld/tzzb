@@ -40,7 +40,8 @@ input:focus, select:focus { outline: none; }
 .header-left:active {
   transform: scale(0.98);
 }
-.header-right { display: flex; align-items: center; gap: 8px; }
+.header-right { display: flex; align-items: center; gap: 10px; }
+.username { font-size: 13px; color: #666; font-weight: 500; }
 .app-title { font-family: 'Playfair Display', serif; font-size: 17px; font-weight: 600; letter-spacing: .2px; }
 
 /* Ledger badge */
@@ -992,6 +993,14 @@ input:focus, select:focus { outline: none; }
   margin-top: 12px;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.add-holding-section {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #f0ece5;
+  display: flex;
+  justify-content: center;
 }
 
 @media (max-width: 640px) {

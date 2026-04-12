@@ -165,12 +165,34 @@
       <div class="summary-card">
         <div class="summary-card-header">
           <div class="summary-label">总市值（人民币）</div>
-          <button class="btn btn-ink add-holding-btn" @click="openAddHolding">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:middle;margin-right:4px">
-              <path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-            </svg>
-            添加持仓
-          </button>
+          <div class="fx-section">
+            <div class="fx-bar">
+              <span class="fx-label">汇率</span>
+              <div v-for="item in fxList" :key="item.key" class="fx-chip">
+                <span>{{ item.label }}</span>
+                <span class="fx-value">{{ fmt(store.fx[item.key], 2) }}</span>
+              </div>
+              <!-- Auto refresh toggle -->
+              <div class="fx-chip">
+                <span>行情自动刷新（60s）</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" v-model="store.autoRefresh" />
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="io-btns io-btns-right">
+                <div class="io-dropdown" @click.stop>
+                  <button class="btn btn-ghost" style="font-size:11px" @click="toggleHoldingIOMenu">导入/导出</button>
+                  <div v-if="showHoldingIOMenu" class="io-dropdown-menu">
+                    <button class="dropdown-item" @click="handleExportCSV">导出 CSV</button>
+                    <button class="dropdown-item" @click="handleExportPDF">导出 PDF</button>
+                    <button class="dropdown-item" @click="triggerImport">导入 CSV</button>
+                  </div>
+                </div>
+                <input ref="importInput" type="file" accept=".csv" style="display:none" @change="handleImport" />
+              </div>
+            </div>
+          </div>
         </div>
         <div class="summary-row">
           <div class="big-num">¥ {{ fmt(summary.totalCNY) }}</div>
@@ -186,33 +208,13 @@
             <span v-if="item.ccy !== 'CNY'" class="ccy-conv"> ≈ ¥{{ fmt(toCNY(item.val, item.ccy, store.fx)) }}</span>
           </div>
         </div>
-        <div class="fx-section">
-          <div class="fx-bar">
-            <span class="fx-label">汇率</span>
-            <div v-for="item in fxList" :key="item.key" class="fx-chip">
-              <span>{{ item.label }}</span>
-              <span class="fx-value">{{ store.fx[item.key] }}</span>
-            </div>
-            <!-- Auto refresh toggle -->
-            <div class="fx-chip">
-              <span>行情自动刷新（60s）</span>
-              <label class="toggle-switch">
-                <input type="checkbox" v-model="store.autoRefresh" />
-                <span class="toggle-slider"></span>
-              </label>
-            </div>
-            <div class="io-btns io-btns-right">
-              <div class="io-dropdown" @click.stop>
-                <button class="btn btn-ghost" style="font-size:11px" @click="toggleHoldingIOMenu">导入/导出</button>
-                <div v-if="showHoldingIOMenu" class="io-dropdown-menu">
-                  <button class="dropdown-item" @click="handleExportCSV">导出 CSV</button>
-                  <button class="dropdown-item" @click="handleExportPDF">导出 PDF</button>
-                  <button class="dropdown-item" @click="triggerImport">导入 CSV</button>
-                </div>
-              </div>
-              <input ref="importInput" type="file" accept=".csv" style="display:none" @change="handleImport" />
-            </div>
-          </div>
+        <div class="add-holding-section">
+          <button class="btn btn-ink add-holding-btn" @click="openAddHolding">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:middle;margin-right:4px">
+              <path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+            添加持仓
+          </button>
         </div>
         <div v-if="store.ioMessage" class="io-message" :class="store.ioMessageClass">{{ store.ioMessage }}</div>
       </div>
