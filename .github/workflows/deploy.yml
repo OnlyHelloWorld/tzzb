@@ -57,8 +57,10 @@ jobs:
               git reset --hard HEAD > /dev/null 2>&1
               echo "清理未跟踪的文件..."
               git clean -fd > /dev/null 2>&1
-              echo "拉取最新代码..."
-              git pull --quiet origin main
+              echo "同步远程代码（避免分支分叉导致 pull 失败）..."
+              git fetch --quiet origin main
+              git checkout --quiet main
+              git reset --hard --quiet origin/main
             else
               echo "克隆仓库..."
               git clone --quiet https://github.com/${{ github.repository }} .
