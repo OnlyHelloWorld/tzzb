@@ -18,7 +18,6 @@
             <path d="M10 11.5 13 8l-3-3.5M13 8H6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
-        <button class="btn btn-ink" @click="openCreateLedger">+ 新建账本</button>
       </div>
     </div>
 
@@ -98,6 +97,7 @@
           <div class="toolbar-left">
           </div>
           <div class="toolbar-right">
+            <button class="btn btn-ink toolbar-add-ledger-btn" @click="openCreateLedger">+ 新建账本</button>
             <div class="view-switch">
               <button 
                 :class="['view-btn', { active: viewMode === 'card' }]" 
