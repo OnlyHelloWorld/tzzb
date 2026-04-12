@@ -11,6 +11,7 @@
         <span class="app-title">投资账本</span>
       </div>
       <div class="header-right">
+        <span class="user-chip" :title="currentUsername">👤 {{ currentUsername }}</span>
         <button class="icon-btn" title="退出登录" @click="handleLogout">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path d="M6 2.5H3.5A1.5 1.5 0 0 0 2 4v8a1.5 1.5 0 0 0 1.5 1.5H6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
@@ -361,6 +362,7 @@ export default {
     const allLedgersImportInput = ref(null)
     const openLedgerActionMenuId = ref(null)
     const deletingLedgers = ref([])
+    const currentUsername = ref('用户')
     const blessingChars = ['恭', '喜', '发', '财']
     const showBlessingEffect = ref(false)
     const blessingEffectKey = ref(0)
@@ -740,6 +742,12 @@ export default {
     
     // 页面加载时加载数据
     onMounted(async () => {
+      try {
+        const me = await api.getMe()
+        currentUsername.value = me?.username || me?.email || '用户'
+      } catch (err) {
+        console.warn('获取用户信息失败:', err)
+      }
       await store.loadData()
       viewMode.value = store.ledgerViewMode
       ledgerSortBy.value = store.ledgerSortBy
@@ -763,6 +771,7 @@ export default {
       allLedgersImportInput,
       openLedgerActionMenuId,
       deletingLedgers,
+      currentUsername,
       blessingChars,
       showBlessingEffect,
       blessingEffectKey,

@@ -41,6 +41,21 @@ input:focus, select:focus { outline: none; }
   transform: scale(0.98);
 }
 .header-right { display: flex; align-items: center; gap: 8px; }
+.user-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 180px;
+  padding: 5px 10px;
+  border: 1px solid #ece7de;
+  border-radius: 999px;
+  background: #f9f7f3;
+  color: #4b4439;
+  font-size: 12px;
+  line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .app-title { font-family: 'Playfair Display', serif; font-size: 17px; font-weight: 600; letter-spacing: .2px; }
 
 /* Ledger badge */
@@ -633,6 +648,15 @@ input:focus, select:focus { outline: none; }
   background: var(--ledger-theme, #1a1814);
   border-color: var(--ledger-theme, #1a1814);
 }
+.holding-actions-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #f0ece5;
+}
 .icon-btn { border: none; background: transparent; color: #63594a; width: 34px; height: 34px; border-radius: 50%; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
 .icon-btn:hover { background: rgba(26,24,20,.08); }
 .all-ledgers-summary-card {
@@ -1015,12 +1039,7 @@ input:focus, select:focus { outline: none; }
   }
 
   .all-ledgers-bottom-row {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .all-ledgers-bottom-row .btn {
-    width: 100%;
+    flex-wrap: nowrap;
   }
 }
 
