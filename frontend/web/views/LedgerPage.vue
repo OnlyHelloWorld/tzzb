@@ -12,9 +12,9 @@
       </div>
       <div class="header-right">
         <div class="header-actions-group">
-          <span class="ledger-badge" :style="{ backgroundColor: store.currentLedger?.color, color: '#fff' }">
+          <span class="ledger-badge" :style="{ backgroundColor: store.currentLedger?.color, color: '#fff' }" @click.stop="toggleLedgerList">
             {{ store.currentLedger?.name }}
-            <span class="ledger-badge-action" @click="toggleLedgerList">▼</span>
+            <span class="ledger-badge-action">▼</span>
           </span>
           
           <div class="dropdown-container" @click.stop>

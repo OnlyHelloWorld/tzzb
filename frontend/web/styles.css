@@ -181,6 +181,10 @@ input:focus, select:focus { outline: none; }
   align-items: center;
   gap: 8px;
 }
+.toolbar-add-ledger-btn {
+  padding: 6px 12px;
+  font-size: 12px;
+}
 .view-switch {
   display: flex;
   gap: 4px;
