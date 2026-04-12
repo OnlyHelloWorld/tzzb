@@ -1,9 +1,7 @@
 <template>
   <div class="login-page">
     <div class="login-card">
-      <div class="login-topbar">
-        <router-link to="/about" class="about-link">了解产品</router-link>
-      </div>
+
       <div class="login-header">
         <div class="login-logo">
           <svg width="34" height="34" viewBox="0 0 28 28" fill="none">
@@ -285,21 +283,7 @@ onMounted(() => {
 
 .login-logo { display: flex; align-items: center; justify-content: center; }
 
-.about-link {
-  color: #70695b;
-  text-decoration: none;
-  font-size: 13px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  border: 1px solid #e3ddd2;
-  transition: all 0.2s;
-  background: #faf8f3;
-}
 
-.about-link:hover {
-  color: #1a1814;
-  background: #f0ede7;
-}
 
 .login-title {
   font-family: 'Source Serif 4', serif;
