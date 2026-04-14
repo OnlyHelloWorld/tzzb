@@ -309,8 +309,17 @@
           <span style="color: #c0392b; font-weight: 500;">此操作不可撤销，所有相关持仓数据将被删除</span>
         </div>
         <div class="modal-footer" style="justify-content: center; gap: 20px;">
-          <button class="btn btn-ghost" style="padding: 10px 24px; min-width: 100px; font-size: 14px;" @click="deleteLedgerConfirm = false">取消</button>
-          <button class="btn btn-warn" style="padding: 10px 24px; min-width: 100px; font-size: 14px; color: #c0392b; border-color: #c0392b;" @click="deleteSelectedLedger">确认删除</button>
+          <button class="btn btn-ghost" style="padding: 10px 24px; min-width: 100px; font-size: 14px;" @click="deleteLedgerConfirm = false" :disabled="isDeletingLedger">取消</button>
+          <button class="btn btn-warn" style="padding: 10px 24px; min-width: 100px; font-size: 14px; color: #c0392b; border-color: #c0392b;" @click="deleteSelectedLedger" :disabled="isDeletingLedger">
+            <span v-if="isDeletingLedger">
+              <svg class="spin" width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:middle;margin-right:4px">
+                <path d="M1.5 7a5.5 5.5 0 0 1 9.3-3.95M12.5 7a5.5 5.5 0 0 1-9.3 3.95" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                <path d="M10.8.5v2.55h-2.55M3.2 13.5v-2.55h2.55" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              删除中...
+            </span>
+            <span v-else>确认删除</span>
+          </button>
         </div>
       </div>
     </div>
@@ -362,6 +371,7 @@ export default {
     const allLedgersImportInput = ref(null)
     const openLedgerActionMenuId = ref(null)
     const deletingLedgers = ref([])
+    const isDeletingLedger = ref(false)
     const currentUsername = ref('用户')
     const blessingChars = ['恭', '喜', '发', '财']
     const showBlessingEffect = ref(false)
@@ -595,32 +605,35 @@ export default {
     
     // 删除选中的账本
     const deleteSelectedLedger = async () => {
-      if (!deleteLedgerConfirm.value) return
+      if (!deleteLedgerConfirm.value || isDeletingLedger.value) return
 
+      isDeletingLedger.value = true
+      const targetId = deleteLedgerConfirm.value.id
       try {
-        const deletedId = deleteLedgerConfirm.value.id
-        deletingLedgers.value.push(deletedId)
-        await api.deleteLedger(deletedId)
+        deletingLedgers.value.push(targetId)
+        await api.deleteLedger(targetId)
         deleteLedgerConfirm.value = null
         
         // 延迟执行局部更新，让动画播放
         setTimeout(async () => {
           // 局部更新：从ledgers数组中移除已删除的账本
-          store.ledgers = store.ledgers.filter(ledger => ledger.id !== deletedId)
+          store.ledgers = store.ledgers.filter(ledger => ledger.id !== targetId)
           
           // 使用 store 方法更新数据
-          await store.updateAfterDeleteLedger(deletedId)
+          await store.updateAfterDeleteLedger(targetId)
           
           // 清理删除状态
-          deletingLedgers.value = deletingLedgers.value.filter(id => id !== deletedId)
+          deletingLedgers.value = deletingLedgers.value.filter(id => id !== targetId)
           
           triggerBlessingEffect()
           store.showMessage('账本删除成功')
         }, 800)
       } catch (err) {
-        deletingLedgers.value = deletingLedgers.value.filter(id => id !== deleteLedgerConfirm.value.id)
+        deletingLedgers.value = deletingLedgers.value.filter(id => id !== targetId)
         store.showMessage('删除账本失败: ' + err.message, true)
         showErrorDetailModal('操作失败', err)
+      } finally {
+        isDeletingLedger.value = false
       }
     }
     
@@ -771,6 +784,7 @@ export default {
       allLedgersImportInput,
       openLedgerActionMenuId,
       deletingLedgers,
+      isDeletingLedger,
       currentUsername,
       blessingChars,
       showBlessingEffect,
