@@ -517,8 +517,17 @@
           <span style="color: #c0392b; font-weight: 500;">此操作不可撤销</span>
         </div>
         <div class="modal-footer" style="justify-content: center; gap: 20px;">
-          <button class="btn btn-ghost" style="padding: 10px 24px; min-width: 100px; font-size: 14px;" @click="cancelDelete">取消</button>
-          <button class="btn btn-warn" style="padding: 10px 24px; min-width: 100px; font-size: 14px; color: #c0392b; border-color: #c0392b;" @click="deleteHolding">确认删除</button>
+          <button class="btn btn-ghost" style="padding: 10px 24px; min-width: 100px; font-size: 14px;" @click="cancelDelete" :disabled="isDeletingHolding">取消</button>
+          <button class="btn btn-warn" style="padding: 10px 24px; min-width: 100px; font-size: 14px; color: #c0392b; border-color: #c0392b;" @click="deleteHolding" :disabled="isDeletingHolding">
+            <span v-if="isDeletingHolding">
+              <svg class="spin" width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:middle;margin-right:4px">
+                <path d="M1.5 7a5.5 5.5 0 0 1 9.3-3.95M12.5 7a5.5 5.5 0 0 1-9.3 3.95" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                <path d="M10.8.5v2.55h-2.55M3.2 13.5v-2.55h2.55" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              删除中...
+            </span>
+            <span v-else>确认删除</span>
+          </button>
         </div>
       </div>
     </div>
@@ -586,8 +595,17 @@
           <span style="color: #c0392b; font-weight: 500;">此操作不可撤销，所有相关持仓数据将被删除</span>
         </div>
         <div class="modal-footer" style="justify-content: center; gap: 20px;">
-          <button class="btn btn-ghost" style="padding: 10px 24px; min-width: 100px; font-size: 14px;" @click="deleteLedgerConfirm = false">取消</button>
-          <button class="btn btn-warn" style="padding: 10px 24px; min-width: 100px; font-size: 14px; color: #c0392b; border-color: #c0392b;" @click="deleteSelectedLedger">确认删除</button>
+          <button class="btn btn-ghost" style="padding: 10px 24px; min-width: 100px; font-size: 14px;" @click="deleteLedgerConfirm = false" :disabled="isDeletingLedger">取消</button>
+          <button class="btn btn-warn" style="padding: 10px 24px; min-width: 100px; font-size: 14px; color: #c0392b; border-color: #c0392b;" @click="deleteSelectedLedger" :disabled="isDeletingLedger">
+            <span v-if="isDeletingLedger">
+              <svg class="spin" width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:middle;margin-right:4px">
+                <path d="M1.5 7a5.5 5.5 0 0 1 9.3-3.95M12.5 7a5.5 5.5 0 0 1-9.3 3.95" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                <path d="M10.8.5v2.55h-2.55M3.2 13.5v-2.55h2.55" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              删除中...
+            </span>
+            <span v-else>确认删除</span>
+          </button>
         </div>
       </div>
     </div>
@@ -601,8 +619,17 @@
           是否作为新一笔交易添加？
         </div>
         <div class="modal-footer" style="justify-content: center; gap: 20px;">
-          <button class="btn btn-ghost" style="padding: 10px 24px; min-width: 100px; font-size: 14px;" @click="holdingExistsConfirm = null">取消</button>
-          <button class="btn btn-ink" style="padding: 10px 24px; min-width: 100px; font-size: 14px;" @click="addAsNewTrade">确认添加</button>
+          <button class="btn btn-ghost" style="padding: 10px 24px; min-width: 100px; font-size: 14px;" @click="holdingExistsConfirm = null" :disabled="isAddingHolding">取消</button>
+          <button class="btn btn-ink" style="padding: 10px 24px; min-width: 100px; font-size: 14px;" @click="addAsNewTrade" :disabled="isAddingHolding">
+            <span v-if="isAddingHolding">
+              <svg class="spin" width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:middle;margin-right:4px">
+                <path d="M1.5 7a5.5 5.5 0 0 1 9.3-3.95M12.5 7a5.5 5.5 0 0 1-9.3 3.95" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                <path d="M10.8.5v2.55h-2.55M3.2 13.5v-2.55h2.55" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              添加中...
+            </span>
+            <span v-else>确认添加</span>
+          </button>
         </div>
       </div>
     </div>
@@ -699,6 +726,8 @@ export default {
     const errorModal = ref({ visible: false, message: '', detail: '', expanded: false })
     const openHoldingActionMenuKey = ref(null)
     const isAddingHolding = ref(false)
+    const isDeletingHolding = ref(false)
+    const isDeletingLedger = ref(false)
     const holdingExistsConfirm = ref(null)
     const ledgerLoading = ref(true)
     const holdingSortBy = ref('mv')
@@ -1084,13 +1113,15 @@ export default {
     
     // 取消删除
     const cancelDelete = () => {
+      if (isDeletingHolding.value) return
       deleteConfirm.value = null
     }
     
     // 删除持仓
     const deleteHolding = async () => {
-      if (!deleteConfirm.value) return
+      if (!deleteConfirm.value || isDeletingHolding.value) return
 
+      isDeletingHolding.value = true
       const holdingKey = `${deleteConfirm.value.market}-${deleteConfirm.value.code}`
       deletingHoldings.value.push(holdingKey)
 
@@ -1122,6 +1153,8 @@ export default {
         deletingHoldings.value = deletingHoldings.value.filter(key => key !== holdingKey)
         store.showMessage('删除失败: ' + err.message, true)
         showErrorDetailModal('操作失败', err)
+      } finally {
+        isDeletingHolding.value = false
       }
     }
     
@@ -1262,8 +1295,9 @@ export default {
     
     // 删除选中的账本
     const deleteSelectedLedger = async () => {
-      if (!deleteLedgerConfirm.value) return
+      if (!deleteLedgerConfirm.value || isDeletingLedger.value) return
 
+      isDeletingLedger.value = true
       try {
         const deletedId = deleteLedgerConfirm.value.id
         await api.deleteLedger(deletedId)
@@ -1285,6 +1319,8 @@ export default {
       } catch (err) {
         store.showMessage('删除账本失败: ' + err.message, true)
         showErrorDetailModal('操作失败', err)
+      } finally {
+        isDeletingLedger.value = false
       }
     }
     
@@ -1628,6 +1664,8 @@ export default {
       nameLoading,
       errorModal,
       isAddingHolding,
+      isDeletingHolding,
+      isDeletingLedger,
       holdingExistsConfirm,
       ledgerLoading,
       holdingSortBy,
