@@ -1498,8 +1498,42 @@ input:focus, select:focus { outline: none; }
 .stock-name { font-weight: 600; font-size: 15px; }
 .stock-code { font-size: 11px; font-family: monospace; color: #bbb; }
 
-.info-grid { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: #888; margin-top: 3px; }
-.info-grid span.val { color: #1a1814; font-family: monospace; }
+.info-grid { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.holding-info-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  line-height: 1.2;
+}
+.chip-label {
+  font-size: 11px;
+  color: #6e6960;
+}
+.chip-value {
+  color: #1a1814;
+  font-family: monospace;
+  font-size: 12px;
+  font-weight: 600;
+}
+.chip-cost {
+  background: #f2eee6;
+  border-color: #e3dacb;
+}
+.chip-price {
+  background: #e9f4ea;
+  border-color: #cfe3d2;
+}
+.chip-mv {
+  background: #eef2f8;
+  border-color: #d8e1ef;
+}
+.chip-qty {
+  background: #f7f4eb;
+  border-color: #e8dfce;
+}
 
 .desktop-col { text-align: right; display: none; }
 .col-sub { font-size: 11px; color: #bbb; font-family: monospace; }
