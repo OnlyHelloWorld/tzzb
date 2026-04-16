@@ -267,19 +267,20 @@
             </div>
             <div class="info-grid">
               <span class="holding-info-chip chip-cost">
-                <span class="chip-label">均价</span>
                 <span class="chip-value">{{ SYM[h.ccy] }}{{ fmt(h.cost) }}</span>
               </span>
+              <span class="chip-link-arrow" aria-hidden="true">
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                  <path d="M1.5 5h7M6 2.5 8.5 5 6 7.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </span>
               <span class="holding-info-chip chip-price">
-                <span class="chip-label">现价</span>
                 <span class="chip-value">{{ SYM[h.ccy] }}{{ fmt(h.price) }}</span>
               </span>
               <span class="holding-info-chip chip-mv">
-                <span class="chip-label">市值</span>
                 <span class="chip-value">{{ SYM[h.ccy] }}{{ fmt(h.mv) }}</span>
               </span>
               <span class="holding-info-chip chip-qty">
-                <span class="chip-label">数量</span>
                 <span class="chip-value">{{ h.qty }}股</span>
               </span>
             </div>
