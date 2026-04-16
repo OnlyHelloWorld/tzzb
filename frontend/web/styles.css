@@ -1498,19 +1498,15 @@ input:focus, select:focus { outline: none; }
 .stock-name { font-weight: 600; font-size: 15px; }
 .stock-code { font-size: 11px; font-family: monospace; color: #bbb; }
 
-.info-grid { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.info-grid { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
 .holding-info-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 3px 8px;
+  gap: 4px;
+  padding: 2px 7px;
   border-radius: 999px;
   border: 1px solid transparent;
   line-height: 1.2;
-}
-.chip-label {
-  font-size: 11px;
-  color: #6e6960;
 }
 .chip-value {
   color: #1a1814;
@@ -1518,13 +1514,20 @@ input:focus, select:focus { outline: none; }
   font-size: 12px;
   font-weight: 600;
 }
+.chip-link-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #9b927f;
+  transform: translateY(.5px);
+}
 .chip-cost {
   background: #f2eee6;
   border-color: #e3dacb;
 }
 .chip-price {
-  background: #e9f4ea;
-  border-color: #cfe3d2;
+  background: #e7f3ea;
+  border-color: #c6dfcc;
 }
 .chip-mv {
   background: #eef2f8;
