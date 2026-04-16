@@ -266,9 +266,22 @@
               <span class="stock-code">{{ h.code }}</span>
             </div>
             <div class="info-grid">
-              <span>均价 <span class="val">{{ SYM[h.ccy] }}{{ fmt(h.cost) }}</span></span>
-              <span>现价 <span class="val">{{ SYM[h.ccy] }}{{ fmt(h.price) }}</span></span>
-              <span>市值 <span class="val">{{ SYM[h.ccy] }}{{ fmt(h.mv) }}</span></span>
+              <span class="holding-info-chip chip-cost">
+                <span class="chip-label">均价</span>
+                <span class="chip-value">{{ SYM[h.ccy] }}{{ fmt(h.cost) }}</span>
+              </span>
+              <span class="holding-info-chip chip-price">
+                <span class="chip-label">现价</span>
+                <span class="chip-value">{{ SYM[h.ccy] }}{{ fmt(h.price) }}</span>
+              </span>
+              <span class="holding-info-chip chip-mv">
+                <span class="chip-label">市值</span>
+                <span class="chip-value">{{ SYM[h.ccy] }}{{ fmt(h.mv) }}</span>
+              </span>
+              <span class="holding-info-chip chip-qty">
+                <span class="chip-label">数量</span>
+                <span class="chip-value">{{ h.qty }}股</span>
+              </span>
             </div>
           </div>
           <div class="desktop-col">
