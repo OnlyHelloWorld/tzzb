@@ -344,39 +344,25 @@
 
           <!-- Trade rows -->
           <div v-for="t in h.trades" :key="t.id" :class="['trade-row', { 'trade-row-deleting': t.deleting }]">
-            <template v-if="editingTrade && editingTrade.holdingMarket === h.market && editingTrade.holdingCode === h.code && editingTrade.tradeId === t.id">
-              <input class="field field-sm" type="date" v-model="editingTrade.date" />
-              <span class="trade-type" :class="t.qty >= 0 ? 'type-buy' : 'type-sell'">
-                {{ t.qty >= 0 ? '买入' : '卖出' }}
-              </span>
-              <input class="field field-sm" type="number" v-model="editingTrade.qty" />
-              <input class="field field-sm" type="number" v-model="editingTrade.price" />
-              <div class="trade-btns">
-                <button class="btn btn-save" @click="updateTrade">保存</button>
-                <button class="btn btn-ghost" @click="editingTrade = null">取消</button>
-              </div>
-            </template>
-            <template v-else>
-              <span class="mono trade-date">{{ t.date }}</span>
-              <span class="trade-type" :class="t.qty >= 0 ? 'type-buy' : 'type-sell'">
-                {{ t.qty >= 0 ? '买入' : '卖出' }}
-              </span>
-              <span class="mono trade-qty">{{ Math.abs(t.qty) }}</span>
-              <span class="mono trade-price">{{ SYM[h.ccy] }}{{ fmt(t.price) }}</span>
-              <div class="trade-btns">
-                <span v-if="t.note" class="trade-note" :title="t.note">{{ t.note }}</span>
-                <button class="btn btn-ghost" style="font-size:11px"
-                  @click="editingTrade = { holdingMarket: h.market, holdingCode: h.code, tradeId: t.id, date: t.date, qty: t.qty, price: t.price }">
-                  修改
-                </button>
-                <div class="trade-more-wrap" @click.stop>
-                  <button class="btn btn-ghost trade-more-btn" @click.stop="toggleTradeActionMenu(`${h.market}-${h.code}-${t.id}`)">⋯</button>
-                  <div v-if="openTradeActionMenuKey === `${h.market}-${h.code}-${t.id}`" class="trade-more-menu">
-                    <button class="trade-more-item trade-more-item-danger" @click.stop="handleDeleteTrade({ market: h.market, code: h.code }, t.id)">删除记录</button>
-                  </div>
+            <span class="mono trade-date">{{ t.date }}</span>
+            <span class="trade-type" :class="t.qty >= 0 ? 'type-buy' : 'type-sell'">
+              {{ t.qty >= 0 ? '买入' : '卖出' }}
+            </span>
+            <span class="mono trade-qty">{{ Math.abs(t.qty) }}</span>
+            <span class="mono trade-price">{{ SYM[h.ccy] }}{{ fmt(t.price) }}</span>
+            <div class="trade-btns">
+              <span v-if="t.note" class="trade-note" :title="t.note">{{ t.note }}</span>
+              <button class="btn btn-ghost" style="font-size:11px"
+                @click="openEditTrade(h, t)">
+                修改
+              </button>
+              <div class="trade-more-wrap" @click.stop>
+                <button class="btn btn-ghost trade-more-btn" @click.stop="toggleTradeActionMenu(`${h.market}-${h.code}-${t.id}`)">⋯</button>
+                <div v-if="openTradeActionMenuKey === `${h.market}-${h.code}-${t.id}`" class="trade-more-menu">
+                  <button class="trade-more-item trade-more-item-danger" @click.stop="handleDeleteTrade({ market: h.market, code: h.code }, t.id)">删除记录</button>
                 </div>
               </div>
-            </template>
+            </div>
           </div>
 
           <!-- Price refresh -->
@@ -457,6 +443,45 @@
           <div v-if="tradeError" style="color:#c0392b;font-size:12px;margin-right:auto">{{ tradeError }}</div>
           <button class="btn btn-ghost" style="padding:9px 18px" @click="tradeError='';addTradeTarget = null">取消</button>
           <button class="btn btn-ink" style="padding:9px 22px" @click="saveAddTrade">确认</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Edit Trade Modal ── -->
+    <div v-if="editingTrade" class="overlay" @click.self="closeEditTrade">
+      <div class="modal">
+        <div class="modal-title">修改交易</div>
+        <div class="form-grid">
+          <div class="form-row">
+            <div class="form-label">日期</div>
+            <input class="form-control" type="date" v-model="editingTrade.date" :disabled="isUpdatingTrade" />
+          </div>
+          <div class="form-row">
+            <div class="form-label">类型</div>
+            <input class="form-control" :value="editingTrade.qty >= 0 ? '买入' : '卖出'" disabled />
+          </div>
+          <div class="form-row">
+            <div class="form-label">数量（股）</div>
+            <input class="form-control" type="number" v-model="editingTrade.qty" :disabled="isUpdatingTrade" />
+          </div>
+          <div class="form-row">
+            <div class="form-label">价格（{{ editingTrade.ccy }}）</div>
+            <input class="form-control" type="number" step="0.01" v-model="editingTrade.price" :disabled="isUpdatingTrade" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <div v-if="tradeError" style="color:#c0392b;font-size:12px;margin-right:auto">{{ tradeError }}</div>
+          <button class="btn btn-ghost" style="padding:9px 18px" @click="closeEditTrade" :disabled="isUpdatingTrade">取消</button>
+          <button class="btn btn-ink" style="padding:9px 22px" @click="updateTrade" :disabled="isUpdatingTrade">
+            <span v-if="isUpdatingTrade">
+              <svg class="spin" width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:middle;margin-right:4px">
+                <path d="M1.5 7a5.5 5.5 0 0 1 9.3-3.95M12.5 7a5.5 5.5 0 0 1-9.3 3.95" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                <path d="M10.8.5v2.55h-2.55M3.2 13.5v-2.55h2.55" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              保存中...
+            </span>
+            <span v-else>确认修改</span>
+          </button>
         </div>
       </div>
     </div>
@@ -741,6 +766,7 @@ export default {
     const openHoldingActionMenuKey = ref(null)
     const isAddingHolding = ref(false)
     const isDeletingHolding = ref(false)
+    const isUpdatingTrade = ref(false)
     const isDeletingLedger = ref(false)
     const holdingExistsConfirm = ref(null)
     const ledgerLoading = ref(true)
@@ -960,6 +986,26 @@ export default {
       addTradeForm.value = { type: '买入', qty: '', price: '', date: today(), note: '' }
       tradeError.value = ''
     }
+
+    const openEditTrade = (holding, trade) => {
+      const ccy = holding.market === 'A股' ? 'CNY' : holding.market === '港股' ? 'HKD' : 'USD'
+      tradeError.value = ''
+      editingTrade.value = {
+        holdingMarket: holding.market,
+        holdingCode: holding.code,
+        tradeId: trade.id,
+        date: trade.date,
+        qty: trade.qty,
+        price: trade.price,
+        ccy
+      }
+    }
+
+    const closeEditTrade = () => {
+      if (isUpdatingTrade.value) return
+      editingTrade.value = null
+      tradeError.value = ''
+    }
     
     // 保存添加的交易
     const saveAddTrade = async () => {
@@ -997,6 +1043,7 @@ export default {
     // 更新交易
     const updateTrade = async () => {
       if (!editingTrade.value) return
+      if (isUpdatingTrade.value) return
 
       const holding = store.holdings.find(h => h.market === editingTrade.value.holdingMarket && h.code === editingTrade.value.holdingCode)
       if (!holding) return
@@ -1004,20 +1051,30 @@ export default {
       const trade = holding.trades.find(t => t.id === editingTrade.value.tradeId)
       if (!trade) return
 
+      if (!editingTrade.value.date || !editingTrade.value.qty || !editingTrade.value.price) {
+        tradeError.value = '请填写完整的日期、数量和价格'
+        return
+      }
+
       const rollback = JSON.parse(JSON.stringify(store.holdings))
       trade.date = editingTrade.value.date
       trade.qty = parseInt(editingTrade.value.qty)
       trade.price = parseFloat(editingTrade.value.price)
 
       try {
+        isUpdatingTrade.value = true
         await store.saveHoldings(store.holdings)
         editingTrade.value = null
+        tradeError.value = ''
         triggerBlessingEffect()
         store.showMessage('交易记录更新成功')
       } catch (err) {
         store.holdings = rollback
-        store.showMessage('更新失败: ' + err.message, true)
+        tradeError.value = '更新失败: ' + err.message
+        store.showMessage(tradeError.value, true)
         showErrorDetailModal('操作失败', err)
+      } finally {
+        isUpdatingTrade.value = false
       }
     }
     
@@ -1679,6 +1736,7 @@ export default {
       errorModal,
       isAddingHolding,
       isDeletingHolding,
+      isUpdatingTrade,
       isDeletingLedger,
       holdingExistsConfirm,
       ledgerLoading,
@@ -1700,6 +1758,8 @@ export default {
       handleCodeBlur,
       saveNewHolding,
       openAddTrade,
+      openEditTrade,
+      closeEditTrade,
       saveAddTrade,
       updateTrade,
       deleteTrade,
