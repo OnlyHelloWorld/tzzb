@@ -308,6 +308,14 @@
                 {{ h.pnl >= 0 ? '+' : '' }}{{ SYM[h.ccy] }}{{ fmt(h.pnl) }}
               </div>
             </div>
+            <button
+              class="btn btn-ghost row-edit-btn"
+              @click.stop="openEditLatestTrade(h)"
+              :disabled="!getLatestTrade(h)"
+              title="修改最新记录"
+            >
+              修改
+            </button>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"
               :style="{ flexShrink: 0, transition: 'transform .2s', transform: isHoldingExpanded(h) ? 'rotate(180deg)' : 'none' }">
               <path d="M4 6l4 4 4-4" stroke="#bbb" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -319,6 +327,14 @@
         <div v-show="isHoldingExpanded(h)" class="trade-zone">
           <div class="trade-header">
             <span class="trade-title">历史修改记录</span>
+            <button
+              class="btn btn-ghost trade-clear-btn"
+              @click.stop="clearHoldingHistory(h)"
+              :disabled="!canClearHoldingHistory(h)"
+              title="仅保留当前持仓快照"
+            >
+              一键清除
+            </button>
           </div>
 
           <!-- Trade header -->
@@ -336,10 +352,6 @@
             <span class="mono trade-price">成本 {{ SYM[h.ccy] }}{{ fmt(item.beforeCost) }} → {{ SYM[h.ccy] }}{{ fmt(item.afterCost) }}</span>
             <div class="trade-btns">
               <span v-if="item.rawTrade.note" class="trade-note" :title="item.rawTrade.note">{{ item.rawTrade.note }}</span>
-              <button class="btn btn-ghost" style="font-size:11px"
-                @click="openEditTrade(h, item.rawTrade)">
-                修改
-              </button>
               <div class="trade-more-wrap" @click.stop>
                 <button class="btn btn-ghost trade-more-btn" @click.stop="toggleTradeActionMenu(`${h.market}-${h.code}-${item.rawTrade.id}`)">⋯</button>
                 <div v-if="openTradeActionMenuKey === `${h.market}-${h.code}-${item.rawTrade.id}`" class="trade-more-menu">
@@ -819,6 +831,62 @@ export default {
       if (history.length === 0) return '暂无记录'
       const latest = history[0]
       return `数量 ${fmt(latest.beforeQty, 0)}→${fmt(latest.afterQty, 0)}，成本 ${fmt(latest.beforeCost)}→${fmt(latest.afterCost)}`
+    }
+
+    const getLatestTrade = (holding) => {
+      if (!holding || !holding.trades || holding.trades.length === 0) return null
+      return (holding.trades || []).slice().sort((a, b) => {
+        const dateDiff = (b.date || '').localeCompare(a.date || '')
+        if (dateDiff !== 0) return dateDiff
+        return (b.id || 0) - (a.id || 0)
+      })[0] || null
+    }
+
+    const openEditLatestTrade = (holding) => {
+      const latestTrade = getLatestTrade(holding)
+      if (!latestTrade) return
+      openEditTrade(holding, latestTrade)
+    }
+
+    const canClearHoldingHistory = (holding) => {
+      return !!(holding && holding.trades && holding.trades.length > 1)
+    }
+
+    const clearHoldingHistory = async (holding) => {
+      if (!canClearHoldingHistory(holding)) return
+
+      const rollback = JSON.parse(JSON.stringify(store.holdings))
+      const target = store.holdings.find(h => h.market === holding.market && h.code === holding.code)
+      if (!target) return
+
+      const latestTrade = getLatestTrade(target)
+      const totalQty = (target.trades || []).reduce((sum, t) => sum + Number(t.qty || 0), 0)
+      const totalCostAmount = (target.trades || []).reduce((sum, t) => sum + Number(t.qty || 0) * Number(t.price || 0), 0)
+      const avgCost = totalQty !== 0 ? totalCostAmount / totalQty : 0
+
+      if (totalQty === 0 || avgCost <= 0) {
+        store.showMessage('当前持仓数量或成本异常，无法清除历史', true)
+        return
+      }
+
+      const snapshotTrade = mkTrade(
+        latestTrade?.date || today(),
+        Math.round(totalQty),
+        Number(avgCost.toFixed(4)),
+        '历史已清除，仅保留当前快照'
+      )
+
+      target.trades = [snapshotTrade]
+
+      try {
+        await store.saveHoldings(store.holdings)
+        triggerBlessingEffect()
+        store.showMessage('历史记录已清除')
+      } catch (err) {
+        store.holdings = rollback
+        store.showMessage('清除失败: ' + err.message, true)
+        showErrorDetailModal('操作失败', err)
+      }
     }
     
     // 打开添加持仓
@@ -1641,6 +1709,7 @@ export default {
       holdingChangeHistory,
       latestTradeDate,
       latestHistorySummary,
+      getLatestTrade,
       fmt,
       toCNY,
       SYM,
@@ -1691,6 +1760,9 @@ export default {
       handleDeleteLedger,
       handleConfirmDeleteHolding,
       handleDeleteTrade,
+      openEditLatestTrade,
+      canClearHoldingHistory,
+      clearHoldingHistory,
       handleHoldingMenuClick,
       isHoldingMenuOpen,
       handleDeleteHoldingClick,
