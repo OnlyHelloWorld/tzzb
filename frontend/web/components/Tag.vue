@@ -1,9 +1,11 @@
 <template>
   <span :style="{
     fontSize: '10px', fontWeight: 700, letterSpacing: '0.5px',
-    padding: '2px 7px', borderRadius: '3px',
+    padding: '2px 5px', borderRadius: '3px',
     color: MARKET_COLOR[market], background: MARKET_BG[market],
-    fontFamily: 'monospace'
+    fontFamily: 'monospace',
+    display: 'inline-block',
+    whiteSpace: 'nowrap'
   }">{{ market }}</span>
 </template>
 

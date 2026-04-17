@@ -284,8 +284,14 @@
                 <span class="chip-value">{{ SYM[h.ccy] }}{{ fmt(h.mv) }}</span>
               </span>
             </div>
-            <div class="update-info" style="margin-top:8px; padding-top:8px; border-top:1px solid #f0f0f0; font-size:12px; color:#666; width:100%">
-              {{ latestHistorySummary(h) }}
+            <div class="update-info" style="margin-top:8px; padding-top:8px; border-top:1px solid #f0f0f0; font-size:12px; color:#666; width:100%; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <span>{{ latestHistorySummary(h) }}</span>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <PnLTag :val="h.pnl" :pct="h.pct" />
+                <div :class="['pnl-abs', h.pnl >= 0 ? 'pnl-green' : 'pnl-red']" style="margin:0;">
+                  {{ h.pnl >= 0 ? '+' : '' }}{{ SYM[h.ccy] }}{{ fmt(h.pnl) }}
+                </div>
+              </div>
             </div>
           </div>
           <div class="desktop-col">
@@ -298,13 +304,7 @@
           <div class="desktop-col">
             <div class="mono" style="font-weight:600">{{ SYM[h.ccy] }}{{ fmt(h.mv) }}</div>
           </div>
-          <div class="pnl-col">
-            <div style="text-align:right">
-              <PnLTag :val="h.pnl" :pct="h.pct" />
-              <div :class="['pnl-abs', h.pnl >= 0 ? 'pnl-green' : 'pnl-red']">
-                {{ h.pnl >= 0 ? '+' : '' }}{{ SYM[h.ccy] }}{{ fmt(h.pnl) }}
-              </div>
-            </div>
+          <div class="pnl-col" style="gap: 4px;">
             <button
               class="btn btn-ghost row-edit-btn"
               @click.stop="openEditLatestTrade(h)"
