@@ -257,7 +257,7 @@
           </div>
         </div>
 
-        <!-- 持仓标题行 -->
+        <!-- 信息区域 -->
         <div class="row-head" @click="handleHoldingClick(h)">
           <div>
             <div class="name-row">
@@ -284,13 +284,10 @@
                 <span class="chip-value">{{ SYM[h.ccy] }}{{ fmt(h.mv) }}</span>
               </span>
             </div>
-            <div class="update-info" style="margin-top:8px; padding-top:8px; border-top:1px solid #f0f0f0; font-size:12px; color:#666; width:100%; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-              <span>{{ latestHistorySummary(h) }}</span>
-              <div style="display:flex; align-items:center; gap:8px;">
-                <PnLTag :val="h.pnl" :pct="h.pct" />
-                <div :class="['pnl-abs', h.pnl >= 0 ? 'pnl-green' : 'pnl-red']" style="margin:0;">
-                  {{ h.pnl >= 0 ? '+' : '' }}{{ SYM[h.ccy] }}{{ fmt(h.pnl) }}
-                </div>
+            <div style="margin-top:8px; padding-top:8px; border-top:1px solid #f0f0f0; font-size:12px; color:#666; width:100%; display:flex; justify-content:flex-end; align-items:center; gap:8px;">
+              <PnLTag :val="h.pnl" :pct="h.pct" />
+              <div :class="['pnl-abs', h.pnl >= 0 ? 'pnl-green' : 'pnl-red']" style="margin:0;">
+                {{ h.pnl >= 0 ? '+' : '' }}{{ SYM[h.ccy] }}{{ fmt(h.pnl) }}
               </div>
             </div>
           </div>
@@ -304,20 +301,22 @@
           <div class="desktop-col">
             <div class="mono" style="font-weight:600">{{ SYM[h.ccy] }}{{ fmt(h.mv) }}</div>
           </div>
-          <div class="pnl-col" style="gap: 4px;">
-            <button
-              class="btn btn-ghost row-edit-btn"
-              @click.stop="openEditLatestTrade(h)"
-              :disabled="!getLatestTrade(h)"
-              title="修改最新记录"
-            >
-              修改
-            </button>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"
-              :style="{ flexShrink: 0, transition: 'transform .2s', transform: isHoldingExpanded(h) ? 'rotate(180deg)' : 'none' }">
-              <path d="M4 6l4 4 4-4" stroke="#bbb" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </div>
+        </div>
+        
+        <!-- 按钮操作区域 -->
+        <div class="row-actions" style="padding: 12px 16px; border-top: 1px solid #f0f0f0; display: flex; justify-content: flex-end; align-items: center; gap: 12px;">
+          <button
+            class="btn btn-ghost row-edit-btn"
+            @click.stop="openEditLatestTrade(h)"
+            :disabled="!getLatestTrade(h)"
+            title="修改最新记录"
+          >
+            修改
+          </button>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"
+            :style="{ flexShrink: 0, transition: 'transform .2s', transform: isHoldingExpanded(h) ? 'rotate(180deg)' : 'none' }">
+            <path d="M4 6l4 4 4-4" stroke="#bbb" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
         </div>
 
         <!-- 交易记录区域 -->
@@ -1030,7 +1029,7 @@ export default {
         tradeId: trade.id,
         date: trade.date,
         qty: trade.qty,
-        price: trade.price,
+        price: holding.cost,
         ccy
       }
     }
