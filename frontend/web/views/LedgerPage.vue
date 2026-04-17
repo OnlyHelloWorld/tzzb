@@ -267,7 +267,7 @@
             </div>
             <div class="info-grid">
               <span class="holding-info-chip chip-cost">
-                <span class="chip-value">成本 {{ SYM[h.ccy] }}{{ fmt(h.cost) }}</span>
+                <span class="chip-value">{{ SYM[h.ccy] }}{{ fmt(h.cost) }}</span>
               </span>
               <span class="chip-link-arrow" aria-hidden="true">
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
@@ -275,7 +275,7 @@
                 </svg>
               </span>
               <span class="holding-info-chip chip-qty">
-                <span class="chip-value">持仓 {{ h.qty }}股</span>
+                <span class="chip-value">{{ h.qty }}股</span>
               </span>
               <span class="holding-info-chip chip-price">
                 <span class="chip-value">{{ SYM[h.ccy] }}{{ fmt(h.price) }}</span>
@@ -283,12 +283,9 @@
               <span class="holding-info-chip chip-mv">
                 <span class="chip-value">{{ SYM[h.ccy] }}{{ fmt(h.mv) }}</span>
               </span>
-              <span class="holding-info-chip">
-                <span class="chip-value">更新 {{ latestTradeDate(h) }}</span>
-              </span>
             </div>
-            <div class="col-sub" style="margin-top:4px">
-              最近变更：{{ latestHistorySummary(h) }}
+            <div class="update-info" style="margin-top:8px; padding-top:8px; border-top:1px solid #f0f0f0; font-size:12px; color:#666; width:100%">
+              {{ latestHistorySummary(h) }}
             </div>
           </div>
           <div class="desktop-col">
