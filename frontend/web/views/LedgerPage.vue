@@ -267,12 +267,15 @@
             </div>
             <div class="info-grid">
               <span class="holding-info-chip chip-cost">
-                <span class="chip-value">{{ SYM[h.ccy] }}{{ fmt(h.cost) }}</span>
+                <span class="chip-value">成本 {{ SYM[h.ccy] }}{{ fmt(h.cost) }}</span>
               </span>
               <span class="chip-link-arrow" aria-hidden="true">
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
                   <path d="M1.5 5h7M6 2.5 8.5 5 6 7.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
+              </span>
+              <span class="holding-info-chip chip-qty">
+                <span class="chip-value">持仓 {{ h.qty }}股</span>
               </span>
               <span class="holding-info-chip chip-price">
                 <span class="chip-value">{{ SYM[h.ccy] }}{{ fmt(h.price) }}</span>
@@ -280,9 +283,12 @@
               <span class="holding-info-chip chip-mv">
                 <span class="chip-value">{{ SYM[h.ccy] }}{{ fmt(h.mv) }}</span>
               </span>
-              <span class="holding-info-chip chip-qty">
-                <span class="chip-value">{{ h.qty }}股</span>
+              <span class="holding-info-chip">
+                <span class="chip-value">更新 {{ latestTradeDate(h) }}</span>
               </span>
+            </div>
+            <div class="col-sub" style="margin-top:4px">
+              最近变更：{{ latestHistorySummary(h) }}
             </div>
           </div>
           <div class="desktop-col">
@@ -312,54 +318,32 @@
         <!-- 交易记录区域 -->
         <div v-show="isHoldingExpanded(h)" class="trade-zone">
           <div class="trade-header">
-            <span class="trade-title">买入记录</span>
-            <div class="trade-actions">
-              <button class="btn btn-ghost" style="font-size:11px" @click.stop="openAddTrade({ market: h.market, code: h.code })">+ 新增一笔</button>
-              <button class="btn btn-warn" style="font-size:11px" @click.stop="toggleReset({ market: h.market, code: h.code })">
-                {{ resetTarget && resetTarget.market === h.market && resetTarget.code === h.code ? '取消' : '一键重置成本' }}
-              </button>
-            </div>
-          </div>
-
-          <!-- Reset confirm -->
-          <div v-if="resetTarget && resetTarget.market === h.market && resetTarget.code === h.code" class="confirm-box">
-            <div style="margin-bottom:10px">将合并全部 {{ h.trades.length }} 笔记录为单笔，持仓量不变。此操作不可撤销。</div>
-            <div class="reset-price-row">
-              <span class="reset-label">新成本价：</span>
-              <input class="field field-sm" type="number" step="0.01"
-                :placeholder="`默认均价 ${SYM[h.ccy]}${fmt(h.cost)}`"
-                v-model="resetPrice" />
-              <span class="reset-hint">留空则使用均价 {{ SYM[h.ccy] }}{{ fmt(h.cost) }}</span>
-            </div>
-            <div class="reset-btns">
-              <button class="btn btn-warn" @click="resetCost({ market: h.market, code: h.code })">确认重置</button>
-              <button class="btn btn-ghost" @click="cancelReset">取消</button>
-            </div>
+            <span class="trade-title">历史修改记录</span>
           </div>
 
           <!-- Trade header -->
           <div class="trade-tbl-hdr">
-            <div v-for="s in ['日期','类型','数量（股）','成本价','']" :key="s">{{ s }}</div>
+            <div v-for="s in ['时间','修改说明','修改前','修改后','']" :key="s">{{ s }}</div>
           </div>
 
-          <!-- Trade rows -->
-          <div v-for="t in h.trades" :key="t.id" :class="['trade-row', { 'trade-row-deleting': t.deleting }]">
-            <span class="mono trade-date">{{ t.date }}</span>
-            <span class="trade-type" :class="t.qty >= 0 ? 'type-buy' : 'type-sell'">
-              {{ t.qty >= 0 ? '买入' : '卖出' }}
+          <!-- History rows -->
+          <div v-for="item in holdingChangeHistory(h)" :key="item.id" :class="['trade-row', { 'trade-row-deleting': item.rawTrade.deleting }]">
+            <span class="mono trade-date">{{ item.date }}</span>
+            <span class="trade-type" :class="item.rawTrade.qty >= 0 ? 'type-buy' : 'type-sell'">
+              {{ item.rawTrade.qty >= 0 ? '增加持仓' : '减少持仓' }}
             </span>
-            <span class="mono trade-qty">{{ Math.abs(t.qty) }}</span>
-            <span class="mono trade-price">{{ SYM[h.ccy] }}{{ fmt(t.price) }}</span>
+            <span class="mono trade-qty">数量 {{ fmt(item.beforeQty, 0) }} → {{ fmt(item.afterQty, 0) }}</span>
+            <span class="mono trade-price">成本 {{ SYM[h.ccy] }}{{ fmt(item.beforeCost) }} → {{ SYM[h.ccy] }}{{ fmt(item.afterCost) }}</span>
             <div class="trade-btns">
-              <span v-if="t.note" class="trade-note" :title="t.note">{{ t.note }}</span>
+              <span v-if="item.rawTrade.note" class="trade-note" :title="item.rawTrade.note">{{ item.rawTrade.note }}</span>
               <button class="btn btn-ghost" style="font-size:11px"
-                @click="openEditTrade(h, t)">
+                @click="openEditTrade(h, item.rawTrade)">
                 修改
               </button>
               <div class="trade-more-wrap" @click.stop>
-                <button class="btn btn-ghost trade-more-btn" @click.stop="toggleTradeActionMenu(`${h.market}-${h.code}-${t.id}`)">⋯</button>
-                <div v-if="openTradeActionMenuKey === `${h.market}-${h.code}-${t.id}`" class="trade-more-menu">
-                  <button class="trade-more-item trade-more-item-danger" @click.stop="handleDeleteTrade({ market: h.market, code: h.code }, t.id)">删除记录</button>
+                <button class="btn btn-ghost trade-more-btn" @click.stop="toggleTradeActionMenu(`${h.market}-${h.code}-${item.rawTrade.id}`)">⋯</button>
+                <div v-if="openTradeActionMenuKey === `${h.market}-${h.code}-${item.rawTrade.id}`" class="trade-more-menu">
+                  <button class="trade-more-item trade-more-item-danger" @click.stop="handleDeleteTrade({ market: h.market, code: h.code }, item.rawTrade.id)">删除记录</button>
                 </div>
               </div>
             </div>
@@ -406,45 +390,6 @@
           </div>
         </div>
       </transition>
-    </div>
-
-    <!-- ── Add Trade Modal ── -->
-    <div v-if="addTradeTarget" class="overlay" @click.self="addTradeTarget = null">
-      <div class="modal">
-        <div class="modal-title">新增交易</div>
-        <div class="form-grid">
-          <div class="form-row">
-            <div class="form-label">交易类型</div>
-            <select id="trade-type" name="trade-type" class="form-control" v-model="addTradeForm.type"
-              :style="{ color: addTradeForm.type === '卖出' ? '#c0392b' : '#1a7a4a' }">
-              <option value="买入">买入</option>
-              <option value="卖出">卖出</option>
-            </select>
-          </div>
-          <div class="form-row">
-            <div class="form-label">数量（股）</div>
-            <input id="trade-qty" name="trade-qty" class="form-control" type="number" placeholder="如 100" v-model="addTradeForm.qty" />
-          </div>
-          <div class="form-row">
-            <div class="form-label">价格（{{ addTradeTarget.ccy }}）</div>
-            <input id="trade-price" name="trade-price" class="form-control" type="number" step="0.01"
-              :placeholder="`如 ${addTradeTarget.avgCost}`" v-model="addTradeForm.price" />
-          </div>
-          <div class="form-row">
-            <div class="form-label">日期</div>
-            <input id="trade-date" name="trade-date" class="form-control" type="date" v-model="addTradeForm.date" />
-          </div>
-          <div class="form-row" style="grid-column:1/-1">
-            <div class="form-label">笔记（可选）</div>
-            <input id="trade-note" name="trade-note" class="form-control" placeholder="如 加仓、减仓、分红再投..." v-model="addTradeForm.note" />
-          </div>
-        </div>
-        <div class="modal-footer">
-          <div v-if="tradeError" style="color:#c0392b;font-size:12px;margin-right:auto">{{ tradeError }}</div>
-          <button class="btn btn-ghost" style="padding:9px 18px" @click="tradeError='';addTradeTarget = null">取消</button>
-          <button class="btn btn-ink" style="padding:9px 22px" @click="saveAddTrade">确认</button>
-        </div>
-      </div>
     </div>
 
     <!-- ── Edit Trade Modal ── -->
@@ -702,7 +647,7 @@ import { useAppStore } from '../store/index.js'
 import { fetchQuote } from '../lib/quoteApi.js'
 import * as api from '../lib/api.js'
 import { exportCSV, exportPDF, importCSV } from '../lib/io.js'
-import { avgCost, totalQty, fmt, toCNY, SYM, TABS, MARKET_OPTIONS, today } from '../composables/helpers.js'
+import { fmt, toCNY, SYM, TABS, MARKET_OPTIONS, today } from '../composables/helpers.js'
 
 export default {
   components: { PnLTag, Tag },
@@ -723,10 +668,6 @@ export default {
     const tab = ref('全部')
     const expanded = ref({})
     const editingTrade = ref(null)
-    const resetTarget = ref(null)
-    const resetPrice = ref('')
-    const addTradeTarget = ref(null)
-    const addTradeForm = ref({ type: '买入', qty: '', price: '', date: today(), note: '' })
     const addHolding = ref(false)
     const newForm = ref({ market: 'A股', code: '', name: '', sector: '', qty: '100', price: '', date: today() })
     const deletingHoldings = ref([])
@@ -833,6 +774,52 @@ export default {
     
     // 生成交易ID
     const mkTrade = (date, qty, price, note = '') => ({ id: ++_id, date, qty, price, note })
+
+    // 持仓历史（按时间顺序计算每次修改前后状态）
+    const holdingChangeHistory = (holding) => {
+      if (!holding || !holding.trades) return []
+      const sortedTrades = (holding.trades || []).slice().sort((a, b) => {
+        const dateDiff = (a.date || '').localeCompare(b.date || '')
+        if (dateDiff !== 0) return dateDiff
+        return (a.id || 0) - (b.id || 0)
+      })
+
+      let runningQty = 0
+      let runningCostAmount = 0
+
+      return sortedTrades.map((trade) => {
+        const beforeQty = runningQty
+        const beforeCost = beforeQty !== 0 ? (runningCostAmount / beforeQty) : 0
+
+        runningQty += Number(trade.qty || 0)
+        runningCostAmount += Number(trade.qty || 0) * Number(trade.price || 0)
+
+        const afterQty = runningQty
+        const afterCost = afterQty !== 0 ? (runningCostAmount / afterQty) : 0
+
+        return {
+          id: trade.id,
+          date: trade.date,
+          beforeQty,
+          beforeCost,
+          afterQty,
+          afterCost,
+          rawTrade: trade
+        }
+      }).reverse()
+    }
+
+    const latestTradeDate = (holding) => {
+      const history = holdingChangeHistory(holding)
+      return history.length > 0 ? history[0].date : '--'
+    }
+
+    const latestHistorySummary = (holding) => {
+      const history = holdingChangeHistory(holding)
+      if (history.length === 0) return '暂无记录'
+      const latest = history[0]
+      return `数量 ${fmt(latest.beforeQty, 0)}→${fmt(latest.afterQty, 0)}，成本 ${fmt(latest.beforeCost)}→${fmt(latest.afterCost)}`
+    }
     
     // 打开添加持仓
     const openAddHolding = () => {
@@ -969,24 +956,6 @@ export default {
       }
     }
     
-    // 打开添加交易
-    const openAddTrade = (target) => {
-      const holding = store.holdings.find(h => h.market === target.market && h.code === target.code)
-      if (!holding) return
-      
-      const ccy = target.market === 'A股' ? 'CNY' : target.market === '港股' ? 'HKD' : 'USD'
-      const avgCostValue = avgCost(holding.trades || [])
-      
-      addTradeTarget.value = {
-        market: target.market,
-        code: target.code,
-        ccy,
-        avgCost: avgCostValue
-      }
-      addTradeForm.value = { type: '买入', qty: '', price: '', date: today(), note: '' }
-      tradeError.value = ''
-    }
-
     const openEditTrade = (holding, trade) => {
       const ccy = holding.market === 'A股' ? 'CNY' : holding.market === '港股' ? 'HKD' : 'USD'
       tradeError.value = ''
@@ -1005,39 +974,6 @@ export default {
       if (isUpdatingTrade.value) return
       editingTrade.value = null
       tradeError.value = ''
-    }
-    
-    // 保存添加的交易
-    const saveAddTrade = async () => {
-      if (!addTradeTarget.value) return
-      if (!addTradeForm.value.qty || !addTradeForm.value.price) {
-        tradeError.value = '请填写数量和价格'
-        return
-      }
-
-      const qty = parseInt(addTradeForm.value.qty)
-      const price = parseFloat(addTradeForm.value.price)
-      const actualQty = addTradeForm.value.type === '买入' ? qty : -qty
-
-      const holding = store.holdings.find(h => h.market === addTradeTarget.value.market && h.code === addTradeTarget.value.code)
-      if (!holding) {
-        tradeError.value = '持仓不存在'
-        return
-      }
-
-      const rollback = JSON.parse(JSON.stringify(store.holdings))
-      holding.trades.push(mkTrade(addTradeForm.value.date, actualQty, price, addTradeForm.value.note))
-
-      try {
-        await store.saveHoldings(store.holdings)
-        addTradeTarget.value = null
-        triggerBlessingEffect()
-        store.showMessage('交易记录添加成功')
-      } catch (err) {
-        store.holdings = rollback
-        tradeError.value = '添加失败: ' + err.message
-        showErrorDetailModal('操作失败', err)
-      }
     }
     
     // 更新交易
@@ -1131,49 +1067,6 @@ export default {
     // 关闭持仓菜单
     const closeHoldingActionMenu = () => {
       openHoldingActionMenuKey.value = null
-    }
-    
-    // 切换重置成本
-    const toggleReset = (target) => {
-      if (resetTarget.value && resetTarget.value.market === target.market && resetTarget.value.code === target.code) {
-        resetTarget.value = null
-        resetPrice.value = ''
-      } else {
-        resetTarget.value = target
-        resetPrice.value = ''
-      }
-    }
-    
-    // 取消重置
-    const cancelReset = () => {
-      resetTarget.value = null
-      resetPrice.value = ''
-    }
-    
-    // 重置成本
-    const resetCost = async (target) => {
-      if (!resetTarget.value) return
-
-      const holding = store.holdings.find(h => h.market === target.market && h.code === target.code)
-      if (!holding) return
-
-      const totalQtyValue = totalQty(holding.trades)
-      const newPrice = resetPrice.value ? parseFloat(resetPrice.value) : avgCost(holding.trades)
-
-      const rollback = JSON.parse(JSON.stringify(store.holdings))
-      holding.trades = [mkTrade(today(), totalQtyValue, newPrice, '成本重置')]
-
-      try {
-        await store.saveHoldings(store.holdings)
-        resetTarget.value = null
-        resetPrice.value = ''
-        triggerBlessingEffect()
-        store.showMessage('成本重置成功')
-      } catch (err) {
-        store.holdings = rollback
-        store.showMessage('重置失败: ' + err.message, true)
-        showErrorDetailModal('操作失败', err)
-      }
     }
     
     // 确认删除持仓
@@ -1706,10 +1599,6 @@ export default {
       tab,
       expanded,
       editingTrade,
-      resetTarget,
-      resetPrice,
-      addTradeTarget,
-      addTradeForm,
       addHolding,
       newForm,
       deletingHoldings,
@@ -1749,6 +1638,9 @@ export default {
       filtered,
       summary,
       ccyBreakdown,
+      holdingChangeHistory,
+      latestTradeDate,
+      latestHistorySummary,
       fmt,
       toCNY,
       SYM,
@@ -1757,19 +1649,14 @@ export default {
       selectNewHoldingMarket,
       handleCodeBlur,
       saveNewHolding,
-      openAddTrade,
       openEditTrade,
       closeEditTrade,
-      saveAddTrade,
       updateTrade,
       deleteTrade,
       toggleTradeActionMenu,
       closeTradeActionMenu,
       toggleHoldingActionMenu,
       closeHoldingActionMenu,
-      toggleReset,
-      cancelReset,
-      resetCost,
       confirmDeleteHolding,
       cancelDelete,
       deleteHolding,
