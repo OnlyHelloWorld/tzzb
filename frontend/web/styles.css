@@ -1324,8 +1324,8 @@ input:focus, select:focus { outline: none; }
 /* Row */
 .row {
   background: #fff;
-  border-radius: 12px;
-  margin-bottom: 10px;
+  border-radius: 10px;
+  margin-bottom: 8px;
   border: 1px solid color-mix(in srgb, var(--ledger-theme, #1a1814) 15%, #ede9e2);
   transition: all .2s;
   overflow: hidden;
@@ -1479,7 +1479,7 @@ input:focus, select:focus { outline: none; }
 }
 
 .row-head {
-  display: grid; padding: 14px 16px; cursor: pointer; user-select: none;
+  display: grid; padding: 11px 14px; cursor: pointer; user-select: none;
   align-items: center; gap: 8px; grid-template-columns: 1fr auto;
   transition: background-color .2s;
 }
@@ -1495,24 +1495,33 @@ input:focus, select:focus { outline: none; }
 @media(min-width:640px) { .row-head { grid-template-columns: 2fr 1fr 1fr 1fr auto; } }
 
 .name-row { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
-.stock-name { font-weight: 600; font-size: 15px; }
-.stock-code { font-size: 11px; font-family: monospace; color: #bbb; }
+.stock-name { font-weight: 600; font-size: 14px; }
+.stock-code { font-size: 10px; font-family: monospace; color: #b0a79a; }
 
-.info-grid { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  margin-top: 6px;
+}
 .holding-info-chip {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 7px;
-  border-radius: 999px;
+  padding: 2px 6px;
+  border-radius: 8px;
   border: 1px solid transparent;
   line-height: 1.2;
+  min-width: 0;
 }
 .chip-value {
   color: #1a1814;
   font-family: monospace;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .chip-link-arrow {
   display: inline-flex;
@@ -1539,17 +1548,33 @@ input:focus, select:focus { outline: none; }
 }
 
 .desktop-col { text-align: right; display: none; }
-.col-sub { font-size: 11px; color: #bbb; font-family: monospace; }
+.col-sub { font-size: 10px; color: #b9af9f; font-family: monospace; }
 @media(min-width:640px) { .desktop-col { display: block; } .info-grid { display: none; } }
 
-.pnl-col { display: flex; align-items: center; gap: 10px; }
+.pnl-col { display: flex; align-items: center; gap: 8px; }
 .pnl-abs { font-family: monospace; font-size: 11px; margin-top: 1px; }
+.row-edit-btn {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
 
 /* Trade zone */
 .trade-zone { border-top: 1px solid #f0ece5; padding: 12px 16px; background: #fdfcfa; }
 .trade-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .trade-title { font-size: 12px; color: #aaa; letter-spacing: .5px; text-transform: uppercase; }
 .trade-actions { display: flex; gap: 6px; }
+.trade-clear-btn {
+  font-size: 11px;
+  padding: 3px 9px;
+  color: #9f6b22;
+  border-color: #e8d6b8;
+}
+.trade-clear-btn:hover {
+  color: #875415;
+  border-color: #debe8b;
+}
 
 .trade-tbl-hdr {
   display: grid; grid-template-columns: 90px 70px 90px 90px 1fr; gap: 8px;
@@ -1608,6 +1633,23 @@ input:focus, select:focus { outline: none; }
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
 }
 .price-label { font-size: 12px; color: #aaa; }
+
+@media (max-width: 639px) {
+  .trade-tbl-hdr {
+    grid-template-columns: 82px 62px 1fr 1fr 68px;
+    font-size: 10px;
+    gap: 6px;
+  }
+  .trade-date { width: 82px; font-size: 11px; }
+  .trade-type { width: 62px; font-size: 11px; }
+  .trade-qty, .trade-price {
+    width: auto;
+    font-size: 11px;
+  }
+  .trade-btns .btn {
+    padding: 3px 7px;
+  }
+}
 
 /* Buttons */
 .btn { border: none; border-radius: 6px; cursor: pointer; font-size: 12px; padding: 5px 11px; transition: all .15s; font-family: inherit; position: relative; overflow: hidden; }
@@ -1741,7 +1783,7 @@ select.form-control { cursor: pointer; }
 .density-compact .trade-row { padding: 5px 0; }
 .density-compact .ledger-card-body { padding: 14px 12px; }
 .density-compact .summary-card { padding: 18px 18px 14px; }
-.density-cozy .row-head { padding: 16px 18px; }
+.density-cozy .row-head { padding: 12px 14px; }
 .density-cozy .trade-zone { padding: 14px 18px; }
 .density-cozy .ledger-card-body { padding: 20px 16px; }
 
