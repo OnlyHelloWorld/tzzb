@@ -1479,8 +1479,11 @@ input:focus, select:focus { outline: none; }
 }
 
 .row-head {
-  display: grid; padding: 11px 14px; cursor: pointer; user-select: none;
-  align-items: center; gap: 8px; grid-template-columns: 1fr auto;
+  display: grid;
+  padding: 12px 14px;
+  align-items: start;
+  gap: 10px;
+  grid-template-columns: 1fr;
   transition: background-color .2s;
 }
 
@@ -1490,45 +1493,41 @@ input:focus, select:focus { outline: none; }
 
 .row-head:active {
   background-color: #f5f3ef;
-  transform: scale(0.98);
 }
-@media(min-width:640px) { .row-head { grid-template-columns: 2fr 1fr 1fr 1fr auto; } }
 
 .name-row { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
 .stock-name { font-weight: 600; font-size: 14px; }
 .stock-code { font-size: 10px; font-family: monospace; color: #b0a79a; }
 
 .info-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 6px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 8px;
 }
 .holding-info-chip {
-  display: inline-flex;
-  align-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 3px;
-  padding: 2px 5px;
+  padding: 6px 8px;
   border-radius: 6px;
   border: 1px solid transparent;
   line-height: 1.2;
   min-width: 0;
 }
+.chip-label {
+  color: #877d6c;
+  font-size: 10px;
+}
 .chip-value {
   color: #1a1814;
   font-family: monospace;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.chip-link-arrow {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: #9b927f;
-  transform: translateY(.5px);
 }
 .chip-cost {
   background: #f2eee6;
@@ -1547,15 +1546,20 @@ input:focus, select:focus { outline: none; }
   border-color: #e8dfce;
 }
 
-.desktop-col { text-align: right; display: none; }
-.col-sub { font-size: 10px; color: #b9af9f; font-family: monospace; }
-@media(min-width:640px) { .desktop-col { display: block; } .info-grid { display: none; } }
-
-.pnl-col { display: flex; align-items: center; gap: 8px; }
+.row-footer {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #f0ece5;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 10px;
+}
+.pnl-col { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .pnl-abs { font-family: monospace; font-size: 11px; margin-top: 1px; }
 .row-edit-btn {
   font-size: 11px;
-  padding: 3px 8px;
+  padding: 4px 10px;
   border-radius: 999px;
   white-space: nowrap;
 }

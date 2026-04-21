@@ -234,13 +234,6 @@
         <span class="tabs-count">{{ filtered.length }} 只</span>
       </div>
 
-      <!-- ── Table header (desktop) ── -->
-      <div class="tbl-hdr">
-        <div>持仓</div><div style="text-align:right">成本均价</div>
-        <div style="text-align:right">现价</div><div style="text-align:right">市值</div>
-        <div style="width:90px"></div>
-      </div>
-
       <!-- ── Holdings ── -->
       <transition-group name="holding-fly" tag="div" class="holding-list">
       <div
@@ -258,7 +251,7 @@
         </div>
 
         <!-- 持仓标题行 -->
-        <div class="row-head" @click="handleHoldingClick(h)">
+        <div class="row-head">
           <div>
             <div class="name-row">
               <span class="stock-name">{{ h.name }}</span>
@@ -267,111 +260,41 @@
             </div>
             <div class="info-grid">
               <span class="holding-info-chip chip-cost">
+                <span class="chip-label">成本价</span>
                 <span class="chip-value">{{ SYM[h.ccy] }}{{ fmt(h.cost) }}</span>
               </span>
-              <span class="chip-link-arrow" aria-hidden="true">
-                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                  <path d="M1.5 5h7M6 2.5 8.5 5 6 7.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              </span>
-              <span class="holding-info-chip chip-qty">
-                <span class="chip-value">{{ h.qty }}股</span>
-              </span>
               <span class="holding-info-chip chip-price">
+                <span class="chip-label">当前价</span>
                 <span class="chip-value">{{ SYM[h.ccy] }}{{ fmt(h.price) }}</span>
               </span>
+              <span class="holding-info-chip chip-qty">
+                <span class="chip-label">持股数量</span>
+                <span class="chip-value">{{ h.qty }}股</span>
+              </span>
               <span class="holding-info-chip chip-mv">
+                <span class="chip-label">市值</span>
                 <span class="chip-value">{{ SYM[h.ccy] }}{{ fmt(h.mv) }}</span>
               </span>
             </div>
-            <div class="update-info" style="margin-top:8px; padding-top:8px; border-top:1px solid #f0f0f0; font-size:12px; color:#666; width:100%; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-              <span>{{ latestHistorySummary(h) }}</span>
-              <div style="display:flex; align-items:center; gap:8px;">
+            <div class="row-footer">
+              <div class="pnl-col">
+                <span class="chip-label">当前盈利</span>
                 <PnLTag :val="h.pnl" :pct="h.pct" />
-                <div :class="['pnl-abs', h.pnl >= 0 ? 'pnl-green' : 'pnl-red']" style="margin:0;">
+                <div :class="['pnl-abs', h.pnl >= 0 ? 'pnl-green' : 'pnl-red']">
                   {{ h.pnl >= 0 ? '+' : '' }}{{ SYM[h.ccy] }}{{ fmt(h.pnl) }}
                 </div>
               </div>
+              <button
+                class="btn btn-ghost row-edit-btn"
+                @click.stop="openEditLatestTrade(h)"
+                :disabled="!getLatestTrade(h)"
+                title="修改最新记录"
+              >
+                修改
+              </button>
             </div>
-          </div>
-          <div class="desktop-col">
-            <div class="mono">{{ SYM[h.ccy] }}{{ fmt(h.cost) }}</div>
-            <div class="col-sub">{{ h.qty }}股</div>
-          </div>
-          <div class="desktop-col">
-            <div class="mono">{{ SYM[h.ccy] }}{{ fmt(h.price) }}</div>
-          </div>
-          <div class="desktop-col">
-            <div class="mono" style="font-weight:600">{{ SYM[h.ccy] }}{{ fmt(h.mv) }}</div>
-          </div>
-          <div class="pnl-col" style="gap: 4px;">
-            <button
-              class="btn btn-ghost row-edit-btn"
-              @click.stop="openEditLatestTrade(h)"
-              :disabled="!getLatestTrade(h)"
-              title="修改最新记录"
-            >
-              修改
-            </button>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"
-              :style="{ flexShrink: 0, transition: 'transform .2s', transform: isHoldingExpanded(h) ? 'rotate(180deg)' : 'none' }">
-              <path d="M4 6l4 4 4-4" stroke="#bbb" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
           </div>
         </div>
-
-        <!-- 交易记录区域 -->
-        <div v-show="isHoldingExpanded(h)" class="trade-zone">
-          <div class="trade-header">
-            <span class="trade-title">历史修改记录</span>
-            <button
-              class="btn btn-ghost trade-clear-btn"
-              @click.stop="clearHoldingHistory(h)"
-              :disabled="!canClearHoldingHistory(h)"
-              title="仅保留当前持仓快照"
-            >
-              一键清除
-            </button>
-          </div>
-
-          <!-- Trade header -->
-          <div class="trade-tbl-hdr">
-            <div v-for="s in ['时间','修改说明','修改前','修改后','']" :key="s">{{ s }}</div>
-          </div>
-
-          <!-- History rows -->
-          <div v-for="item in holdingChangeHistory(h)" :key="item.id" :class="['trade-row', { 'trade-row-deleting': item.rawTrade.deleting }]">
-            <span class="mono trade-date">{{ item.date }}</span>
-            <span class="trade-type" :class="item.rawTrade.qty >= 0 ? 'type-buy' : 'type-sell'">
-              {{ item.rawTrade.qty >= 0 ? '增加持仓' : '减少持仓' }}
-            </span>
-            <span class="mono trade-qty">数量 {{ fmt(item.beforeQty, 0) }} → {{ fmt(item.afterQty, 0) }}</span>
-            <span class="mono trade-price">成本 {{ SYM[h.ccy] }}{{ fmt(item.beforeCost) }} → {{ SYM[h.ccy] }}{{ fmt(item.afterCost) }}</span>
-            <div class="trade-btns">
-              <span v-if="item.rawTrade.note" class="trade-note" :title="item.rawTrade.note">{{ item.rawTrade.note }}</span>
-              <div class="trade-more-wrap" @click.stop>
-                <button class="btn btn-ghost trade-more-btn" @click.stop="toggleTradeActionMenu(`${h.market}-${h.code}-${item.rawTrade.id}`)">⋯</button>
-                <div v-if="openTradeActionMenuKey === `${h.market}-${h.code}-${item.rawTrade.id}`" class="trade-more-menu">
-                  <button class="trade-more-item trade-more-item-danger" @click.stop="handleDeleteTrade({ market: h.market, code: h.code }, item.rawTrade.id)">删除记录</button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Price refresh -->
-          <div class="price-edit-row">
-            <span class="price-label">当前价格</span>
-            <span class="mono" style="font-size:13px;font-weight:600">{{ SYM[h.ccy] }}{{ fmt(h.price) }}</span>
-            <button class="btn btn-ghost" style="font-size:11px"
-              @click="refreshSingleQuote(h)">
-              <svg :class="{ 'spin': h.refreshing }" width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:middle;margin-right:3px">
-                <path d="M1.5 7a5.5 5.5 0 0 1 9.3-3.95M12.5 7a5.5 5.5 0 0 1-9.3 3.95" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-                <path d="M10.8.5v2.55h-2.55M3.2 13.5v-2.55h2.55" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              {{ h.refreshing ? '刷新中…' : '刷新' }}
-            </button>
-          </div>
-          </div>
 
         <div v-if="deletingHoldings.includes(`${h.market}-${h.code}`)" class="delete-blessing">
           <span v-for="char in blessingChars" :key="char" class="blessing-char">{{ char }}</span>
@@ -675,7 +598,6 @@ export default {
     let _id = 100
     const holdings = ref([])
     const tab = ref('全部')
-    const expanded = ref({})
     const editingTrade = ref(null)
     const addHolding = ref(false)
     const newForm = ref({ market: 'A股', code: '', name: '', sector: '', qty: '100', price: '', date: today() })
@@ -697,7 +619,6 @@ export default {
     })
     
     const openLedgerActionMenuId = ref(null)
-    const openTradeActionMenuKey = ref(null)
     const showLedgerList = ref(false)
     const showDropdown = ref(false)
     const showHoldingIOMenu = ref(false)
@@ -784,51 +705,6 @@ export default {
     // 生成交易ID
     const mkTrade = (date, qty, price, note = '') => ({ id: ++_id, date, qty, price, note })
 
-    // 持仓历史（按时间顺序计算每次修改前后状态）
-    const holdingChangeHistory = (holding) => {
-      if (!holding || !holding.trades) return []
-      const sortedTrades = (holding.trades || []).slice().sort((a, b) => {
-        const dateDiff = (a.date || '').localeCompare(b.date || '')
-        if (dateDiff !== 0) return dateDiff
-        return (a.id || 0) - (b.id || 0)
-      })
-
-      let runningQty = 0
-      let runningCostAmount = 0
-
-      return sortedTrades.map((trade) => {
-        const beforeQty = runningQty
-        const beforeCost = beforeQty !== 0 ? (runningCostAmount / beforeQty) : 0
-
-        runningQty += Number(trade.qty || 0)
-        runningCostAmount += Number(trade.qty || 0) * Number(trade.price || 0)
-
-        const afterQty = runningQty
-        const afterCost = afterQty !== 0 ? (runningCostAmount / afterQty) : 0
-
-        return {
-          id: trade.id,
-          date: trade.date,
-          beforeQty,
-          beforeCost,
-          afterQty,
-          afterCost,
-          rawTrade: trade
-        }
-      }).reverse()
-    }
-
-    const latestTradeDate = (holding) => {
-      const history = holdingChangeHistory(holding)
-      return history.length > 0 ? history[0].date : '--'
-    }
-
-    const latestHistorySummary = (holding) => {
-      const history = holdingChangeHistory(holding)
-      if (history.length === 0) return '暂无记录'
-      const latest = history[0]
-      return `数量 ${fmt(latest.beforeQty, 0)}→${fmt(latest.afterQty, 0)}，成本 ${fmt(latest.beforeCost)}→${fmt(latest.afterCost)}`
-    }
 
     const getLatestTrade = (holding) => {
       if (!holding || !holding.trades || holding.trades.length === 0) return null
@@ -845,46 +721,6 @@ export default {
       openEditTrade(holding, latestTrade)
     }
 
-    const canClearHoldingHistory = (holding) => {
-      return !!(holding && holding.trades && holding.trades.length > 1)
-    }
-
-    const clearHoldingHistory = async (holding) => {
-      if (!canClearHoldingHistory(holding)) return
-
-      const rollback = JSON.parse(JSON.stringify(store.holdings))
-      const target = store.holdings.find(h => h.market === holding.market && h.code === holding.code)
-      if (!target) return
-
-      const latestTrade = getLatestTrade(target)
-      const totalQty = (target.trades || []).reduce((sum, t) => sum + Number(t.qty || 0), 0)
-      const totalCostAmount = (target.trades || []).reduce((sum, t) => sum + Number(t.qty || 0) * Number(t.price || 0), 0)
-      const avgCost = totalQty !== 0 ? totalCostAmount / totalQty : 0
-
-      if (totalQty === 0 || avgCost <= 0) {
-        store.showMessage('当前持仓数量或成本异常，无法清除历史', true)
-        return
-      }
-
-      const snapshotTrade = mkTrade(
-        latestTrade?.date || today(),
-        Math.round(totalQty),
-        Number(avgCost.toFixed(4)),
-        '历史已清除，仅保留当前快照'
-      )
-
-      target.trades = [snapshotTrade]
-
-      try {
-        await store.saveHoldings(store.holdings)
-        triggerBlessingEffect()
-        store.showMessage('历史记录已清除')
-      } catch (err) {
-        store.holdings = rollback
-        store.showMessage('清除失败: ' + err.message, true)
-        showErrorDetailModal('操作失败', err)
-      }
-    }
     
     // 打开添加持仓
     const openAddHolding = () => {
@@ -1114,16 +950,6 @@ export default {
       }, 800)
     }
     
-    // 切换交易菜单
-    const toggleTradeActionMenu = (tradeKey) => {
-      openTradeActionMenuKey.value = openTradeActionMenuKey.value === tradeKey ? null : tradeKey
-    }
-    
-    // 关闭交易菜单
-    const closeTradeActionMenu = () => {
-      openTradeActionMenuKey.value = null
-    }
-    
     // 切换持仓菜单
     const toggleHoldingActionMenu = (holdingKey) => {
       openHoldingActionMenuKey.value = openHoldingActionMenuKey.value === holdingKey ? null : holdingKey
@@ -1184,22 +1010,6 @@ export default {
         showErrorDetailModal('操作失败', err)
       } finally {
         isDeletingHolding.value = false
-      }
-    }
-    
-    // 刷新单个股票行情
-    const refreshSingleQuote = async (holding) => {
-      holding.refreshing = true
-      try {
-        const result = await fetchQuote(holding.market, holding.code)
-        if (result.price > 0) {
-          store.prices[holding.code] = result.price
-          await store.calculateAllLedgerSummaries()
-        }
-      } catch (err) {
-        console.warn('刷新行情失败:', err)
-      } finally {
-        holding.refreshing = false
       }
     }
     
@@ -1385,8 +1195,6 @@ export default {
           }
         })
         
-        // 重置展开状态
-        expanded.value = {}
         tab.value = '全部'
       } catch (err) {
         console.warn('加载账本数据失败:', err)
@@ -1528,12 +1336,6 @@ export default {
       confirmDeleteHolding(target)
     }
     
-    // 处理删除交易
-    const handleDeleteTrade = (holdingInfo, tradeId) => {
-      deleteTrade(holdingInfo, tradeId)
-      closeTradeActionMenu()
-    }
-    
     // 处理持仓菜单点击
     const handleHoldingMenuClick = (holding) => {
       const holdingKey = `${holding.market}-${holding.code}`
@@ -1550,18 +1352,6 @@ export default {
     const handleDeleteHoldingClick = (holding) => {
       confirmDeleteHolding({ market: holding.market, code: holding.code })
       openHoldingActionMenuKey.value = null
-    }
-    
-    // 处理持仓点击
-    const handleHoldingClick = (holding) => {
-      const holdingKey = `${holding.market}-${holding.code}`
-      expanded.value[holdingKey] = !expanded.value[holdingKey]
-    }
-    
-    // 检查持仓是否展开
-    const isHoldingExpanded = (holding) => {
-      const holdingKey = `${holding.market}-${holding.code}`
-      return expanded.value[holdingKey] || false
     }
     
     // 页面加载时
@@ -1662,7 +1452,6 @@ export default {
     return {
       store,
       tab,
-      expanded,
       editingTrade,
       addHolding,
       newForm,
@@ -1672,7 +1461,6 @@ export default {
       blessingEffectKey,
       loadingEffectKey,
       openLedgerActionMenuId,
-      openTradeActionMenuKey,
       showLedgerList,
       showDropdown,
       showHoldingIOMenu,
@@ -1703,9 +1491,6 @@ export default {
       filtered,
       summary,
       ccyBreakdown,
-      holdingChangeHistory,
-      latestTradeDate,
-      latestHistorySummary,
       getLatestTrade,
       fmt,
       toCNY,
@@ -1718,15 +1503,11 @@ export default {
       openEditTrade,
       closeEditTrade,
       updateTrade,
-      deleteTrade,
-      toggleTradeActionMenu,
-      closeTradeActionMenu,
       toggleHoldingActionMenu,
       closeHoldingActionMenu,
       confirmDeleteHolding,
       cancelDelete,
       deleteHolding,
-      refreshSingleQuote,
       handleExportCSV,
       handleExportPDF,
       triggerImport,
@@ -1756,15 +1537,10 @@ export default {
       handleEditLedger,
       handleDeleteLedger,
       handleConfirmDeleteHolding,
-      handleDeleteTrade,
       openEditLatestTrade,
-      canClearHoldingHistory,
-      clearHoldingHistory,
       handleHoldingMenuClick,
       isHoldingMenuOpen,
-      handleDeleteHoldingClick,
-      handleHoldingClick,
-      isHoldingExpanded
+      handleDeleteHoldingClick
     }
   }
 }
