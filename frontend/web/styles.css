@@ -1507,20 +1507,22 @@ input:focus, select:focus { outline: none; }
 }
 .holding-info-chip {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 3px;
-  padding: 6px 8px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 5px 8px;
   border-radius: 6px;
   border: 1px solid transparent;
   line-height: 1.2;
   min-width: 0;
 }
-.chip-label {
+.holding-info-chip .chip-label {
   color: #877d6c;
   font-size: 10px;
+  white-space: nowrap;
 }
-.chip-value {
+.holding-info-chip .chip-value {
   color: #1a1814;
   font-family: monospace;
   font-size: 12px;
