@@ -1500,35 +1500,23 @@ input:focus, select:focus { outline: none; }
 .stock-code { font-size: 10px; font-family: monospace; color: #b0a79a; }
 
 .info-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
   margin-top: 8px;
 }
 .holding-info-chip {
-  display: flex;
-  flex-direction: row;
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  padding: 5px 8px;
-  border-radius: 6px;
+  justify-content: center;
+  padding: 3px 7px;
+  border-radius: 999px;
   border: 1px solid transparent;
-  line-height: 1.2;
-  min-width: 0;
-}
-.holding-info-chip .chip-label {
-  color: #877d6c;
-  font-size: 10px;
-  white-space: nowrap;
-}
-.holding-info-chip .chip-value {
+  line-height: 1.1;
   color: #1a1814;
   font-family: monospace;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 .chip-cost {
