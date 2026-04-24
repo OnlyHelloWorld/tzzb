@@ -312,25 +312,17 @@
       </transition>
     </div>
 
-    <!-- ── Edit Trade Modal ── -->
+    <!-- ── Edit Holding Modal ── -->
     <div v-if="editingTrade" class="overlay" @click.self="closeEditTrade">
       <div class="modal">
-        <div class="modal-title">修改交易</div>
+        <div class="modal-title">修改持仓</div>
         <div class="form-grid">
-          <div class="form-row">
-            <div class="form-label">日期</div>
-            <input class="form-control" type="date" v-model="editingTrade.date" :disabled="isUpdatingTrade" />
-          </div>
-          <div class="form-row">
-            <div class="form-label">类型</div>
-            <input class="form-control" :value="editingTrade.qty >= 0 ? '买入' : '卖出'" disabled />
-          </div>
           <div class="form-row">
             <div class="form-label">数量（股）</div>
             <input class="form-control" type="number" v-model="editingTrade.qty" :disabled="isUpdatingTrade" />
           </div>
           <div class="form-row">
-            <div class="form-label">价格（{{ editingTrade.ccy }}）</div>
+            <div class="form-label">成本价（{{ editingTrade.ccy }}）</div>
             <input class="form-control" type="number" step="0.01" v-model="editingTrade.price" :disabled="isUpdatingTrade" />
           </div>
         </div>
@@ -876,13 +868,12 @@ export default {
       const trade = holding.trades.find(t => t.id === editingTrade.value.tradeId)
       if (!trade) return
 
-      if (!editingTrade.value.date || !editingTrade.value.qty || !editingTrade.value.price) {
-        tradeError.value = '请填写完整的日期、数量和价格'
+      if (!editingTrade.value.qty || !editingTrade.value.price) {
+        tradeError.value = '请填写完整的数量和成本价'
         return
       }
 
       const rollback = JSON.parse(JSON.stringify(store.holdings))
-      trade.date = editingTrade.value.date
       trade.qty = parseInt(editingTrade.value.qty)
       trade.price = parseFloat(editingTrade.value.price)
 
@@ -892,7 +883,7 @@ export default {
         editingTrade.value = null
         tradeError.value = ''
         triggerBlessingEffect()
-        store.showMessage('交易记录更新成功')
+        store.showMessage('持仓更新成功')
       } catch (err) {
         store.holdings = rollback
         tradeError.value = '更新失败: ' + err.message
